@@ -3,8 +3,6 @@ import time
 import board
 import neopixel
 
-PIN_MAP = {10:board.D10, 12: board.D12, 18: board.D18, 21: board.D21}
-
 class LEDS():
 
     def __init__(self, gpio_pin, num_pixels, led_groups, base_brightness):

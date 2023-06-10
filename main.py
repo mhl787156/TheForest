@@ -1,6 +1,7 @@
 from pythonosc import osc_message_builder, udp_client
 import datetime
 import logging
+import serial
 
 from nfc_controller import NFC
 
@@ -12,6 +13,9 @@ def main():
     nfc.addBoard("reader2", 16)  # GPIO pin for reader 2 reset
     nfc.addBoard("reader3", 18)  # GPIO pin for reader 3 reset
     nfc.addBoard("reader4", 10)  # GPIO pin for reader 4 reset
+
+    ser = serial.Serial('/dev/ttyACM1', 115200, timeout=1)
+    ser.reset_input_buffer()
 
     is_pressed = [False for _ in range(4)]
     datas = [None for _ in range(4)]
@@ -50,11 +54,13 @@ def main():
                         sender.send_message('/start', wavs[i])
                         print(f"Sending start message for reader{i+1}: {wavs[i]}")
                         # leds.fill_group(i, *colours[i])
+                        ser.write(f"{i},1;\n".encode())
 
                     if d2 is None:
                         sender.send_message('/stop', wavs[i])
                         print(f"Sending stop message for reader{i+1}: {wavs[i]}")
                         # leds.clear_group()
+                        ser.write(f"{i},7\n;".encode())
 
             datas = new_datas
 
