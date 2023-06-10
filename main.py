@@ -3,7 +3,6 @@ import datetime
 import logging
 
 from nfc_controller import NFC
-# from led_controller import LEDS
 
 def main():
     sender = udp_client.SimpleUDPClient('127.0.0.1', 4560)
