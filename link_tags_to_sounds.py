@@ -1,7 +1,16 @@
-from pythonosc import osc_message_builder, udp_client
+"""
+Use this file to map tags to sounds. It iterates through the folder of Samples
+and asks a user to tap an object to each one. A file "sdict.json" is saved with the mapping
+of tag id to sample. 
+
+python link_tags_to_sounds.py
+
+Note you may want to change the GPIO pin based on the intended reader
+"""
 from nfc_controller import NFC
 import json
 import os
+import serial
 
 sounds = [
     "269570__vonora__cuckoo-the-nightingale-duet.wav",
@@ -11,20 +20,18 @@ sounds = [
 ]
 
 def main():
-    sender = udp_client.SimpleUDPClient('127.0.0.1', 4560)
     nfc = NFC()
-    nfc.addBoard("reader1", 8)  # GPIO pin for reader 1 reset
+    nfc.addBoard("reader1", 16)  # GPIO pin for reader 2 reset
 
-    ser = serial.Serial('/dev/ttyACM1', 115200, timeout=1)
-    ser.reset_input_buffer()
-
-    if not os.path.exists("samples"):
+    if not os.path.exists("Samples"):
         return
     
-    sounds = os.listdir()
+    sounds = os.listdir("Samples")
     # for fname in os.listdir():
     #     fpath = "samples/%s"%fname
     #     sounds.append()
+
+    read_tags = set()
 
     count = 0
     sdict = {}
@@ -33,18 +40,18 @@ def main():
             print("Linking sound: %s"%sound)
             print("%d out of %d"%(i, len(sounds)))
             while True:
-                data = nfc.read("reader1")
-                data = str(data)
-                data = data[:12]
-                if data != "None":
-                    print("Tag read %s"%data)
-                    sdict[sound] = data
-                    continue
+                tag_id, text = nfc.read_id("reader1")
+                if tag_id is not None and tag_id not in read_tags:
+                    print(f"Tag read {tag_id}")
+                    sdict[tag_id] = sound
+                    read_tags.add(tag_id)
+                    break
     except KeyboardInterrupt:
         print("Stopped by User")
 
-    with open("sdict.txt", "w") as f:
+    with open("sdict.json", "w") as f:
         f.write(json.dumps(sdict))
+        print("Written to file")
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ class NFC():
             GPIO.output(self.boards[loop_id], loop_id == rid)
         return True
 
-    def read(self, rid):
+    def read_id(self, rid):
         if not self.selectBoard(rid):
             return None
 
@@ -43,6 +43,10 @@ class NFC():
         cid, val = self.reader.read_no_block()
         self.close()
 
+        return cid, val
+
+    def read(self, rid):
+        cid, val = self.read_id(rid)
         return val
 
     def write(self, rid, value):
