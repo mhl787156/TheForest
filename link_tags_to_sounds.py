@@ -50,7 +50,7 @@ def main():
         print("Stopped by User")
 
     with open("sdict.json", "w") as f:
-        f.write(json.dumps(sdict))
+        json.dump(sdict, f)
         print("Written to file")
 
 
