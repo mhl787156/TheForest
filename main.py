@@ -56,7 +56,7 @@ def main():
                         print(f"Sending start message for reader{i+1}: {d2[1]}")
                         
                         # Trigger LED change
-                        ser.write(f"{i},1;\n".encode())
+                        ser.write(f"{reader_led_map[i]},1;\n".encode())
                         print("Triggering LED change")
 
                     if d2 is None:
@@ -64,7 +64,7 @@ def main():
                         print(f"Sending stop message for reader{i+1}: {d1[1]}")
 
                         # Trigger LED change back to ambient
-                        ser.write(f"{reader_led_map[i]},1;\n".encode())
+                        ser.write(f"{reader_led_map[i]},7;\n".encode())
 
             datas = new_datas
 
