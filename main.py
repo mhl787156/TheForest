@@ -3,6 +3,7 @@ import datetime
 import logging
 import serial
 import json
+import time
 
 from nfc_controller import NFC
 
@@ -19,12 +20,21 @@ def main():
     ser.reset_input_buffer()
 
     # map from reader to led segment
+    # reader_led_map = {
+    #     0:0,
+    #     1:1,
+    #     2:2,
+    #     3:3
+    # }
+    
+    # Nature Pillar Matchup 
     reader_led_map = {
-        0:0,
-        1:1,
-        2:2,
-        3:3
+        0:3,
+        1:2,
+        2:0,
+        3:1
     }
+
 
     is_pressed = [False for _ in range(4)]
     datas = [None for _ in range(4)]
@@ -71,6 +81,7 @@ def main():
             string = [f"R{i}: {data}" for i, data in enumerate(new_datas)]
             print(count, " ".join(string))
             count += 1
+            time.sleep(1)
     except KeyboardInterrupt:
         print("Stopped by User")
         for i, d in enumerate(new_datas):
