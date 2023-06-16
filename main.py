@@ -88,6 +88,7 @@ def main():
             if d is not None:
                 sender.send_message('/stop', d[1])
                 print(f"Sending stop message for reader{i+1}: {d[1]}")
+            ser.write(f"{reader_led_map[i]},7;\n".encode())
 
 
 if __name__ == "__main__":
