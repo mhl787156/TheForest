@@ -20,7 +20,7 @@ define :sample_player do |samples, sname, start, finish|
       
       sample samples, sname,
         start: start, finish: finish,
-        amp: 5, rate: 1, beat_stretch: qdur, release: 0.1, attack: 0.1,
+        amp: 1, rate: 1, beat_stretch: qdur, release: 0.1, attack: 0.1,
         num_slices: qdur, slice: slice_i
       
       print slice_i
@@ -48,7 +48,7 @@ define :sample_player_2 do |samples, sname, start, finish|
     # Play full sample 
     s = sample samples, sname,
       start: start, finish: finish,
-      amp: 5, rate: 1, beat_stretch: qdur, release: 10, attack: 10
+      amp: 1, rate: 1, beat_stretch: qdur, release: 10, attack: 10
     control s
     
     # While sample is playing, monitor every beat to see if buttons have been pressed
@@ -72,7 +72,7 @@ define :sample_player_2 do |samples, sname, start, finish|
         cplay.delete(sname)
         set :currently_playing, cplay
         
-        control s, amp: 0, amp_slide: 10
+        control s, amp: 0, amp_slide: 2
         stop
       end
     end
