@@ -10,36 +10,6 @@ use_osc "localhost", 4559
 set :request_stop_samples_list, []
 set :currently_playing, []
 
-define :sample_player do |samples, sname, start, finish|
-  return live_loop sname do
-    dur = sample_duration samples, sname, start: start, finish: finish
-    qdur = quantise(dur, 1) # To make sure the sample finishes on beat.
-    slice_i = 0
-    
-    qdur.times do
-      
-      sample samples, sname,
-        start: start, finish: finish,
-        amp: 1, rate: 1, beat_stretch: qdur, release: 0.1, attack: 0.1,
-        num_slices: qdur, slice: slice_i
-      
-      print slice_i
-      sleep 1
-      slice_i += 1
-      
-      rssl = get[:request_stop_samples_list]
-      print sname, rssl, rssl.include?(sname)
-      if rssl.include? sname
-        print "Requested Stop", sname
-        modrssl = rssl.dup
-        modrssl.delete(sname)
-        set :request_stop_samples_list, modrssl
-        stop
-      end
-    end
-  end
-end
-
 define :sample_player_2 do |samples, sname, start, finish|
   return live_loop sname do
     dur = sample_duration samples, sname, start: start, finish: finish
@@ -48,7 +18,7 @@ define :sample_player_2 do |samples, sname, start, finish|
     # Play full sample 
     s = sample samples, sname,
       start: start, finish: finish,
-      amp: 1, rate: 1, beat_stretch: qdur, release: 10, attack: 10
+      amp: 1, rate: 1, beat_stretch: qdur, release: 0.3, attack: 0.3
     control s
     
     # While sample is playing, monitor every beat to see if buttons have been pressed
@@ -72,7 +42,9 @@ define :sample_player_2 do |samples, sname, start, finish|
         cplay.delete(sname)
         set :currently_playing, cplay
         
-        control s, amp: 0, amp_slide: 2
+        control s, amp: 0, amp_slide: 1
+
+        sample_free samples, sname
         stop
       end
     end
