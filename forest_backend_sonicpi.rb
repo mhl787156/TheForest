@@ -1,8 +1,12 @@
 use_bpm 60
 use_osc "localhost", 4559
 
+samples="/home/pi/TheForest/Samples"
+# load_samples samples
 set :request_stop_samples_list, []
 set :currently_playing, []
+
+set_sched_ahead_time! 2
 
 define :sample_player_2 do |samples, sname, start, finish|
   # Thread with name seems to work best
@@ -10,19 +14,16 @@ define :sample_player_2 do |samples, sname, start, finish|
   # Sync deals with case of stopping (only play once)
   return in_thread do
     print "Starting thread", sname
-    dur = sample_duration samples, sname, start: start, finish: finish
-    qdur = quantise(dur, 1) # To make sure the sample finishes on beat.
-    
+
     # Play full sample
     s = sample samples, sname,
       start: start, finish: finish,
-      amp: 1, rate: 1, beat_stretch: qdur, release: 0.5, attack: 0.5
+      amp: 1, rate: 1, release: 0.5, attack: 0.5
     control s
-    
+
     print "Syncing on", sname
     sync sname
     control s, amp: 0, amp_slide: 1
-    # sample_free samples, sname
     print "Live loop stopped", sname
     stop
   end

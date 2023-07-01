@@ -16,8 +16,8 @@ def main():
     nfc.addBoard("reader3", 18)  # GPIO pin for reader 3 reset
     nfc.addBoard("reader4", 10)  # GPIO pin for reader 4 reset
 
-    ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
-    ser.reset_input_buffer()
+    #ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
+    #ser.reset_input_buffer()
 
     # map from reader to led segment
     # reader_led_map = {
@@ -41,7 +41,7 @@ def main():
     new_datas = []
 
     # Wavs is mapping between tag_id and sample
-    with open("sdict.json", 'rb') as sdict:
+    with open("/home/pi/TheForest/sdict.json", 'rb') as sdict:
         wavs = json.load(sdict)
 
     print(f"Loaded {len(wavs)} samples from sdict: {wavs}")
@@ -66,7 +66,7 @@ def main():
                         print(f"Sending start message for reader{i+1}: {d2[1]}")
                         
                         # Trigger LED change
-                        ser.write(f"{reader_led_map[i]},1;\n".encode())
+                        #ser.write(f"{reader_led_map[i]},1;\n".encode())
                         print("Triggering LED change")
 
                     if d2 is None:
@@ -74,7 +74,7 @@ def main():
                         print(f"Sending stop message for reader{i+1}: {d1[1]}")
 
                         # Trigger LED change back to ambient
-                        ser.write(f"{reader_led_map[i]},7;\n".encode())
+                        #ser.write(f"{reader_led_map[i]},7;\n".encode())
 
             datas = new_datas
 
@@ -88,7 +88,7 @@ def main():
             if d is not None:
                 sender.send_message('/stop', d[1])
                 print(f"Sending stop message for reader{i+1}: {d[1]}")
-            ser.write(f"{reader_led_map[i]},7;\n".encode())
+            #ser.write(f"{reader_led_map[i]},7;\n".encode())
 
 
 if __name__ == "__main__":

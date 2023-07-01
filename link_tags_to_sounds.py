@@ -12,40 +12,46 @@ import json
 import os
 import serial
 
-sounds = [
-    "269570__vonora__cuckoo-the-nightingale-duet.wav",
-    "469313__2hear__ambient-street-traffic-dublin.wav",
-    "262947__dangasior__pigs-inside-the-pigsty.wav",
-    "529535__straget__thunder-2.wav"
-]
-
 def main():
     nfc = NFC()
-    nfc.addBoard("reader1", 16)  # GPIO pin for reader 2 reset
+    nfc.addBoard("reader1", 8)  # GPIO pin for reader 1 reset
+    nfc.addBoard("reader2", 16)  # GPIO pin for reader 2 reset
+    nfc.addBoard("reader3", 18)  # GPIO pin for reader 3 reset
+    nfc.addBoard("reader4", 10)  # GPIO pin for reader 4 reset
+
+
+    with open("sdict.json", "r") as f:
+        sdict = json.load(f)
 
     if not os.path.exists("Samples"):
         return
-    
+
     sounds = os.listdir("Samples")
     # for fname in os.listdir():
     #     fpath = "samples/%s"%fname
     #     sounds.append()
 
-    read_tags = set()
+    read_tags = set(sdict.keys())
 
     count = 0
-    sdict = {}
+    
     try:
         for i, sound in enumerate(sounds):
+            if sound in sdict.values():
+                print(f"{sound} already in sdict skipping")
+                continue
+
             print("Linking sound: %s"%sound)
             print("%d out of %d"%(i, len(sounds)))
+            j = 0
             while True:
-                tag_id, text = nfc.read_id("reader1")
+                tag_id, text = nfc.read_id(f"reader{(j%4) + 1}")
                 if tag_id is not None and tag_id not in read_tags:
                     print(f"Tag read {tag_id}")
                     sdict[tag_id] = sound
                     read_tags.add(tag_id)
                     break
+                j+=1
     except KeyboardInterrupt:
         print("Stopped by User")
 
