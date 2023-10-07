@@ -14,7 +14,7 @@
     "pillars": [
         {
             "id": 0,
-            "port": "COM3"
+            "port": "/dev/ttyAMA0"
         },
         {
             "id": 1,
