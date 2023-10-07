@@ -1,7 +1,7 @@
 import serial
 import atexit
 
-from . import config
+import config
 
 
 class Pillar():
