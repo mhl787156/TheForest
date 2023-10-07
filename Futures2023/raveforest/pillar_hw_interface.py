@@ -13,7 +13,9 @@ def read_serial_data(serial_port, cap_queue, light_queue):
     while True:
         time.sleep(0.2)
         try:
+            print("Waiting for response")
             response = serial_port.readline().decode().strip()
+            print(f"Received a response: {response}")
 
             if "CAP" in response:
                 status = response.split(",")[1:]
