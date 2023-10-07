@@ -11,7 +11,7 @@ def clamp(val, b=0, c=255):
 
 def read_serial_data(serial_port, cap_queue, light_queue):
     while True:
-        time.sleep(0.2)
+        time.sleep(0.1)
         try:
             print("Waiting for response")
             response = serial_port.readline().decode().strip()
@@ -31,6 +31,15 @@ def read_serial_data(serial_port, cap_queue, light_queue):
             print(f"Error reading data: {e}")
             break
 
+def write_serial_data(serial_port, write_queue):
+    while True:
+        try:
+            packet = write_queue.get()
+            serial_port.write(packet.encode())
+            print(f"Sent {packet}")
+        except Exception as e:
+            print(f"Error writing data: {e}")
+            break
 
 class Pillar():
 
@@ -48,14 +57,19 @@ class Pillar():
 
         self.cap_queue =  queue.Queue()
         self.light_queue = queue.Queue()
+        self.write_queue = queue.Queue()
 
         if config.SERIAL_ENABLED:
             self.ser = serial.Serial(port, baud_rate)
             atexit.register(self.cleanup)
 
-            # serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
-            # serial_thread.daemon = True
-            # serial_thread.start()
+            serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
+            serial_thread.daemon = True
+            serial_thread.start()
+
+            serial_write_thread = threading.Thread(target=write_serial_data, args=(self.ser, self.write_queue,))
+            serial_write_thread.daemon = True
+            serial_write_thread.start()
     
     def cleanup(self):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
@@ -80,7 +94,8 @@ class Pillar():
         assert 0 <= brightness <= 255
         message = f"LED, {tube_id}, {hue}, {brightness}"
         if config.SERIAL_ENABLED:
-            self.ser.write(message.encode())
+            self.write_queue.put(message)
+            # self.ser.write(message.encode())
         else:
             pass
             # print(f"[Serial Disabled] Sending {message}")
@@ -90,33 +105,36 @@ class Pillar():
             self.send_light_change(i, clamp(l[0]), clamp(l[1]))
     
     def read_from_serial(self):
-        try:
-            print("Waiting for response")
-            response = self.ser.readline().decode().strip()
-            print(f"Received a response: {response}")
+        # try:
+        #     print("Waiting for response")
+        #     response = self.ser.readline().decode().strip()
+        #     print(f"Received a response: {response}")
 
-            if "CAP" in response:
-                status = response.split(",")[1:]
-                # cap_queue.put([bool(int(i)) for i in status])
-                self.touch_status = [bool(int(i)) for i in status]
-            elif "LED" in response:
-                status = response.split(",")[1:]
-                # tnum = status[0]
-                # hue = status[1]
-                # brightness = status[2]
-                # light_queue.put([int(i) for i in status])
-                self.light_status = [int(i) for i in status]
-        except Exception as e:
-            print("Error reading data", e)
-        # try:
-        #     self.touch_status = self.cap_queue.get(block=False)
-        # except queue.Empty:
-        #     pass
+        #     if "CAP" in response:
+        #         status = response.split(",")[1:]
+        #         # cap_queue.put([bool(int(i)) for i in status])
+        #         self.touch_status = [bool(int(i)) for i in status]
+        #     elif "LED" in response:
+        #         status = response.split(",")[1:]
+        #         # tnum = status[0]
+        #         # hue = status[1]
+        #         # brightness = status[2]
+        #         # light_queue.put([int(i) for i in status])
+        #         self.light_status = [int(i) for i in status]
+        # except Exception as e:
+        #     print("Error reading data", e)
+        try:
+            while True:
+                self.touch_status = self.cap_queue.get(block=False)
+        except queue.Empty:
+            pass
     
-        # try:
-        #     self.light_status = self.light_queue.get(block=False)
-        # except queue.Empty:
-        #     pass
+        try:
+            while True:
+                (tid, hue, sat) = self.light_queue.get(block=False)
+                self.light_status[tid] = (tid, hue, sat)
+        except queue.Empty:
+            pass
 
 
     
