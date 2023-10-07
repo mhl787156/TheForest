@@ -106,7 +106,7 @@ class Controller():
             print("lights", lights)
             
             # Send Lights
-            p.send_all_light_change(lights)
+            # p.send_all_light_change(lights)
 
             # Send Notes
             # sonicpi send notes

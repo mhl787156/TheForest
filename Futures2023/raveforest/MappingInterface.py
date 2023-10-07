@@ -43,7 +43,7 @@ class MappingInterface(object):
             if self.Active_Tubes[t]==1:
                self.Tubes_Notes[t]= self.Init_Tubes_Notes[t]
             else:
-                self.Tubes_Notes[t]=1000
+                self.Tubes_Notes[t]=255
 
     def update_light (self):
         for t in range(len(self.Active_Tubes)):
@@ -51,8 +51,8 @@ class MappingInterface(object):
                self.Tubes_Colors[t][0]= self.Init_Tubes_Colors[t][0]
                self.Tubes_Colors[t][1] = self.Init_Tubes_Colors[t][1]
             else:
-                self.Tubes_Colors[t][0] = 1000
-                self.Tubes_Colors[t][1] = 1000
+                self.Tubes_Colors[t][0] = 255
+                self.Tubes_Colors[t][1] = 255
 
     def notes_to_light1 (self):
         for t in range(len(self.Active_Tubes)):

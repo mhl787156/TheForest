@@ -13,18 +13,13 @@ def read_serial_data(serial_port, cap_queue, light_queue):
     while True:
         time.sleep(0.1)
         try:
-            print("Waiting for response")
             response = serial_port.readline().decode().strip()
-            print(f"Received a response: {response}")
 
             if "CAP" in response:
                 status = response.split(",")[1:]
                 cap_queue.put([bool(int(i)) for i in status])
             elif "LED" in response:
                 status = response.split(",")[1:]
-                # tnum = status[0]
-                # hue = status[1]
-                # brightness = status[2]
                 light_queue.put([int(i) for i in status])
             
         except Exception as e:
