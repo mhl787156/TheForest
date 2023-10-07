@@ -53,9 +53,9 @@ class Pillar():
             self.ser = serial.Serial(port, baud_rate)
             atexit.register(self.cleanup)
 
-            serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
-            serial_thread.daemon = True
-            serial_thread.start()
+            # serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
+            # serial_thread.daemon = True
+            # serial_thread.start()
     
     def cleanup(self):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
