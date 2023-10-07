@@ -102,17 +102,14 @@ class Controller():
             # Generate the lights and notes based on the current btn inputs
             lights, notes = self.mapping.generate_tubes(current_btn_press)
 
-            print("lights", lights)
-            print("notes", notes)
-
             # Send Lights On The Beat
             def temp_func():
-                print(f"Sending {p_id}")
+                print(f"Sending Lights {p_id}: {lights}")
                 p.send_all_light_change(lights)
-            self.sound_manager.run_on_next_beat(temp_func)
+            self.sound_manager.run_on_next_beat(temp_func, force_unique_id=5678)
 
-            # Send Notes
-            # sonicpi send notes
+            # Send Notes, sound manager manages on the beat
+            print("Setting notes", notes)
             self.sound_manager.set_notes(p_id, notes)
         
 if __name__=="__main__":

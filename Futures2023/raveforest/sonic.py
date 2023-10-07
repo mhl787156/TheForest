@@ -1,4 +1,4 @@
-from threading import Thread, Condition
+from threading import Thread, Condition, Event
 from multiprocessing import Value
 import time
 import queue
@@ -18,11 +18,13 @@ def timing_thread(condition, bpm_value):
         time.sleep(delay)
 
 
-def run_next_beat(condition, callback, beats_in_the_future):
+def run_next_beat(condition, callback, kill_event, beats_in_the_future):
     for _ in range(beats_in_the_future):
         with condition:
             condition.wait()
-    callback()
+    # If it has not been cancelled
+    if not kill_event.is_set():
+        callback()
 
 def sonic_thread(pillar, bpm, condition, notes_in_queue):
     print(f"Started sonic thread sequencer for {pillar.id}")
@@ -51,6 +53,8 @@ class SoundManager(object):
             pthread.daemon = True
             pthread.start()
         
+        # Others
+        self.run_on_next_beat_events = {}
 
     def set_bpm(self, bpm):
         self.bpm_shared.value = bpm
@@ -66,17 +70,24 @@ class SoundManager(object):
         else:
             raise ValueError(f"Synth '{synth}' not found")
 
-    def run_on_next_beat(self, callback, beats_in_the_future=1):
+    def run_on_next_beat(self, callback, beats_in_the_future=1, force_unique_id=None):
         """Run a callback on one of the next beats in the future (defaults to next beat)
 
         Args:
             callback (function): Any function that can be passed to a thread
             beats_in_the_future (int, optional): Number of beats in the future to schedule this callback. Defaults to 1.
+            force_unique_id (Union[int, None], optional): if there should only ever be one version of this callback
         """
-        t = Thread(target=run_next_beat, args=(self.timing_condition, callback, beats_in_the_future, ))
+        kill_event = Event()
+        t = Thread(target=run_next_beat, args=(self.timing_condition, callback, kill_event, beats_in_the_future, ))
         t.daemon = True
         t.start()
 
+        if force_unique_id is not None:
+            if force_unique_id in self.run_on_next_beat_events:
+                self.run_on_next_beat_events[force_unique_id].set()
+
+            self.run_on_next_beat_events[force_unique_id] = kill_event
 
 class PillarSequencer(object):
 
