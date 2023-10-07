@@ -19,14 +19,14 @@ class MappingInterface(object):
         self.mapping_id=cfg['mapping_id']
         self.notes_to_color = cfg['notes_to_color']
 
-    def generate_tubes(self,input):
-        self.Active_Tubes=input
+    def generate_tubes(self,active):
+        self.Active_Tubes=active
         if self.notes_to_color:
             self.update_notes()
             if self.mapping_id==1:
-                self.notes_to_color1()
+                self.notes_to_light1()
             elif self.mapping_id==2:
-                self.notes_to_color2()
+                self.notes_to_light2()
         else:
             self.update_light()
             if self.mapping_id ==1:
@@ -34,9 +34,6 @@ class MappingInterface(object):
             elif self.mapping_id ==2:
                 self.light_to_notes2()
         return self.send_light(), self.send_notes()
-
-
-
 
     def update_notes (self):
         for t in range(len(self.Active_Tubes)):

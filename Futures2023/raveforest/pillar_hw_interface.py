@@ -11,7 +11,6 @@ def clamp(val, b=0, c=255):
 
 def read_serial_data(serial_port, cap_queue, light_queue):
     while True:
-        time.sleep(0.1)
         try:
             response = serial_port.readline().decode().strip()
 
@@ -87,7 +86,7 @@ class Pillar():
         assert tube_id < self.num_tubes
         assert 0 <= hue <= 255
         assert 0 <= brightness <= 255
-        message = f"LED, {tube_id}, {hue}, {brightness}"
+        message = f"LED,{tube_id},{hue},{brightness}"
         if config.SERIAL_ENABLED:
             self.write_queue.put(message)
             # self.ser.write(message.encode())
@@ -100,24 +99,6 @@ class Pillar():
             self.send_light_change(i, clamp(l[0]), clamp(l[1]))
     
     def read_from_serial(self):
-        # try:
-        #     print("Waiting for response")
-        #     response = self.ser.readline().decode().strip()
-        #     print(f"Received a response: {response}")
-
-        #     if "CAP" in response:
-        #         status = response.split(",")[1:]
-        #         # cap_queue.put([bool(int(i)) for i in status])
-        #         self.touch_status = [bool(int(i)) for i in status]
-        #     elif "LED" in response:
-        #         status = response.split(",")[1:]
-        #         # tnum = status[0]
-        #         # hue = status[1]
-        #         # brightness = status[2]
-        #         # light_queue.put([int(i) for i in status])
-        #         self.light_status = [int(i) for i in status]
-        # except Exception as e:
-        #     print("Error reading data", e)
         try:
             while True:
                 self.touch_status = self.cap_queue.get(block=False)

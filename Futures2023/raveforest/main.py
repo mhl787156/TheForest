@@ -94,6 +94,7 @@ class Controller():
         
         # Update status of pillars
         for p_id, p in self.pillars.items():
+            print("------read-------")
             p.read_from_serial()
         
             # Check if a button has been pressed
@@ -104,9 +105,9 @@ class Controller():
             lights, notes = self.mapping.generate_tubes(current_btn_press)
 
             print("lights", lights)
-            
+            print("notes", notes)
             # Send Lights
-            # p.send_all_light_change(lights)
+            p.send_all_light_change(lights)
 
             # Send Notes
             # sonicpi send notes
