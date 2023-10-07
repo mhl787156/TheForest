@@ -82,6 +82,7 @@ class Controller():
             elapsed_time = time.time() - start_time
             sleep_interval = 1 / frequency - elapsed_time
             if sleep_interval > 0:
+                print(sleep_interval)
                 await asyncio.sleep(sleep_interval)
 
     def stop(self):
