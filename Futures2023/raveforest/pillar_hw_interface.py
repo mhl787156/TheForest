@@ -1,6 +1,6 @@
 import serial
 import atexit
-import threading
+import multiprocessing as mp
 import queue
 
 import config
@@ -48,7 +48,7 @@ class Pillar():
             self.ser = serial.Serial(port, baud_rate)
             atexit.register(self.cleanup)
 
-            serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue))
+            serial_thread = mp.Process(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
             serial_thread.daemon = True
             serial_thread.start()
     
@@ -86,12 +86,12 @@ class Pillar():
     
     def read_from_serial(self):
         try:
-            self.touch_status = self.cap_queue.get(timeout=1.0/self.serial_read_rate)
+            self.touch_status = self.cap_queue.get(block=False)
         except queue.Empty:
             pass
     
         try:
-            self.light_status = self.light_queue.get(timeout=1.0/self.serial_read_rate)
+            self.light_status = self.light_queue.get(block=False)
         except queue.Empty:
             pass
 
