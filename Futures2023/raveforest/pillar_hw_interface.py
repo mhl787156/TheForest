@@ -36,8 +36,9 @@ def write_serial_data(serial_port, write_queue):
 
 class Pillar():
 
-    def __init__(self, id, port, baud_rate=9600):
+    def __init__(self, id, port, pan, baud_rate=9600):
         self.id = id
+        self.pan = pan
 
         self.serial_read_rate = 10
 

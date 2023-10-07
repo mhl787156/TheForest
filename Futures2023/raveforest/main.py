@@ -6,13 +6,10 @@ from functools import partial
 import argparse
 import json
 import copy
-from threading import Thread, Condition
-
-from psonic import *
 
 from pillar_hw_interface import Pillar
 from MappingInterface import MappingInterface
-from sonic import SoundManager
+from sonic import SoundManager, setup_psonic
 
 class Controller():
 
@@ -20,11 +17,12 @@ class Controller():
         self.websocket_url = (ws_host, ws_port)
 
         self.num_pillars = len(config["pillars"])
-        self.pillars = {p["id"]: Pillar(p["id"], p["port"]) for p in config["pillars"]}
+        self.pillars = {p["id"]: Pillar(**p) for p in config["pillars"]}
 
         self.mapping = MappingInterface(copy.deepcopy(config))
 
-        self.sound_manager = SoundManager()
+        self.sound_manager = SoundManager(config["bpm"], self.pillars)
+        self.sound_manager.set_synth(0, "SAW")
 
         self.state = 0
 
@@ -92,9 +90,6 @@ class Controller():
         self.running = False
         
     def loop(self):
-        
-        
-
         # Update status of pillars
         for p_id, p in self.pillars.items():
             print("------read-------")
@@ -118,6 +113,7 @@ class Controller():
 
             # Send Notes
             # sonicpi send notes
+            self.sound_manager.set_notes(p_id, notes)
         
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")
@@ -135,6 +131,9 @@ if __name__=="__main__":
     # Read the JSON config file
     with open(args.config, 'r') as config_file:
         config = json.load(config_file)
+
+    # Setup Python-Sonic connection
+    setup_psonic(config)
 
     # Create a Controller instance and pass the parsed values
     print("Intiialise and run Controller")
