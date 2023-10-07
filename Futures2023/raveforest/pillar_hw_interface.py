@@ -11,6 +11,7 @@ def clamp(val, b=0, c=255):
 
 def read_serial_data(serial_port, cap_queue, light_queue):
     while True:
+        time.sleep(0.2)
         try:
             response = serial_port.readline().decode().strip()
 
@@ -24,7 +25,6 @@ def read_serial_data(serial_port, cap_queue, light_queue):
                 # brightness = status[2]
                 light_queue.put([int(i) for i in status])
             
-            time.sleep(0.1)
         except Exception as e:
             print(f"Error reading data: {e}")
             break
