@@ -48,7 +48,8 @@ class Pillar():
         if config.SERIAL_ENABLED:
             self.ser.write(message.encode())
         else:
-            print(f"[Serial Disabled] Sending {message}")
+            pass
+            # print(f"[Serial Disabled] Sending {message}")
     
     def send_all_light_change(self, lights):
         for i, l in enumerate(lights):

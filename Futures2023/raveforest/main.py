@@ -97,11 +97,12 @@ class Controller():
         
             # Check if a button has been pressed
             current_btn_press = p.get_all_touch_status()
+            print("current btn press:", current_btn_press)
 
             # Generate the lights and notes based on the current btn inputs
             lights, notes = self.mapping.generate_tubes(current_btn_press)
 
-            print(lights)
+            print("lights", lights)
             
             # Send Lights
             p.send_all_light_change(lights)
