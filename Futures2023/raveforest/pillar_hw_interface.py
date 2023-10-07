@@ -100,8 +100,8 @@ class Pillar():
         self.write_queue.put(message)
     
     def send_all_light_change(self, lights):
-        for l in lights:
-            self.send_light_change(l[0], clamp(l[1]), clamp(l[2]))
+        for i, l in enumerate(lights):
+            self.send_light_change(i, clamp(l[0]), clamp(l[1]))
     
     def read_from_serial(self):
         try:
