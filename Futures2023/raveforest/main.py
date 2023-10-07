@@ -69,8 +69,8 @@ class Controller():
 
         while self.running:
 
-            start_time = time.time()
-            
+            start_time = time.perf_counter()            
+
             # Your state machine logic here
             self.loop()
 
@@ -79,7 +79,7 @@ class Controller():
             # Update websocket clients
             await self.send_to_clients(f"State Data {self.state}")
 
-            elapsed_time = time.time() - start_time
+            elapsed_time = time.perf_counter() - start_time
             sleep_interval = 1 / frequency - elapsed_time
             print(sleep_interval)
             if sleep_interval > 0:
