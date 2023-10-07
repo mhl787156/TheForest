@@ -30,7 +30,6 @@ def write_serial_data(serial_port, write_queue):
         try:
             packet = write_queue.get()
             serial_port.write(packet.encode())
-            print(f"Sent {packet}")
         except Exception as e:
             print(f"Error writing data: {e}")
             break
