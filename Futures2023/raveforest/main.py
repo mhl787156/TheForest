@@ -60,7 +60,7 @@ class Controller():
         for websocket in self.websocket_clients:
             await websocket.send(message)
     
-    def start(self, frequency):
+    async def start(self, frequency):
         """Starts the main control loop
 
         Args:
@@ -77,18 +77,17 @@ class Controller():
             self.state += 1
 
             # Update websocket clients
-            # await self.send_to_clients(f"State Data {self.state}")
+            await self.send_to_clients(f"State Data {self.state}")
 
             elapsed_time = time.perf_counter() - start_time
             sleep_interval = 1 / frequency - elapsed_time
-            print(sleep_interval)
             if sleep_interval > 0:
-                time.sleep(sleep_interval)
+                await asyncio.sleep(sleep_interval)
 
     def stop(self):
         self.running = False
-        # if self.websocket_server:
-        #     self.websocket_server.close()
+        if self.websocket_server:
+            self.websocket_server.close()
         
     def loop(self):
         
@@ -132,7 +131,7 @@ if __name__=="__main__":
     # Create a Controller instance and pass the parsed values
     print("Intiialise and run Controller")
     controller = Controller(config, args.ws_host, args.ws_port)
-    controller.start(args.frequency)
-    # asyncio.get_event_loop().run_until_complete(controller.run(args.frequency))
+    # controller.start(args.frequency)
+    asyncio.get_event_loop().run_until_complete(controller.run(args.frequency))
     # asyncio.get_event_loop().run_forever()
 
