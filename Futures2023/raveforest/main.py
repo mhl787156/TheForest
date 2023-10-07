@@ -6,11 +6,13 @@ from functools import partial
 import argparse
 import json
 import copy
+from threading import Thread, Condition
 
 from psonic import *
 
 from pillar_hw_interface import Pillar
 from MappingInterface import MappingInterface
+from sonic import SoundManager
 
 class Controller():
 
@@ -21,6 +23,8 @@ class Controller():
         self.pillars = {p["id"]: Pillar(p["id"], p["port"]) for p in config["pillars"]}
 
         self.mapping = MappingInterface(copy.deepcopy(config))
+
+        self.sound_manager = SoundManager()
 
         self.state = 0
 
@@ -86,11 +90,11 @@ class Controller():
 
     def stop(self):
         self.running = False
-        if self.websocket_server:
-            self.websocket_server.close()
         
     def loop(self):
         
+        
+
         # Update status of pillars
         for p_id, p in self.pillars.items():
             print("------read-------")
@@ -105,8 +109,12 @@ class Controller():
 
             print("lights", lights)
             print("notes", notes)
-            # Send Lights
-            p.send_all_light_change(lights)
+
+            # Send Lights On The Beat
+            def temp_func():
+                print(f"Sending {p_id}")
+                p.send_all_light_change(lights)
+            self.sound_manager.run_on_next_beat(temp_func)
 
             # Send Notes
             # sonicpi send notes

@@ -54,19 +54,23 @@ class Pillar():
 
         if config.SERIAL_ENABLED:
             self.ser = serial.Serial(port, baud_rate)
-            atexit.register(self.cleanup)
+        else:
+            # Generate a virtual serial port for testing
+            self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
 
-            serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
-            serial_thread.daemon = True
-            serial_thread.start()
+        atexit.register(self.cleanup)
 
-            serial_write_thread = threading.Thread(target=write_serial_data, args=(self.ser, self.write_queue,))
-            serial_write_thread.daemon = True
-            serial_write_thread.start()
+        serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
+        serial_thread.daemon = True
+        serial_thread.start()
+
+        serial_write_thread = threading.Thread(target=write_serial_data, args=(self.ser, self.write_queue,))
+        serial_write_thread.daemon = True
+        serial_write_thread.start()
     
     def cleanup(self):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
-        if config.SERIAL_ENABLED and self.ser.is_open:
+        if self.ser.is_open:
             self.ser.close()
 
     def get_touch_status(self, tube_id):
