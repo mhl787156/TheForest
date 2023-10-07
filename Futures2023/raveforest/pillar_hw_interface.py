@@ -53,10 +53,16 @@ class Pillar():
         self.light_queue = queue.Queue()
         self.write_queue = queue.Queue()
 
-        if config.SERIAL_ENABLED:
+        try:
             self.ser = serial.Serial(port, baud_rate)
-        else:
+        except serial.SerialException:
             # Generate a virtual serial port for testing
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"... creating virtual serial port for testing")
             self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
 
         atexit.register(self.cleanup)
@@ -91,16 +97,11 @@ class Pillar():
         assert 0 <= hue <= 255
         assert 0 <= brightness <= 255
         message = f"LED,{tube_id},{hue},{brightness}"
-        if config.SERIAL_ENABLED:
-            self.write_queue.put(message)
-            # self.ser.write(message.encode())
-        else:
-            pass
-            # print(f"[Serial Disabled] Sending {message}")
+        self.write_queue.put(message)
     
     def send_all_light_change(self, lights):
-        for i, l in enumerate(lights):
-            self.send_light_change(i, clamp(l[0]), clamp(l[1]))
+        for l in lights:
+            self.send_light_change(l[0], clamp(l[1]), clamp(l[2]))
     
     def read_from_serial(self):
         try:

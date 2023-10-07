@@ -19,20 +19,26 @@ class MappingInterface(object):
         self.mapping_id=cfg['mapping_id']
         self.notes_to_color = cfg['notes_to_color']
 
+        self.notes_to_light_mappings = [
+            self.notes_to_light1,
+            self.notes_to_light2,
+            self.notes_to_light3
+        ]
+
+        self.light_to_notes_mappings = [
+            self.light_to_notes1,
+            self.light_to_notes2,
+            self.light_to_notes3
+        ]
+
     def generate_tubes(self,active):
         self.Active_Tubes=active
         if self.notes_to_color:
             self.update_notes()
-            if self.mapping_id==1:
-                self.notes_to_light1()
-            elif self.mapping_id==2:
-                self.notes_to_light2()
+            self.notes_to_light_mappings[self.mapping_id]()
         else:
             self.update_light()
-            if self.mapping_id ==1:
-                self.light_to_notes1()
-            elif self.mapping_id ==2:
-                self.light_to_notes2()
+            self.light_to_notes_mappings[self.mapping_id]()
         return self.send_light(), self.send_notes()
 
     def update_notes (self):
@@ -44,12 +50,12 @@ class MappingInterface(object):
 
     def update_light (self):
         for t in range(len(self.Active_Tubes)):
-            if self.Active_Tubes[t]==1:
-               self.Tubes_Colors[t][0]= self.Init_Tubes_Colors[t][0]
-               self.Tubes_Colors[t][1] = self.Init_Tubes_Colors[t][1]
-            else:
-                self.Tubes_Colors[t][0] = 255
-                self.Tubes_Colors[t][1] = 255
+            # if self.Active_Tubes[t]==1:
+            self.Tubes_Colors[t][0]= self.Init_Tubes_Colors[t][0]
+            self.Tubes_Colors[t][1] = self.Init_Tubes_Colors[t][1]
+            # else:
+            #     self.Tubes_Colors[t][0] = 255
+            #     self.Tubes_Colors[t][1] = 255
 
     def notes_to_light1 (self):
         for t in range(len(self.Active_Tubes)):
@@ -61,6 +67,11 @@ class MappingInterface(object):
             if self.Active_Tubes[t]==1:
                self.Tubes_Colors[t][0]= self.Tubes_Notes[t]
 
+    def notes_to_light3 (self):
+        for t in range(len(self.Active_Tubes)):
+            if self.Active_Tubes[t]==1:
+               self.Tubes_Colors[t][0] = (self.Tubes_Colors[t][0] + 5) % 255
+
     def light_to_notes1 (self):
         for t in range(len(self.Active_Tubes)):
             if self.Active_Tubes[t] == 1:
@@ -70,6 +81,11 @@ class MappingInterface(object):
         for t in range(len(self.Active_Tubes)):
             if self.Active_Tubes[t] == 1:
                 self.Tubes_Notes[t] = self.Tubes_Colors[t]
+    
+    def light_to_notes3 (self):
+        for t in range(len(self.Active_Tubes)):
+            if self.Active_Tubes[t] == 1:
+                self.Tubes_Notes[t] = max(20, (self.Tubes_Notes[t] + 5) % 100)
 
     def send_notes (self):
         return self.Tubes_Notes
