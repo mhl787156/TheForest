@@ -2,6 +2,7 @@ import serial
 import atexit
 import threading
 import queue
+import time
 
 import config
 
@@ -22,6 +23,8 @@ def read_serial_data(serial_port, cap_queue, light_queue):
                 # hue = status[1]
                 # brightness = status[2]
                 light_queue.put([int(i) for i in status])
+            
+            time.sleep(0.1)
         except Exception as e:
             print(f"Error reading data: {e}")
             break
