@@ -1,16 +1,38 @@
 import serial
 import atexit
+import threading
+import queue
 
 import config
 
 def clamp(val, b=0, c=255):
     return max(b, min(val, c))
 
+def read_serial_data(serial_port, cap_queue, light_queue):
+    while True:
+        try:
+            response = serial_port.readline().decode().strip()
+
+            if "CAP" in response:
+                status = response.split(",")[1:]
+                cap_queue.put([bool(int(i)) for i in status])
+            elif "LED" in response:
+                status = response.split(",")[1:]
+                # tnum = status[0]
+                # hue = status[1]
+                # brightness = status[2]
+                light_queue.put([int(i) for i in status])
+        except Exception as e:
+            print(f"Error reading data: {e}")
+            break
+
 
 class Pillar():
 
     def __init__(self, id, port, baud_rate=9600):
         self.id = id
+
+        self.serial_read_rate = 10
 
         self.num_tubes = 7
 
@@ -19,9 +41,16 @@ class Pillar():
 
         self.light_status = [(0, 0, 0) for _ in range(self.num_tubes)]
 
+        self.cap_queue =  queue.Queue()
+        self.light_queue = queue.Queue()
+
         if config.SERIAL_ENABLED:
             self.ser = serial.Serial(port, baud_rate)
             atexit.register(self.cleanup)
+
+            serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue))
+            serial_thread.daemon = True
+            serial_thread.start()
     
     def cleanup(self):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
@@ -56,17 +85,15 @@ class Pillar():
             self.send_light_change(i, clamp(l[0]), clamp(l[1]))
     
     def read_from_serial(self):
-        if config.SERIAL_ENABLED:
-            response = self.ser.readline().decode().strip()
-            if "CAP" in response:
-                status = response.split(",")[1:]
-                self.touch_status = [bool(i) for i in status]
-            elif "LED" in response:
-                status = response.split(",")[1:]
-                tnum = status[0]
-                hue = status[1]
-                brightness = status[2]
-                self.light_status[tnum] = (tnum, hue, brightness)
-            
+        try:
+            self.touch_status = self.cap_queue.get(timeout=1.0/self.serial_read_rate)
+        except queue.Empty:
+            pass
+    
+        try:
+            self.light_status = self.light_queue.get(timeout=1.0/self.serial_read_rate)
+        except queue.Empty:
+            pass
+
 
     
