@@ -5,10 +5,12 @@ import websockets
 from functools import partial
 import argparse
 import json
+import copy
 
 from psonic import *
 
 from pillar_hw_interface import Pillar
+from MappingInterface import MappingInterface
 
 class Controller():
 
@@ -17,6 +19,8 @@ class Controller():
 
         self.num_pillars = len(config["pillars"])
         self.pillars = {p["id"]: Pillar(p["id"], p["port"]) for p in config["pillars"]}
+
+        self.mapping = MappingInterface(copy.deepcopy(config))
 
         self.state = 0
 
@@ -43,6 +47,8 @@ class Controller():
                 if frontend_data == "Command to control StateMachine":
                     # Implement your command handling logic here
                     pass
+        except websockets.exceptions.ConnectionClosedOK:
+            pass
         except websockets.exceptions.ConnectionClosedError:
             pass
         finally:
@@ -85,13 +91,24 @@ class Controller():
         
     def loop(self):
         
-        for _, p in self.pillars.items():
+        # Update status of pillars
+        for p_id, p in self.pillars.items():
             p.read_from_serial()
+        
+            # Check if a button has been pressed
+            current_btn_press = p.get_all_touch_status()
 
+            # Generate the lights and notes based on the current btn inputs
+            lights, notes = self.mapping.generate_tubes(current_btn_press)
 
+            print(lights)
+            
+            # Send Lights
+            p.send_all_light_change(lights)
 
-
-
+            # Send Notes
+            # sonicpi send notes
+        
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")
     parser.add_argument("--host", default="127.0.0.1", help="The host to connect to.")

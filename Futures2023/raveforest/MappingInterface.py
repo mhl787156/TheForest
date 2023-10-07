@@ -2,7 +2,7 @@ import json
 import random
 import random
 
-class MappingInterface:
+class MappingInterface(object):
     Active_Tubes = [0,0,0,0,0,0,0]
     Init_Tubes_Notes = []
     Init_Tubes_Colors = [[]]  # first item in hue , second item is the value
@@ -11,21 +11,13 @@ class MappingInterface:
     notes_to_color = True
     mapping_id =1
 
-    def __init__(self, config_file="config.txt"):
-        with open(config_file, 'r') as f:
-            lines = f.readlines()
-            cfg = json.loads(lines[0].strip())
-        try:
-            self.Init_Tubes_Notes=cfg['notes']
-            self.Init_Tubes_Colors = cfg['colors']
-            self.Tubes_Notes = cfg['notes']
-            self.Tubes_Colors = cfg['colors']
-            self.mapping_id=cfg['mapping_id']
-            self.notes_to_color = cfg['notes_to_color']
-        except Exception as e:
-            print("Error parsing cfg "+e)
-
-
+    def __init__(self, cfg):
+        self.Init_Tubes_Notes=cfg['notes']
+        self.Init_Tubes_Colors = cfg['colors']
+        self.Tubes_Notes = cfg['notes']
+        self.Tubes_Colors = cfg['colors']
+        self.mapping_id=cfg['mapping_id']
+        self.notes_to_color = cfg['notes_to_color']
 
     def generate_tubes(self,input):
         self.Active_Tubes=input
@@ -41,8 +33,7 @@ class MappingInterface:
                 self.light_to_notes1()
             elif self.mapping_id ==2:
                 self.light_to_notes2()
-        self.send_light()
-        self.send_notes()
+        return self.send_light(), self.send_notes()
 
 
 
