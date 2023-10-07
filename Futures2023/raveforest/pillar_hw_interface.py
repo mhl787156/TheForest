@@ -91,14 +91,32 @@ class Pillar():
     
     def read_from_serial(self):
         try:
-            self.touch_status = self.cap_queue.get(block=False)
-        except queue.Empty:
-            pass
+            print("Waiting for response")
+            response = self.ser.readline().decode().strip()
+            print(f"Received a response: {response}")
+
+            if "CAP" in response:
+                status = response.split(",")[1:]
+                # cap_queue.put([bool(int(i)) for i in status])
+                self.touch_status = [bool(int(i)) for i in status]
+            elif "LED" in response:
+                status = response.split(",")[1:]
+                # tnum = status[0]
+                # hue = status[1]
+                # brightness = status[2]
+                # light_queue.put([int(i) for i in status])
+                self.light_status = [int(i) for i in status]
+        except Exception as e:
+            print("Error reading data", e)
+        # try:
+        #     self.touch_status = self.cap_queue.get(block=False)
+        # except queue.Empty:
+        #     pass
     
-        try:
-            self.light_status = self.light_queue.get(block=False)
-        except queue.Empty:
-            pass
+        # try:
+        #     self.light_status = self.light_queue.get(block=False)
+        # except queue.Empty:
+        #     pass
 
 
     
