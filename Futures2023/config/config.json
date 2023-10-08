@@ -15,8 +15,13 @@
         {
             "id": 0,
             "port": "/dev/ttyACM0",
-            "pan": 0
-        }
+            "pan": 1
+        },
+	{
+	    "id": 1,
+	    "port": "/dev/ttyACM1",
+	    "pan": -1
+	}
     ],
     "bpm": 120,
     "sonic-pi-ip": "127.0.0.1",
