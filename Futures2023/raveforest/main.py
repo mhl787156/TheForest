@@ -24,7 +24,7 @@ class Controller():
         self.sound_manager = SoundManager(config["bpm"], self.pillars)
         self.sound_manager.set_synth(0, "SAW")
 
-        self.state = 0
+        self.current_states = {p: None for p in self.pillars}
 
         self.websocket_server = websockets.serve(self.websocket_server_callback, *self.websocket_url)
         self.websocket_clients = set()
@@ -46,9 +46,12 @@ class Controller():
                 print("Received data from frontend:", frontend_data)
                 
                 # Process commands received from Dash and control the state machine
-                if frontend_data == "Command to control StateMachine":
-                    # Implement your command handling logic here
-                    pass
+                data = json.loads(frontend_data)
+                if "bpm" in data:
+                    self.sound_manager.set_bpm(data["bpm"])
+                if "mapping_id" in data:
+                    self.mapping.mapping_id = data["mapping_id"]
+
         except websockets.exceptions.ConnectionClosedOK:
             pass
         except websockets.exceptions.ConnectionClosedError:
@@ -76,10 +79,15 @@ class Controller():
             # Your state machine logic here
             self.loop()
 
-            self.state += 1
-
             # Update websocket clients
-            await self.send_to_clients(f"State Data {self.state}")
+            state_dicts = {
+                "pillars": {pid: p.to_dict() for pid, p in self.pillars.items()},
+                "current_state": self.current_states,
+                "bpm": self.sound_manager.get_bpm(),
+                "mapping_id": self.mapping.mapping_id,
+                "synths": self.sound_manager.get_synths()
+            }
+            await self.send_to_clients(json.dumps(state_dicts))
 
             elapsed_time = time.perf_counter() - start_time
             sleep_interval = 1 / frequency - elapsed_time
@@ -111,6 +119,9 @@ class Controller():
             # Send Notes, sound manager manages on the beat
             print("Setting notes", notes)
             self.sound_manager.set_notes(p_id, notes)
+            
+            # Set current state for sending
+            self.current_states[p_id] = dict(lights=lights, notes=notes)
         
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")
@@ -130,7 +141,7 @@ if __name__=="__main__":
         config = json.load(config_file)
 
     # Setup Python-Sonic connection
-    setup_psonic(config)
+    setup_psonic(config["sonic-pi-ip"], config["sonic-pi-config-file"])
 
     # Create a Controller instance and pass the parsed values
     print("Intiialise and run Controller")

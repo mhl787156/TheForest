@@ -79,6 +79,12 @@ class Pillar():
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
         if self.ser.is_open:
             self.ser.close()
+    
+    def to_dict(self):
+        return dict(
+            id=self.id, pan=self.pan, num_tubes=self.num_tubes, num_sensors=self.num_touch_sensors,
+            touch_status=self.touch_status, light_status=self.light_status
+        )
 
     def get_touch_status(self, tube_id):
         return self.touch_status[tube_id]

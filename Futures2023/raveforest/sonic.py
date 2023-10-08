@@ -6,8 +6,8 @@ import socket
 
 from psonic import *
 
-def setup_psonic(config):
-    set_server_parameter_from_log(config["sonic-pi-ip"], config["sonic-pi-config-file"])
+def setup_psonic(udp_ip, log_file):
+    set_server_parameter_from_log(udp_ip, log_file)
 
 def timing_thread(condition, bpm_value):
     print(f"Started timing thread")
@@ -37,6 +37,7 @@ class SoundManager(object):
         
         self.bpm_shared = Value('i', bpm)
         self.timing_condition = Condition()
+        self.current_synths = {}
 
         # Start BPM Thread
         bpm_thread = Thread(name="bpm_thread", 
@@ -56,6 +57,9 @@ class SoundManager(object):
         # Others
         self.run_on_next_beat_events = {}
 
+    def get_bpm(self):
+        return self.bpm_shared.value
+
     def set_bpm(self, bpm):
         self.bpm_shared.value = bpm
 
@@ -64,11 +68,18 @@ class SoundManager(object):
 
     def set_synth(self, pillar_id:int, synth:str):
         if synth in globals():
+            self.current_synths[pillar_id] = synth
             # Convert synth name as a string into the variable
             var = globals()[synth]
             self.pillar_data_in_queues[pillar_id].put({"synth": var})
         else:
             raise ValueError(f"Synth '{synth}' not found")
+
+    def get_synths(self):
+        return self.current_synths
+    
+    def get_synth(self, pillar_id):
+        return self.current_synths[pillar_id]
 
     def run_on_next_beat(self, callback, beats_in_the_future=1, force_unique_id=None):
         """Run a callback on one of the next beats in the future (defaults to next beat)

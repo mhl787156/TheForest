@@ -16,6 +16,11 @@
             "id": 0,
             "port": "/dev/ttyACM0",
             "pan": 0
+        },
+        {
+            "id": 1,
+            "port": "/dev/ttyACM1",
+            "pan": 0
         }
     ],
     "bpm": 60,
