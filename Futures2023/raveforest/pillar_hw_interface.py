@@ -30,7 +30,7 @@ def write_serial_data(serial_port, write_queue):
     while True:
         try:
             packet = write_queue.get()
-            print("Packet Sending", packet)
+            print("Packet Sending", packet, serial_port)
             serial_port.write(packet.encode())
         except Exception as e:
             print(f"Error writing data: {e}")
@@ -55,23 +55,23 @@ class Pillar():
         self.light_queue = queue.Queue()
         self.write_queue = queue.Queue()
 
-        self.serial_status = dict(connected=False, port=port, baud_rate=baud_rate)
         self.ser = None
-        self.restart_serial(port, baud_rate)
+        self.serial_status = dict(connected=False, port=port, baud_rate=baud_rate)
+        self.ser = self.restart_serial(port, baud_rate)
 
         atexit.register(self.cleanup)
 
-        serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
-        serial_thread.daemon = True
-        serial_thread.start()
+        self.serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
+        self.serial_thread.daemon = True
+        self.serial_thread.start()
 
-        serial_write_thread = threading.Thread(target=write_serial_data, args=(self.ser, self.write_queue,))
-        serial_write_thread.daemon = True
-        serial_write_thread.start()
+        self.serial_write_thread = threading.Thread(target=write_serial_data, args=(self.ser, self.write_queue,))
+        self.serial_write_thread.daemon = True
+        self.serial_write_thread.start()
     
     def restart_serial(self, port, baud_rate=None):
-        if self.ser:
-            self.cleanup()
+        # if self.ser:
+        #     self.cleanup()
 
         if baud_rate is None:
             baud_rate = self.serial_status["baud_rate"]
@@ -92,7 +92,8 @@ class Pillar():
             print(f"... creating virtual serial port for testing")
             self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
             self.serial_status["connected"] = False
-
+        print("Serial:", self.ser)
+        return self.ser 
     def cleanup(self):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
         if self.ser.is_open:
