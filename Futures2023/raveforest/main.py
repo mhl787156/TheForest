@@ -112,7 +112,7 @@ class Controller():
     def loop(self):
         # Update status of pillars
         for p_id, p in self.pillars.items():
-            print("------read-------")
+            print(f"------read {p_id}-------")
             p.read_from_serial()
         
             # Check if a button has been pressed

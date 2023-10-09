@@ -30,7 +30,7 @@ def write_serial_data(serial_port, write_queue):
     while True:
         try:
             packet = write_queue.get()
-            print("Packet Sending", packet, serial_port)
+            print("Packet Sending", packet)
             serial_port.write(packet.encode())
         except Exception as e:
             print(f"Error writing data: {e}")
@@ -92,7 +92,7 @@ class Pillar():
             print(f"... creating virtual serial port for testing")
             self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
             self.serial_status["connected"] = False
-        print("Serial:", self.ser)
+
         return self.ser 
     def cleanup(self):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
