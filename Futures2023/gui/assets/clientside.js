@@ -7,6 +7,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         read_message: function(msg) {
             if(!msg){return "Nothing Received Yet";}
             return msg.data;
-        }
+        },
+
     }
 });

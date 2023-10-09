@@ -12,14 +12,16 @@ import json
 
 class GUI():
 
-    def __init__(self):
+    def __init__(self, ws_host, ws_port):
 
         self.app = Dash(
             __name__, 
             external_stylesheets=[dbc.themes.QUARTZ],
             update_title=None,
-            prevent_initial_callbacks=True,
+            # prevent_initial_callbacks=True,
         )
+
+        self.ws = (ws_host, ws_port)
 
         self.pillar_figure = go.Figure()
 
@@ -82,7 +84,7 @@ class GUI():
 
         self.utility_content = html.Div([
             dcc.Interval(id='interval-component', interval=1000/5, n_intervals=0),  # Trigger every 200ms
-            WebSocket(id="ws", url="ws://127.0.0.1:8765"),
+            html.Div(id="websocket-holder", children=WebSocket(id="ws", url=f"ws://{self.ws[0]}:{self.ws[1]}")),
             html.Div(id='dummy-output', style={'display': 'none'}),  # Hidden dummy output component
             html.Div(id={"type": f"pillar-status-label", "index": "dummy"}, style={'display':'none'})
         ])
@@ -92,7 +94,8 @@ class GUI():
                     dbc.Col(html.Div(
                     html.H1('RaveForest Dashboard'),
                     style=dict(padding=5)
-                    ), width=10),
+                    ), width=6),
+                    # dbc.Col(dbc.Input(id="websocket-input"), width=4),
                     dbc.Col(dbc.Button("Refresh", id="refresh-button"), width="auto")
                     ], justify="end"
                 ),
@@ -329,6 +332,6 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
-    GUI().run(debug=True, host=args.host, port=args.port)
+    GUI(args.ws_host, args.ws_port).run(debug=True, host=args.host, port=args.port)
 
 
