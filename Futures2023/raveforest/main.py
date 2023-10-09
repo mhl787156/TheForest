@@ -28,6 +28,8 @@ class Controller():
         self.websocket_server = websockets.serve(self.websocket_server_callback, *self.websocket_url)
         self.websocket_clients = set()
 
+        self.loop_idx = 0 
+
         self.running = True
         atexit.register(self.stop)
 
@@ -124,7 +126,7 @@ class Controller():
             def temp_func():
                 print(f"Sending Lights {p_id}: {lights}")
                 p.send_all_light_change(lights)
-            self.sound_manager.run_on_next_beat(temp_func, force_unique_id=5678)
+            self.sound_manager.run_on_next_beat(temp_func, force_unique_id=(5678 + self.loop_idx))
 
             # Send Notes, sound manager manages on the beat
             print("Setting notes", notes)
@@ -132,6 +134,8 @@ class Controller():
             
             # Set current state for sending
             self.current_states[p_id] = dict(lights=lights, notes=notes)
+        
+            self.loop_idx += 1
         
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")

@@ -25,6 +25,8 @@ def run_next_beat(condition, callback, kill_event, beats_in_the_future):
     # If it has not been cancelled
     if not kill_event.is_set():
         callback()
+    else:
+        print("Thread killed")
 
 def sonic_thread(pillar, bpm, condition, notes_in_queue):
     print(f"Started sonic thread sequencer for {pillar.id}")
@@ -110,6 +112,8 @@ class SoundManager(object):
                 self.run_on_next_beat_events[force_unique_id].set()
 
             self.run_on_next_beat_events[force_unique_id] = kill_event
+
+            print("Setting unique id", force_unique_id)
 
 class PillarSequencer(object):
 
