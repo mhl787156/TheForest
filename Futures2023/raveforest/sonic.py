@@ -38,6 +38,7 @@ class SoundManager(object):
         self.bpm_shared = Value('i', bpm)
         self.timing_condition = Condition()
         self.current_synths = {}
+        self.current_amp = {}
 
         # Start BPM Thread
         bpm_thread = Thread(name="bpm_thread", 
@@ -53,6 +54,9 @@ class SoundManager(object):
                                 args=(pillar, self.bpm_shared, self.timing_condition, self.pillar_data_in_queues[p_id],))
             pthread.daemon = True
             pthread.start()
+
+            self.set_amp(p_id, 1.0)
+            self.set_synth(p_id, "SAW")
         
         # Others
         self.run_on_next_beat_events = {}
@@ -73,7 +77,14 @@ class SoundManager(object):
             var = globals()[synth]
             self.pillar_data_in_queues[pillar_id].put({"synth": var})
         else:
-            raise ValueError(f"Synth '{synth}' not found")
+            print(f"Synth '{synth}' not found")
+    
+    def set_amp(self, pillar_id:int, amp:float):
+        self.current_amp[pillar_id] = amp
+        self.pillar_data_in_queues[pillar_id].put({"amp": amp})
+    
+    def get_amps(self):
+        return self.current_amp
 
     def get_synths(self):
         return self.current_synths
@@ -107,9 +118,10 @@ class PillarSequencer(object):
         self.pillar = pillar
         self.bpm_value = bpm
         self.notes_in_queue = notes_in_queue
+        self.amp = 1.0
 
         self.current_notes = []
-        self.seq_current_idx = 0
+        self.seq_current_idx = 1
     
     def run(self):
         while True:
@@ -126,18 +138,22 @@ class PillarSequencer(object):
                         # Check new note properties and do something?
                         self.current_notes = new_notes
 
-                    elif "synth" in packet:
+                    if "synth" in packet:
                         print(f"Setting Synth to {packet['synth'].name}")
                         use_synth(packet["synth"])
+                    
+
+                    if "amp" in packet:
+                        print(f"Setting amp {packet['amp']}")
+                        self.amp = packet["amp"]
+
             except queue.Empty:
                 pass
 
             # Play the note
-            
             current_note = self.current_notes[self.seq_current_idx]
             print(f"{self.pillar.id} playing {current_note} with seqidx: {self.seq_current_idx}")
-            play(current_note)
-
+            play(current_note, amp=self.amp)
 
             self.advance_seq()
 

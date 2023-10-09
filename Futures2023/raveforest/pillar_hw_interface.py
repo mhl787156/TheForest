@@ -22,8 +22,9 @@ def read_serial_data(serial_port, cap_queue, light_queue):
                 light_queue.put([int(i) for i in status])
             
         except Exception as e:
-            print(f"Error reading data: {e}")
-            break
+            pass
+            # print(f"Error reading data: {e}")
+            
 
 def write_serial_data(serial_port, write_queue):
     while True:
@@ -32,7 +33,7 @@ def write_serial_data(serial_port, write_queue):
             serial_port.write(packet.encode())
         except Exception as e:
             print(f"Error writing data: {e}")
-            break
+            
 
 class Pillar():
 
@@ -53,17 +54,9 @@ class Pillar():
         self.light_queue = queue.Queue()
         self.write_queue = queue.Queue()
 
-        try:
-            self.ser = serial.Serial(port, baud_rate)
-        except serial.SerialException:
-            # Generate a virtual serial port for testing
-            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
-            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
-            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
-            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
-            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
-            print(f"... creating virtual serial port for testing")
-            self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
+        self.serial_status = dict(connected=False, port=port, baud_rate=baud_rate)
+        self.ser = None
+        self.restart_serial(port, baud_rate)
 
         atexit.register(self.cleanup)
 
@@ -75,6 +68,30 @@ class Pillar():
         serial_write_thread.daemon = True
         serial_write_thread.start()
     
+    def restart_serial(self, port, baud_rate=None):
+        if self.ser:
+            self.cleanup()
+
+        if baud_rate is None:
+            baud_rate = self.serial_status["baud_rate"]
+
+        self.serial_status["port"] = port
+        self.serial_status["baud_rate"] = baud_rate
+
+        try:
+            self.ser = serial.Serial(port, baud_rate)
+            self.serial_status["connected"] = True
+        except serial.SerialException:
+            # Generate a virtual serial port for testing
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
+            print(f"... creating virtual serial port for testing")
+            self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
+            self.serial_status["connected"] = False
+
     def cleanup(self):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
         if self.ser.is_open:
@@ -83,7 +100,7 @@ class Pillar():
     def to_dict(self):
         return dict(
             id=self.id, pan=self.pan, num_tubes=self.num_tubes, num_sensors=self.num_touch_sensors,
-            touch_status=self.touch_status, light_status=self.light_status
+            touch_status=self.touch_status, light_status=self.light_status, serial_status=self.serial_status
         )
 
     def get_touch_status(self, tube_id):

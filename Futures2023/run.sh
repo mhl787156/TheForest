@@ -16,7 +16,7 @@ python raveforest/main.py &
 pid1=$!
 
 # Run the second Python script in the background
-python gui/gui.py &
+python gui/gui.py --host=0.0.0.0 &
 pid2=$!
 
 # Wait for both processes to finish

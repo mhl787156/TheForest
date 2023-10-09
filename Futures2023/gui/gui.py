@@ -1,7 +1,7 @@
 import argparse
 import dash
 from dash import Dash, html, dcc, ClientsideFunction
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, ALL
 from dash_extensions import WebSocket 
 import dash_bootstrap_components as dbc
 import numpy as np
@@ -17,12 +17,26 @@ class GUI():
         self.app = Dash(
             __name__, 
             external_stylesheets=[dbc.themes.QUARTZ],
-            update_title=None
+            update_title=None,
+            prevent_initial_callbacks=True,
         )
 
         self.pillar_figure = go.Figure()
 
-        self.init_layout()
+        self.pillar_status_children = None
+        self.data = None
+
+        self.update_dat = dict(
+            serial_port={},
+            amp = {},
+            synth = {},
+        )
+
+        self.display_dat = dict(
+            touch = {}
+        )
+
+        self.app.layout = self.init_layout
         self.init_callbacks()
 
 
@@ -53,10 +67,13 @@ class GUI():
             html.Div(id='system-status-dummy-output')
         ])
 
+        self.pillar_status = html.Div(id="pillar-status", children=[]) # Fill in dynamically
+
         self.html_main_content = html.Div(className='container-fluid', children=[
             html.Div(className='row', children=[
+                self.system_status,   
                 self.pillar_graph,
-                self.system_status   
+                self.pillar_status
             ])
             ], style={
                 'padding': '10px 5px',
@@ -66,13 +83,18 @@ class GUI():
         self.utility_content = html.Div([
             dcc.Interval(id='interval-component', interval=1000/5, n_intervals=0),  # Trigger every 200ms
             WebSocket(id="ws", url="ws://127.0.0.1:8765"),
-            html.Div(id='dummy-output', style={'display': 'none'})  # Hidden dummy output component
+            html.Div(id='dummy-output', style={'display': 'none'}),  # Hidden dummy output component
+            html.Div(id={"type": f"pillar-status-label", "index": "dummy"}, style={'display':'none'})
         ])
 
         self.html_header_content = html.Div([
-                html.Div(
+                dbc.Row([
+                    dbc.Col(html.Div(
                     html.H1('RaveForest Dashboard'),
                     style=dict(padding=5)
+                    ), width=10),
+                    dbc.Col(dbc.Button("Refresh", id="refresh-button"), width="auto")
+                    ], justify="end"
                 ),
                 self.utility_content,
             ], style={
@@ -81,7 +103,7 @@ class GUI():
                 'borderBottom': 'thin lightgrey solid',
         })
 
-        self.app.layout = html.Div([
+        return html.Div([
             self.html_header_content,
             self.html_main_content
         ])
@@ -101,25 +123,44 @@ class GUI():
         #     Input("ws", "message"))
 
         @self.app.callback(
+            Output("pillar-status", "children"),
+            Input("refresh-button", "n_clicks")
+        )
+        def refresh_page(n_clicks):
+            if self.data:
+                return self.generate_pillar_status(self.data)
+            return dash.no_update
+
+        @self.app.callback(
             [
                 Output("output", "children"),
                 Output("pillar_graph", "figure"),
                 Output("bpm-output", "children"),
                 Output("mapping-output", "children"),
+                Output({"type": f"pillar-status-label", "index": ALL}, "children") 
             ], 
             [Input("ws", "message")])
         def receive_from_websocket(e):
             if e is None:
-                return [dash.no_update for _ in range(4)]    
+                return [dash.no_update for _ in range(4)] + [ [dash.no_update] for _ in dash.callback_context.outputs_list[4] ]    
 
             data = json.loads(e['data'])
-            print(data)
+            self.data = data
+
+            self.update_data(data)
+
             self.pillar_figure = self.generate_pillars_figure(data['pillars'], data["current_state"])
+
+            outputs = dash.callback_context.outputs_list
+            status_labels_update = outputs[4]
+            labs = self.generate_updated_labels(status_labels_update)
+
             return [
                 f"Response from websocket: {data}", 
                 self.pillar_figure,
                 data["bpm"],
-                data["mapping_id"]
+                data["mapping_id"],
+                labs
             ]
 
         @self.app.callback(
@@ -127,12 +168,19 @@ class GUI():
                 Output("ws", "send"),
                 Output("system-status-dummy-output", "children"),
             ],
-            Input("bpm-button", "n_clicks"),
-            Input("mapping-button", "n_clicks"),
-            Input("bpm-input", "value"),
-            Input("mapping-input", "value"),
+            [
+                Input("bpm-button", "n_clicks"),
+                Input("mapping-button", "n_clicks"),
+                Input({"type": f"pillar-status-button", "index": ALL}, "n_clicks")
+            ],
+            [
+                State("bpm-input", "value"),
+                State("mapping-input", "value"),
+                State({"type": f"pillar-status-input", "index": ALL}, "value")
+            ]
         )
-        def update_output(bpm_n_clicks, mapping_n_clicks, bpm_value, mapping_value):
+        def update_output(bpm_n_clicks, mapping_n_clicks, psi_n_clicks, 
+                          bpm_value, mapping_value, psi_value):
             ctx = dash.callback_context
             msg = dash.no_update
             ws_out = {}
@@ -145,7 +193,21 @@ class GUI():
                 elif triggered_id == "mapping-button" and mapping_value is not None:
                     msg=f"Updating Mapping ID: {mapping_value}"
                     ws_out["mapping_id"] = mapping_value
+                elif "{" in triggered_id and any(psi_value):
+                    # One of the dynamic ones triggered lets find which one
+                    prop_dict = json.loads(triggered_id)
 
+                    l = [s["id"]['index'] for s in ctx.states_list[2]]
+                    psi_value_idx = l.index(prop_dict["index"])
+                    
+                    p_id, var = prop_dict["index"].split("-")
+                    if var not in ws_out:
+                        ws_out[var] = {}
+                    ws_out[var][p_id] = psi_value[psi_value_idx]
+                    
+
+            if ws_out:
+                print(f"Sending {ws_out}")
             return [
                 json.dumps(ws_out),
                 msg
@@ -191,6 +253,67 @@ class GUI():
             
         return fig
 
+
+    def update_data(self, data):
+        num_pillars = data["num_pillars"]
+        for p_id in range(num_pillars):
+            self.update_dat["serial_port"][p_id]=data["pillars"][str(p_id)]["serial_status"]["port"]
+            self.update_dat["amp"][p_id] = data["amp"][str(p_id)]
+            self.update_dat["synth"][p_id] = data["synths"][str(p_id)]
+
+            self.display_dat["touch"][p_id] = data["pillars"][str(p_id)]["touch_status"]
+
+    def generate_pillar_status(self, data):
+        num_pillars = data["num_pillars"]
+
+        output_div = []
+        for p_id in range(num_pillars):
+            
+            update_dat = {n: d[p_id] for n, d in self.update_dat.items()}
+
+            display_dat = {n: d[p_id] for n, d in self.display_dat.items()}
+
+            connected = bool(data["pillars"][str(p_id)]["serial_status"]["connected"])
+            row_div = [
+                html.Div(children=f"Pillar {p_id} status: {'connected' if connected else 'not-connected'}"),
+            ]
+            for n, val in display_dat.items():
+                h = dbc.Col(dbc.Row([
+                    dbc.Label(f"{n}", width=2),
+                    dbc.Label(id={"type": f"pillar-status-label", "index": f"{p_id}-{n}"}, width="auto"),
+                ]))
+                row_div.append(h)
+
+            for n, val in update_dat.items():
+                h = dbc.Row([
+                    dbc.Label(f"{n}", width=2),
+                    dbc.Label(id={"type": f"pillar-status-label", "index": f"{p_id}-{n}"}, width=2),
+                    dbc.Col(dbc.Input(id={"type": f"pillar-status-input", "index": f"{p_id}-{n}"}, placeholder=f"Enter {n}"),width="auto"),
+                    dbc.Col(dbc.Button("Update", id={"type": f"pillar-status-button", "index": f"{p_id}-{n}"}, color="primary"),width=1),
+                ])
+                row_div.append(h)
+            output_div.append(dbc.Col(html.Div(row_div), width="auto"))
+    
+        return dbc.Row(output_div, justify="evenly")
+    
+    def generate_updated_labels(self, label_objs):
+
+        status_labels = []
+        for out_id in label_objs:
+            name = out_id['id']['index']
+            if name == "dummy":
+                status_labels.append(dash.no_update)
+                continue
+            p_id, var = name.split("-")
+            if var in self.update_dat:
+                value = self.update_dat[var][int(p_id)]
+            elif var in self.display_dat:
+                value = self.display_dat[var][int(p_id)]
+            else:
+                status_labels.append(dash.no_update)
+            status_labels.append(f"{value}")
+        return status_labels
+        
 
     def run(self, **kwargs):
         self.app.run(**kwargs)

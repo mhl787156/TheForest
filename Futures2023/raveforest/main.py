@@ -22,7 +22,6 @@ class Controller():
         self.mapping = MappingInterface(copy.deepcopy(config))
 
         self.sound_manager = SoundManager(config["bpm"], self.pillars)
-        self.sound_manager.set_synth(0, "SAW")
 
         self.current_states = {p: None for p in self.pillars}
 
@@ -51,6 +50,15 @@ class Controller():
                     self.sound_manager.set_bpm(data["bpm"])
                 if "mapping_id" in data:
                     self.mapping.mapping_id = data["mapping_id"]
+                if "amp" in data:
+                    for p_id, amp in data["amp"].items():
+                        self.sound_manager.set_amp(int(p_id), float(amp))
+                if "serial_port" in data:
+                    for p_id, serial_port in data["serial_port"].items():
+                        self.pillars[int(p_id)].restart_serial(serial_port)
+                if "synth" in data:
+                    for p_id, synth in data["synth"].items():
+                        self.sound_manager.set_synth(int(p_id), synth)
 
         except websockets.exceptions.ConnectionClosedOK:
             pass
@@ -81,11 +89,13 @@ class Controller():
 
             # Update websocket clients
             state_dicts = {
+                "num_pillars": self.num_pillars,
                 "pillars": {pid: p.to_dict() for pid, p in self.pillars.items()},
                 "current_state": self.current_states,
                 "bpm": self.sound_manager.get_bpm(),
                 "mapping_id": self.mapping.mapping_id,
-                "synths": self.sound_manager.get_synths()
+                "synths": self.sound_manager.get_synths(),
+                "amp": self.sound_manager.get_amps()
             }
             await self.send_to_clients(json.dumps(state_dicts))
 
