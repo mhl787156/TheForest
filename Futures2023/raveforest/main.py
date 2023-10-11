@@ -143,7 +143,7 @@ if __name__=="__main__":
     parser.add_argument("--host", default="127.0.0.1", help="The host to connect to.")
     parser.add_argument("--port", default="8080", type=int, help="The port to use.")
     parser.add_argument("--config", default="config/config.json", help="Path to the JSON config file.")
-    parser.add_argument("--frequency", default=5, help="Frequency of the controller loop")
+    parser.add_argument("--frequency", default=5, type=int, help="Frequency of the controller loop")
     parser.add_argument("--ws-host", default="localhost", help="The internal websocket URI")
     parser.add_argument("--ws-port", default="8765", help="The internal websocket URI")
     parser.add_argument("--gui", default=False, action="store_true", help="Whether to run the Dash GUI")
