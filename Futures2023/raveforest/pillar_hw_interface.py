@@ -34,6 +34,7 @@ def write_serial_data(serial_port, write_queue):
             serial_port.write(packet.encode())
         except Exception as e:
             print(f"Error writing data: {e}")
+        time.sleep(0.1)
             
 
 class Pillar():
