@@ -121,7 +121,7 @@ class Pillar():
         assert tube_id < self.num_tubes
         assert 0 <= hue <= 255
         assert 0 <= brightness <= 255
-        message = f"LED,{tube_id},{hue},{brightness};"
+        message = f"LED,{tube_id},{hue},{brightness};\n\r"
         # print("Pushing to queue", message)
         self.write_queue.put(message)
     

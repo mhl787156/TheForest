@@ -123,10 +123,10 @@ class Controller():
             lights, notes = self.mapping.generate_tubes(current_btn_press)
 
             # Send Lights On The Beat
-            def temp_func():
-                print(f"Sending Lights {p_id}: {lights}")
-                p.send_all_light_change(lights)
-            self.sound_manager.run_on_next_beat(temp_func, force_unique_id=(5678 + self.loop_idx))
+            # def temp_func():
+            print(f"Sending Lights {p_id}: {lights}")
+            p.send_all_light_change(lights)
+            # self.sound_manager.run_on_next_beat(temp_func, force_unique_id=(5678 + self.loop_idx))
 
             # Send Notes, sound manager manages on the beat
             print("Setting notes", notes)
