@@ -240,7 +240,7 @@ class GUI():
         for i, (p_id, pillar) in enumerate(pillars_dict.items()):
             tube_coords = generate_coords_tubes(int(pillar["num_tubes"]), 1)
             current_status_lights = current_status[str(i)]["lights"]
-            colours = [f"hsv({l[0]}, {l[1]}, 100)" for l in current_status_lights]
+            colours = [f"hsv({l[0]}, 255, {l[1]})" for l in current_status_lights]
             trace = go.Scatter(
                 x=tube_coords[:, 0], 
                 y=tube_coords[:, 1],
