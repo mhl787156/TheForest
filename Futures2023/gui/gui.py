@@ -238,7 +238,7 @@ class GUI():
                             subplot_titles=[f"Pillar {p_id}" for p_id in pillars_dict])
 
         for i, (p_id, pillar) in enumerate(pillars_dict.items()):
-            tube_coords = generate_coords_tubes(int(pillar["num_tubes"]), 1)
+            tube_coords = generate_coords_tubes(int(pillar["num_sensors"]), 1)
             current_status_lights = current_status[str(i)]["lights"]
             colours = [f"hsv({l[0]}, 255, {l[1]})" for l in current_status_lights]
             trace = go.Scatter(
