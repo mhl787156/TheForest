@@ -124,7 +124,8 @@ class Controller():
 
             # Send Lights On The Beat
             # def temp_func():
-            print(f"Sending Lights {p_id}: {lights}")
+            print(f"Current Lights {p.get_all_light_status()}")
+            print(f"Sending Lights {lights}")
             p.send_all_light_change(lights)
             # self.sound_manager.run_on_next_beat(temp_func, force_unique_id=(5678 + self.loop_idx))
 
