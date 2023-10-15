@@ -246,7 +246,7 @@ class GUI():
             points = [[x[i], y[i]] for i in range(num_tubes)]
 
             # Move (0,0) to front if central tube is first in array
-            return np.array(points + [[0, 0]])
+            return np.array([[0,0]] + points)
         
         dist_between_centers = np.array([0, 100])
         
