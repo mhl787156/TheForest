@@ -152,7 +152,7 @@ class GUI():
 
             self.update_data(data)
 
-            self.pillar_figure = self.generate_pillars_figure(data['pillars'], data["current_state"])
+            self.pillar_figure = self.generate_pillars_figure(data)
 
             outputs = dash.callback_context.outputs_list
             status_labels_update = outputs[4]
@@ -216,7 +216,8 @@ class GUI():
                 msg
             ]
 
-    def generate_pillars_figure(self, pillars_dict, current_status):
+    def generate_pillars_figure(self, data):
+        pillars_dict, current_status = data['pillars'], data["current_state"]
         num_pillars = len(pillars_dict)
 
         def generate_coords_tubes(num_tubes, radius):
@@ -230,6 +231,7 @@ class GUI():
             
             points = [[x[i], y[i]] for i in range(num_tubes)]
 
+            # Move (0,0) to front if central tube is first in array
             return np.array(points + [[0, 0]])
         
         dist_between_centers = np.array([0, 100])
@@ -241,12 +243,18 @@ class GUI():
             tube_coords = generate_coords_tubes(int(pillar["num_sensors"]), 1)
             current_status_lights = current_status[str(i)]["lights"]
             colours = [f"hsv({l[0]}, 255, {l[1]})" for l in current_status_lights]
+            marker_widths = [10 if bool(t) else 2 for t in pillar["touch_status"]]
+            marker_colors = ["DarkSlateGrey" if bool(t) else "rgb(0,0,0)" for t in pillar["touch_status"]]
             trace = go.Scatter(
                 x=tube_coords[:, 0], 
                 y=tube_coords[:, 1],
                 marker=dict(
                     color=colours, 
-                    size=50
+                    size=50,
+                    line=dict(
+                        color=marker_colors,
+                        width=marker_widths
+                    )
                 ),
                 mode="markers")
             

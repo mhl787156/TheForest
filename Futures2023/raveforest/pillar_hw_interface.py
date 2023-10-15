@@ -154,7 +154,7 @@ class Pillar():
         for i, l in enumerate(lights):
             hue = clamp(l[0])
             bright = clamp(l[1])
-            light_list.extend([hue, bright])
+            light_list.extend([str(hue), str(bright)])
         message = f"ALLLED,{','.join(light_list)};"
         self.write_queue.put(message)
 
