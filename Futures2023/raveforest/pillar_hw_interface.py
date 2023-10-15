@@ -64,6 +64,7 @@ class Pillar():
 
         self.num_touch_sensors = 6
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
+        self.previous_received_status = []
 
         self.light_status = [(0, 0, 0) for _ in range(self.num_tubes)]
 
@@ -180,11 +181,22 @@ class Pillar():
             light_list.extend([str(hue), str(bright)])
         message = f"ALLLED,{','.join(light_list)};"
         self.write_queue.put(message)
+    
+    def set_touch_status(self, touch_status):
+        self.touch_status = touch_status
+    
+    def set_touch_status_tube(self, tube_id, status):
+        self.touch_status[tube_id] = bool(status)
 
     def read_from_serial(self):
         try:
             while True:
-                self.touch_status = self.cap_queue.get(block=False)
+                recevied_status = self.cap_queue.get(block=False)
+                if recevied_status != self.previous_received_status:
+                    # Only update touch status if different
+                    # This enables other sources of touch status
+                    self.set_touch_status(recevied_status)
+                self.previous_received_status = recevied_status
         except queue.Empty:
             pass
     

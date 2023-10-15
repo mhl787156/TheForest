@@ -134,7 +134,7 @@ class GUI():
             if self.data:
                 return self.generate_pillar_status(self.data)
             return dash.no_update
-
+        
         @self.app.callback(
             [
                 Output("output", "children"),
@@ -175,7 +175,8 @@ class GUI():
             [
                 Input("bpm-button", "n_clicks"),
                 Input("mapping-button", "n_clicks"),
-                Input({"type": f"pillar-status-button", "index": ALL}, "n_clicks")
+                Input({"type": f"pillar-status-button", "index": ALL}, "n_clicks"),
+                Input("pillar_graph", "clickData")
             ],
             [
                 State("bpm-input", "value"),
@@ -183,20 +184,32 @@ class GUI():
                 State({"type": f"pillar-status-input", "index": ALL}, "value")
             ]
         )
-        def update_output(bpm_n_clicks, mapping_n_clicks, psi_n_clicks, 
+        def update_output(bpm_n_clicks, mapping_n_clicks, psi_n_clicks, graph_click_data,
                           bpm_value, mapping_value, psi_value):
             ctx = dash.callback_context
             msg = dash.no_update
             ws_out = {}
             if ctx.triggered:
                 triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                
+
                 if triggered_id == "bpm-button" and bpm_value is not None:
                     msg=f"Updating Current BPM: {bpm_value}"
                     ws_out["bpm"] = bpm_value
                 elif triggered_id == "mapping-button" and mapping_value is not None:
                     msg=f"Updating Mapping ID: {mapping_value}"
                     ws_out["mapping_id"] = mapping_value
+                elif triggered_id == "pillar_graph":
+                    data = graph_click_data["points"]
+                    if len(data) > 0:
+                        point = data[0]
+                        p_id = point["curveNumber"]
+                        t_id = point["pointNumber"]
+                        out = [False for _ in range(int(self.data["pillars"][str(p_id)]["num_sensors"]))]
+                        out[t_id] = True
+                        if "touch" not in ws_out:
+                            ws_out["touch"]  = {}
+                        ws_out["touch"][str(p_id)] = out
+                        print("SETTING TOUCH", ws_out["touch"])
                 elif "{" in triggered_id and any(psi_value):
                     # One of the dynamic ones triggered lets find which one
                     prop_dict = json.loads(triggered_id)
@@ -265,6 +278,7 @@ class GUI():
             fig.add_trace(trace, row=1, col=i+1)
         
         fig.update_layout(showlegend=False)
+        fig.update_layout(clickmode='event')
             
         return fig
 

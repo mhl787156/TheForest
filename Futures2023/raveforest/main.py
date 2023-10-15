@@ -61,7 +61,11 @@ class Controller():
                 if "synth" in data:
                     for p_id, synth in data["synth"].items():
                         self.sound_manager.set_synth(int(p_id), synth)
-
+                if "touch" in data:
+                    for p_id, touch in data["touch"].items():
+                        mod_touch = [t=="true" for t in touch]
+                        self.pillars[int(p_id)].set_touch_status(mod_touch)
+ 
         except websockets.exceptions.ConnectionClosedOK:
             pass
         except websockets.exceptions.ConnectionClosedError:
