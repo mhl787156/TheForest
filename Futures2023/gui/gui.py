@@ -35,7 +35,8 @@ class GUI():
         )
 
         self.display_dat = dict(
-            touch = {}
+            touch = {},
+            notes = {}
         )
 
         self.app.layout = self.init_layout
@@ -276,6 +277,7 @@ class GUI():
             self.update_dat["synth"][p_id] = data["synths"][str(p_id)]
 
             self.display_dat["touch"][p_id] = data["pillars"][str(p_id)]["touch_status"]
+            self.display_dat["notes"][p_id] = data["notes"][str(p_id)]
 
     def generate_pillar_status(self, data):
         num_pillars = data["num_pillars"]

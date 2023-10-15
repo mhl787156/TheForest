@@ -41,6 +41,7 @@ class SoundManager(object):
         self.timing_condition = Condition()
         self.current_synths = {}
         self.current_amp = {}
+        self.current_notes = {}
 
         # Start BPM Thread
         bpm_thread = Thread(name="bpm_thread", 
@@ -70,7 +71,14 @@ class SoundManager(object):
         self.bpm_shared.value = bpm
 
     def set_notes(self, pillar_id, notes):
+        self.current_notes[pillar_id] = notes
         self.pillar_data_in_queues[pillar_id].put({"notes": notes})
+    
+    def get_notes(self, pillar_id):
+        return self.current_notes[pillar_id]
+
+    def get_all_notes(self):
+        return self.current_notes
 
     def set_synth(self, pillar_id:int, synth:str):
         if synth in globals():

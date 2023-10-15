@@ -97,7 +97,8 @@ class Controller():
                 "bpm": self.sound_manager.get_bpm(),
                 "mapping_id": self.mapping.mapping_id,
                 "synths": self.sound_manager.get_synths(),
-                "amp": self.sound_manager.get_amps()
+                "amp": self.sound_manager.get_amps(),
+                "notes": self.sound_manager.get_all_notes()
             }
             await self.send_to_clients(json.dumps(state_dicts))
 
