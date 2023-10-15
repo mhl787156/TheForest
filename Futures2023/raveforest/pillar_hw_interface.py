@@ -119,6 +119,22 @@ class Pillar():
         return self.light_status
     
     def send_light_change(self, tube_id, hue, brightness):
+        """Sends a LED message to change the hue and brightness of an individual tube
+
+        Args:
+            tube_id (int): The tube id of the tube to change
+            hue (int): [0, 255] the value of the hue
+            brightness (int): [0, 255] the value of the brightness
+        
+        This sends a LED,{tube_id},{hue},{brightness}; message to the serial port 
+        for a connected arduino to deal with.
+
+        *HOWEVER* note that this message cannot be sent in quick succession without
+        delays in between sends. The serial/message read seems to struggle to pick
+        out all of the individual messages. In a case where you need to send all please 
+        use the `send_all_light_chanege` function. 
+            
+        """
         assert tube_id < self.num_tubes
         assert 0 <= hue <= 255
         assert 0 <= brightness <= 255
@@ -127,9 +143,21 @@ class Pillar():
         self.write_queue.put(message)
     
     def send_all_light_change(self, lights):
+        """Send all the lights in one go
+        
+        This uses the ALLLED message
+        ALLLED,h1,b1,...,hn,bn;
+
+        Argument lights assumed to be a list of tuples (hue, brightness)
+        """
+        light_list = []
         for i, l in enumerate(lights):
-            self.send_light_change(i, clamp(l[0]), clamp(l[1]))
-    
+            hue = clamp(l[0])
+            bright = clamp(l[1])
+            light_list.extend([hue, bright])
+        message = f"ALLLED,{','.join(light_list)};"
+        self.write_queue.put(message)
+
     def read_from_serial(self):
         try:
             while True:
