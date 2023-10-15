@@ -245,6 +245,7 @@ class GUI():
             colours = [f"hsv({l[0]}, 255, {l[1]})" for l in current_status_lights]
             marker_widths = [10 if bool(t) else 2 for t in pillar["touch_status"]]
             marker_colors = ["DarkSlateGrey" if bool(t) else "rgb(0,0,0)" for t in pillar["touch_status"]]
+            labels = [str(i) for i in range(pillar["num_tubes"])]
             trace = go.Scatter(
                 x=tube_coords[:, 0], 
                 y=tube_coords[:, 1],
@@ -256,7 +257,9 @@ class GUI():
                         width=marker_widths
                     )
                 ),
-                mode="markers")
+                mode="markers+text",
+                text=labels,
+                textposition="top left")
             
             fig.add_trace(trace, row=1, col=i+1)
         
