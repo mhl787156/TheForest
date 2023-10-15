@@ -9,9 +9,14 @@ import config
 def clamp(val, b=0, c=255):
     return max(b, min(val, c))
 
-def read_serial_data(serial_port, cap_queue, light_queue):
+def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
+    print(f"Serial Read Thread Started With {serial_port}")
     while True:
         try:
+
+            if kill_event.is_set():
+                break
+
             response = serial_port.readline().decode().strip()
 
             if "CAP" in response:
@@ -25,16 +30,26 @@ def read_serial_data(serial_port, cap_queue, light_queue):
             pass
             # print(f"Error reading data: {e}")
             
+    print("Serial Read Thread Killed")
+            
 
 def write_serial_data(serial_port, write_queue):
+    print(f"Serial Write Thread Started With {serial_port}")
     while True:
         try:
             packet = write_queue.get()
+            
+            if "kill" in packet:
+                # Method of killing the packet
+                break
+
             # print("Packet Sending", packet)
             serial_port.write(packet.encode())
         except Exception as e:
             print(f"Error writing data: {e}")
         time.sleep(0.1)
+
+    print("Serial Write Thread Killed")
             
 
 class Pillar():
@@ -56,23 +71,20 @@ class Pillar():
         self.light_queue = queue.Queue()
         self.write_queue = queue.Queue()
 
+        self.kill_read_thread = threading.Event()
+
         self.ser = None
         self.serial_status = dict(connected=False, port=port, baud_rate=baud_rate)
         self.ser = self.restart_serial(port, baud_rate)
 
         atexit.register(self.cleanup)
 
-        self.serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue,))
-        self.serial_thread.daemon = True
-        self.serial_thread.start()
-
-        self.serial_write_thread = threading.Thread(target=write_serial_data, args=(self.ser, self.write_queue,))
-        self.serial_write_thread.daemon = True
-        self.serial_write_thread.start()
     
     def restart_serial(self, port, baud_rate=None):
-        # if self.ser:
-        #     self.cleanup()
+        if self.ser:
+            self.cleanup()
+            self.write_queue.put("kill")
+            self.kill_read_thread.set()
 
         if baud_rate is None:
             baud_rate = self.serial_status["baud_rate"]
@@ -93,8 +105,19 @@ class Pillar():
             print(f"... creating virtual serial port for testing")
             self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
             self.serial_status["connected"] = False
+        
+        self.kill_read_thread = threading.Event()
+        self.serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue, self.kill_read_thread, ))
+        self.serial_thread.daemon = True
+        self.serial_thread.start()
 
+        self.serial_write_thread = threading.Thread(target=write_serial_data, args=(self.ser, self.write_queue,))
+        self.serial_write_thread.daemon = True
+        self.serial_write_thread.start()
+
+        print(f"Restarted Serial Connection to {port}, {baud_rate}")
         return self.ser 
+    
     def cleanup(self):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
         if self.ser.is_open:
