@@ -63,8 +63,7 @@ class Controller():
                         self.sound_manager.set_synth(int(p_id), synth)
                 if "touch" in data:
                     for p_id, touch in data["touch"].items():
-                        mod_touch = [t=="true" for t in touch]
-                        self.pillars[int(p_id)].set_touch_status(mod_touch)
+                        self.pillars[int(p_id)].set_touch_status(touch)
  
         except websockets.exceptions.ConnectionClosedOK:
             pass
@@ -129,7 +128,7 @@ class Controller():
 
             # Send Lights On The Beat
             # def temp_func():
-            print(f"Current Lights {p.get_all_light_status()}")
+            # print(f"Current Lights {p.get_all_light_status()}")
             print(f"Sending Lights {lights}")
             p.send_all_light_change(lights)
             # self.sound_manager.run_on_next_beat(temp_func, force_unique_id=(5678 + self.loop_idx))

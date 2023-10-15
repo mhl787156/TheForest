@@ -184,6 +184,7 @@ class Pillar():
     
     def set_touch_status(self, touch_status):
         self.touch_status = touch_status
+        print(f"UPDATING TOUCH STATUS to: {touch_status}")
     
     def set_touch_status_tube(self, tube_id, status):
         self.touch_status[tube_id] = bool(status)

@@ -204,12 +204,13 @@ class GUI():
                         point = data[0]
                         p_id = point["curveNumber"]
                         t_id = point["pointNumber"]
-                        out = [False for _ in range(int(self.data["pillars"][str(p_id)]["num_sensors"]))]
+                        out = [False for _ in range(int(self.data["pillars"][str(p_id)]["num_tubes"]))]
                         out[t_id] = True
-                        if "touch" not in ws_out:
-                            ws_out["touch"]  = {}
-                        ws_out["touch"][str(p_id)] = out
-                        print("SETTING TOUCH", ws_out["touch"])
+                    else:
+                        out = [False for _ in range(int(self.data["pillars"][str(0)]["num_tubes"]))]
+                    if "touch" not in ws_out:
+                        ws_out["touch"]  = {}
+                    ws_out["touch"][str(p_id)] = out
                 elif "{" in triggered_id and any(psi_value):
                     # One of the dynamic ones triggered lets find which one
                     prop_dict = json.loads(triggered_id)
@@ -222,7 +223,6 @@ class GUI():
                         ws_out[var] = {}
                     ws_out[var][p_id] = psi_value[psi_value_idx]
                     
-
             if ws_out:
                 print(f"Sending {ws_out}")
             return [
@@ -258,8 +258,8 @@ class GUI():
             current_status_lights = current_status[str(i)]["lights"]
             colours = [f"hsv({l[0]}, 255, {l[1]})" for l in current_status_lights]
             marker_widths = [10 if bool(t) else 2 for t in pillar["touch_status"]]
-            marker_colors = ["DarkSlateGrey" if bool(t) else "rgb(0,0,0)" for t in pillar["touch_status"]]
-            labels = [str(i) for i in range(pillar["num_tubes"])]
+            marker_colors = ["DarkSlateGrey" if bool(t) else "white" for t in pillar["touch_status"]]
+            labels = [f"{i},hue:{l[0]}" for i, l in zip(range(pillar["num_tubes"]), current_status_lights)]
             trace = go.Scatter(
                 x=tube_coords[:, 0], 
                 y=tube_coords[:, 1],
@@ -273,7 +273,7 @@ class GUI():
                 ),
                 mode="markers+text",
                 text=labels,
-                textposition="top left")
+                textposition="top center")
             
             fig.add_trace(trace, row=1, col=i+1)
         
