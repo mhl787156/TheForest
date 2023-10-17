@@ -22,8 +22,8 @@ class MappingInterface(object):
                                     [0, 50],
                                     [0, 50]
                                 ]#cfg['colors']
-        self.Tubes_Notes = cfg['notes']
-        self.Tubes_Colors = cfg['colors']
+        self.Tubes_Notes = self.Init_Tubes_Notes#['notes']
+        self.Tubes_Colors = self.Init_Tubes_Colors#cfg['colors']
         self.mapping_id=cfg['mapping_id']
         self.notes_to_color = cfg['notes_to_color']
 
