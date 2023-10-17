@@ -12,8 +12,16 @@ class MappingInterface(object):
     mapping_id =1
 
     def __init__(self, cfg):
-        self.Init_Tubes_Notes=cfg['notes']
-        self.Init_Tubes_Colors = cfg['colors']
+        self.Init_Tubes_Notes= [50, 50, 50, 50, 50, 50, 50]#cfg['notes']
+        self.Init_Tubes_Colors = [
+                                    [0, 50],
+                                    [0, 50],
+                                    [0, 50],
+                                    [0, 50],
+                                    [0, 50],
+                                    [0, 50],
+                                    [0, 50]
+                                ]#cfg['colors']
         self.Tubes_Notes = cfg['notes']
         self.Tubes_Colors = cfg['colors']
         self.mapping_id=cfg['mapping_id']
@@ -44,9 +52,12 @@ class MappingInterface(object):
         return self.send_light(), self.send_notes()
 
     def update_notes (self):
+        # lower note: 50
+        # higher note: 100
         for t in range(len(self.Active_Tubes)):
             if self.Active_Tubes[t]==1:
-                self.Tubes_Notes[t] = 60 + (self.Tubes_Notes[t] + 2) % 16
+                self.Tubes_Notes[t] = 50 + (self.Tubes_Notes[t] + 1) % 50
+                self.Tubes_Colors[t][0] = (self.Tubes_Colors[t][0] + 5.1) % 255
 
             #else:
              #   self.Tubes_Notes[t] = self.Init_Tubes_Notes[t]
