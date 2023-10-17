@@ -58,8 +58,8 @@ class MappingInterface(object):
             if self.Active_Tubes[t]==1:
                 self.Tubes_Colors[t][0] = (self.Tubes_Colors[t][0] + 5.1) % 255 #[0,255]
                 #self.Tubes_Notes[t] = self.Tubes_Colors[t][0] / 5.1
-                if (self.Tubes_Notes[t]%100) >= 50:
-                    self.Tubes_Notes[t] = 50 +(self.Tubes_Notes[t] + 1) % 100 #[50,100]
+                if (self.Tubes_Notes[t]%100) <= 50:
+                    self.Tubes_Notes[t] = 50 + (self.Tubes_Notes[t] + 1) % 100 #[50,100]
                 else:
                     self.Tubes_Notes[t] = (self.Tubes_Notes[t] + 1) % 100
 
