@@ -46,7 +46,8 @@ class MappingInterface(object):
     def update_notes (self):
         for t in range(len(self.Active_Tubes)):
             # if self.Active_Tubes[t]==1:
-            self.Tubes_Notes[t] = self.Init_Tubes_Notes[t]
+            #self.Tubes_Notes[t] = self.Init_Tubes_Notes[t]
+            self.Tubes_Notes[t] = (self.Tubes_Notes[t] + 2) % 16
             # else:
             #     self.Tubes_Notes[t]=255
 
@@ -73,6 +74,7 @@ class MappingInterface(object):
         for t in range(len(self.Active_Tubes)):
             if self.Active_Tubes[t]==1:
                self.Tubes_Colors[t][0] = (self.Tubes_Colors[t][0] + 5) % 255
+               #self.Tubes_Notes[t] = (self.Tubes_Notes[t] + 2) % 16
 
     def light_to_notes1 (self):
         for t in range(len(self.Active_Tubes)):

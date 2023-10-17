@@ -72,6 +72,7 @@ class Pillar():
         self.light_queue = queue.Queue()
         self.write_queue = queue.Queue()
 
+
         self.kill_read_thread = threading.Event()
 
         self.ser = None
@@ -163,7 +164,7 @@ class Pillar():
         assert 0 <= hue <= 255
         assert 0 <= brightness <= 255
         message = f"LED,{tube_id},{hue},{brightness};\n\r"
-        # print("Pushing to queue", message)
+        #print("Pushing to queue", message)
         self.write_queue.put(message)
     
     def send_all_light_change(self, lights):
@@ -181,6 +182,7 @@ class Pillar():
             light_list.extend([str(hue), str(bright)])
         message = f"ALLLED,{','.join(light_list)};"
         print(f'Message being sent: {message}')
+        self.write_queue.empty()
         self.write_queue.put(message)
     
     def set_touch_status(self, touch_status):
