@@ -32,10 +32,12 @@ class MappingInterface(object):
         ]
 
     def generate_tubes(self,active):
+        # A tube is active if its cap sensor is being touched
+        # 'active' is a list of boolean touch sensor results where 1=cap sensor active
         self.Active_Tubes=active
         if self.notes_to_color:
-            self.update_notes()
-            self.notes_to_light_mappings[self.mapping_id]()
+            self.update_notes() # Updates notes
+            self.notes_to_light_mappings[self.mapping_id]() # Uses mapping to update colours based on chosen notes
         else:
             self.update_light()
             self.light_to_notes_mappings[self.mapping_id]()
@@ -44,7 +46,7 @@ class MappingInterface(object):
     def update_notes (self):
         for t in range(len(self.Active_Tubes)):
             # if self.Active_Tubes[t]==1:
-            self.Tubes_Notes[t]= self.Init_Tubes_Notes[t]
+            self.Tubes_Notes[t] = self.Init_Tubes_Notes[t]
             # else:
             #     self.Tubes_Notes[t]=255
 
