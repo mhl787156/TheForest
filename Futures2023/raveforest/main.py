@@ -23,13 +23,6 @@ class Controller():
 
         self.sound_manager = SoundManager(config["bpm"], self.pillars)
 
-        '''# HH - adding link into pillar sequencers so we can flash each tube when it's note is playing the sequence
-        self.pillar_sequencers = []
-        for p in range(self.num_pillars):
-            self.pillar_sequencers.append(self.sound_manager.pillar_sequencers[p])
-        print(self.pillar_sequencers)
-        # HH - end'''
-
         self.current_states = {p: None for p in self.pillars}
 
         self.websocket_server = websockets.serve(self.websocket_server_callback, *self.websocket_url)
@@ -132,10 +125,6 @@ class Controller():
 
             # Generate the lights and notes based on the current btn inputs
             lights, notes = self.mapping.generate_tubes(current_btn_press)
-
-            '''# HH - test pillar sequencer vals
-            print(f"seq current idx for pillar {p_id}: {self.pillar_sequencers[p_id].seq_current_idx}")
-            # HH - end'''
 
             # Send Lights On The Beat
             # def temp_func():
