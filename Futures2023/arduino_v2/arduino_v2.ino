@@ -18,13 +18,13 @@ const unsigned long period2 = 500;
 const unsigned int serial_max_char = 20;
 
 // Cap sensors
-CapacitiveSensor capSensor0 = CapacitiveSensor(0, 1);
+CapacitiveSensor capSensor6 = CapacitiveSensor(0, 1);
 CapacitiveSensor capSensor1 = CapacitiveSensor(2, 3);
 CapacitiveSensor capSensor2 = CapacitiveSensor(4, 5);
 CapacitiveSensor capSensor3 = CapacitiveSensor(6, 7);
 CapacitiveSensor capSensor4 = CapacitiveSensor(8, 9);
 CapacitiveSensor capSensor5 = CapacitiveSensor(10, 11);
-CapacitiveSensor capSensor6 = CapacitiveSensor(13, 12); // TODO: capsensor 6 not reading - cases crashes and slow running
+//CapacitiveSensor capSensor6 = CapacitiveSensor(13, 12); // TODO: capsensor 6 not reading - swapped with 0 and removed for now
 
 const long capThresholds [7] = {10000, 10000, 10000, 10000, 10000, 10000, 10000};
 bool capStatus [7] = {0,0,0,0,0,0,0};
@@ -37,12 +37,12 @@ int led_status[7][3] = {{0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}};
 
 // Define pixel numbers for each tube
 const int tube_0 [] = {8, 9, 10, 11, 12, 18, 19, 20, 21, 22, 23, 33, 34, 35, 47, 48};
-const int tube_5 [] = {0, 12, 13, 14, 15};
-const int tube_6 [] = {16, 17, 29, 30, 31, 32};
 const int tube_1 [] = {24, 25, 26, 27, 28};
 const int tube_2 [] = {46, 42, 43, 44, 45};
 const int tube_3 [] = {36, 37, 38, 39, 40};
 const int tube_4 [] = {2, 3, 4, 5, 6, 7, 1};
+const int tube_5 [] = {0, 12, 13, 14, 15};
+const int tube_6 [] = {16, 17, 29, 30, 31, 32};
 
 // Specify lengths of LED arrays
 int len_centre = 18;
