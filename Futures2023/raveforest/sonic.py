@@ -61,14 +61,18 @@ class SoundManager(object):
             pthread.start()
             self.pillar_sequencers[p_id] = pthread
             '''
+
+            # HH - change to access pillar_sequencer class in main
             p_sequencer = PillarSequencer(pillar, self.bpm_shared, self.timing_condition, self.pillar_data_in_queues[p_id])
             p_sequencer_thread = Thread(target=p_sequencer.run)
             p_sequencer_thread.daemon = True
             p_sequencer_thread.start()
             self.pillar_sequencers[p_id] = p_sequencer  # Store the PillarSequencer instances
+            # HH - end
 
             self.set_amp(p_id, 1.0)
             self.set_synth(p_id, "SAW")
+
         
         # Others
         self.run_on_next_beat_events = {}
