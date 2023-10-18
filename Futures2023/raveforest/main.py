@@ -18,7 +18,6 @@ class Controller():
 
         self.num_pillars = len(config["pillars"])
         self.pillars = {p["id"]: Pillar(**p) for p in config["pillars"]}
-        print(self.pillars)
 
         self.mapping = MappingInterface(copy.deepcopy(config))
 
@@ -27,7 +26,7 @@ class Controller():
         # HH - adding link into pillar sequencers so we can flash each tube when it's note is playing the sequence
         self.pillar_sequencers = []
         for p in range(self.num_pillars):
-            self.pillar_sequencers.append(self.sound_manager.pillar_data_in_queues[p+1])
+            self.pillar_sequencers.append(self.sound_manager.pillar_data_in_queues[p])
         print(self.pillar_sequencers)
         # HH - end
 
