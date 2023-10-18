@@ -18,6 +18,7 @@ class Controller():
 
         self.num_pillars = len(config["pillars"])
         self.pillars = {p["id"]: Pillar(**p) for p in config["pillars"]}
+        print(self.pillars)
 
         self.mapping = MappingInterface(copy.deepcopy(config))
 
