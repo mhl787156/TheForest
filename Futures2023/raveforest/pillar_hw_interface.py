@@ -3,8 +3,11 @@ import atexit
 import threading
 import queue
 import time
+import copy
 
 import config
+
+from MappingInterface import MappingInterface
 
 def clamp(val, b=0, c=255):
     return max(b, min(val, c))
@@ -58,6 +61,8 @@ class Pillar():
         self.id = id
         self.pan = pan
 
+        self.mapping = MappingInterface(copy.deepcopy(config))
+
         self.serial_read_rate = 10
 
         self.num_tubes = 7
@@ -68,7 +73,7 @@ class Pillar():
 
         self.light_status = [(0, 0, 0) for _ in range(self.num_tubes)]
 
-        self.cap_queue =  queue.Queue()
+        self.cap_queue = queue.Queue()
         self.light_queue = queue.Queue()
         self.write_queue = queue.Queue()
 

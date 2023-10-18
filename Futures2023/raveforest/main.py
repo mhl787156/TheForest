@@ -21,7 +21,7 @@ class Controller():
         self.pillars = {p["id"]: Pillar(**p) for p in config["pillars"]}
         print(self.pillars)
 
-        self.mapping = MappingInterface(copy.deepcopy(config))
+        #self.mapping = MappingInterface(copy.deepcopy(config))
 
         self.sound_manager = SoundManager(config["bpm"], self.pillars)
 
@@ -126,12 +126,12 @@ class Controller():
             print("current btn press:", current_btn_press)
 
             # Generate the lights and notes based on the current btn inputs
-            lights, notes = self.mapping.generate_tubes(current_btn_press)
+            lights, notes = self.p.mapping.generate_tubes(current_btn_press)
 
             # Send Lights On The Beat
             # def temp_func():
             # print(f"Current Lights {p.get_all_light_status()}")
-            print(f"Sending Lights {lights}")
+            print(f"Sending Lights {p_id}: {lights}")
             p.send_all_light_change(lights)
             # self.sound_manager.run_on_next_beat(temp_func, force_unique_id=(5678 + self.loop_idx))
 
@@ -142,7 +142,7 @@ class Controller():
             # Set current state for sending
             self.current_states[p_id] = dict(lights=lights, notes=notes)
         
-            self.loop_idx += 1
+        self.loop_idx += 1
         
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")
