@@ -24,7 +24,7 @@ class Controller():
         self.sound_manager = SoundManager(config["bpm"], self.pillars)
 
         # HH - adding link into pillar sequencers so we can flash each tube when it's note is playing the sequence
-        self.pillar_sequencers = [self.sound_manager.pillar_data_in_queues[1], self.sound_manager.pillar_data_in_queues[2]]
+        self.pillar_sequencers = [None, self.sound_manager.pillar_data_in_queues[1], self.sound_manager.pillar_data_in_queues[2]]
         # HH - end
 
         self.current_states = {p: None for p in self.pillars}
