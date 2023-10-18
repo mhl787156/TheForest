@@ -36,13 +36,13 @@ CRGB leds[NUM_LEDS];
 int led_status[7][3] = {{0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}};
 
 // Define pixel numbers for each tube
-const int tube_0 [] = {8, 9, 10, 11, 12, 18, 19, 20, 21, 22, 23, 33, 34, 35, 47, 48};
+const int tube_0 [] = {7, 8, 9, 10, 11, 12, 18, 19, 20, 21, 22, 23, 32, 33, 34, 35, 47, 48};
 const int tube_1 [] = {24, 25, 26, 27, 28};
 const int tube_2 [] = {46, 42, 43, 44, 45};
 const int tube_3 [] = {36, 37, 38, 39, 40};
-const int tube_4 [] = {2, 3, 4, 5, 6, 7, 1};
+const int tube_4 [] = {2, 3, 4, 5, 6, 1};
 const int tube_5 [] = {0, 12, 13, 14, 15};
-const int tube_6 [] = {16, 17, 29, 30, 31, 32};
+const int tube_6 [] = {16, 17, 29, 30, 31};
 
 // Specify lengths of LED arrays
 int len_centre = 18;
@@ -52,7 +52,7 @@ void light_tube(const int tube_array[], int size_array, int hue, int brightness)
 {
   for (int i = 0; i < size_array; i++) {
     leds[tube_array[i]] = CHSV(hue, 255, brightness);
-  FastLED.show();
+    //FastLED.show();
   } 
 }
 
@@ -166,23 +166,31 @@ void parseledfromserial()
 
   // Check if message is for all tubes
   // Messageformat: 'ALLLED,hue0,brightness0,hue1,brightness1,hue2,brightness2,hue3,brightness3,hue4,brightness4,hue5,brightness5,hue6,brightness6'
-  if (receivedMessage.startsWith("ALLLED,")) {
-    Serial.println(receivedMessage);
+  char messageArray[256];
+  receivedMessage.toCharArray(messageArray, 256);
 
-    // Split the message into parts
-    String parts[numTubes * 2]; // Each LED has 2 parameters (hue and brightness)
-    int partCount = splitString(receivedMessage, ',', parts, numTubes * 2);
-
-    // Check if the message format is correct
-    if (partCount == numTubes * 2 && parts[0] == "ALLLED") {
-      for (int i = 0; i < numTubes; i++) {
-        int hue = parts[i * 2 + 1].toInt();
-        int brightness = parts[i * 2 + 2].toInt();
-        
-        // Call the lightuptube function to light up the LED
-        light_tube_number(i, hue, brightness); // Pass the LED index as 'tnum'
+  char *token = strtok(messageArray, ",");
+  if (token != NULL && strcmp(token, "ALLLED") == 0) {
+    int ledHue[numTubes];
+    int ledBrightness[numTubes];
+    for (int i = 0; i < numTubes; i++) {
+      token = strtok(NULL, ",");
+      if (token != NULL) {
+        ledHue[i] = atoi(token);
+      }
+      token = strtok(NULL, ",");
+      if (token != NULL) {
+        ledBrightness[i] = atoi(token);
       }
     }
+    
+    for (int i = 0; i < numTubes; i++) {
+      int hue = ledHue[i];
+      int brightness = ledBrightness[i];
+      
+      // Call the lightuptube function to light up the LED
+      light_tube_number(i, hue, brightness); // Pass the LED index as 'tnum'
+    }   
   }
 
   // Check if message is for single tube
@@ -223,8 +231,8 @@ void readallcaps ()
 // Serial message in the form: "CAP,0,0,0,0,0,0,0"
 // Where each bool in array represents the cap status for each sensor (0 for off, 1 for on)
 {
-  long sensorVal = capSensor0.capacitiveSensor(3);
-  readCap(sensorVal, 0);
+  long sensorVal = capSensor6.capacitiveSensor(3);
+  readCap(sensorVal, 6);
   sensorVal = capSensor1.capacitiveSensor(3);
   readCap(sensorVal, 1);
   sensorVal = capSensor2.capacitiveSensor(3);
@@ -235,8 +243,8 @@ void readallcaps ()
   readCap(sensorVal, 4);
   sensorVal = capSensor5.capacitiveSensor(3);
   readCap(sensorVal, 5);
-  sensorVal = capSensor6.capacitiveSensor(3);
-  readCap(sensorVal, 6);
+  //sensorVal = capSensor6.capacitiveSensor(3);
+  //readCap(sensorVal, 6);
   
   // Send array of capStatus for each tube to Serial
   String capmsg = "CAP";
@@ -250,8 +258,17 @@ void readallcaps ()
 
 void setup() {
   Serial.begin(9600);
-  //FastLED.clear();
   FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS);  
+
+  // Setup flash
+  for (int i = 0; i<6; i++) {
+    light_tube_number(999, i*20, 100);
+    FastLED.show();
+    delay(300);
+    light_tube_number(999, 0, 0);
+    FastLED.show();
+    delay(300);
+  }
   
   // TODO: calibration routine for the cap sensors
   
@@ -273,8 +290,5 @@ void loop() {
     startMillis2 = currentMillis;
     //sendledstatus();
   }
-
-  light_tube_number(6,200,50);
-
-  
+    
 }
