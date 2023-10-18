@@ -52,11 +52,13 @@ class SoundManager(object):
 
         # Start queue and thread for each pillar
         self.pillar_data_in_queues = {p_id: queue.Queue() for p_id in pillars.keys()}
+        self.pillar_sequencers = {}
         for p_id, pillar  in pillars.items():
             pthread = Thread(target=sonic_thread, 
                                 args=(pillar, self.bpm_shared, self.timing_condition, self.pillar_data_in_queues[p_id],))
             pthread.daemon = True
             pthread.start()
+            self.pillar_sequencers[p_id] = pthread
 
             self.set_amp(p_id, 1.0)
             self.set_synth(p_id, "SAW")
