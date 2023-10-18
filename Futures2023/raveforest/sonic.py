@@ -60,7 +60,6 @@ class SoundManager(object):
             pthread.start()
             self.pillar_sequencers[p_id] = pthread
 
-
             self.set_amp(p_id, 1.0)
             self.set_synth(p_id, "SAW")
 
