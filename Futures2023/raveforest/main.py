@@ -17,6 +17,7 @@ class Controller():
         self.websocket_url = (ws_host, ws_port)
 
         self.num_pillars = len(config["pillars"])
+        print(f"Num pillars: {self.num_pillars}")
         self.pillars = {p["id"]: Pillar(**p) for p in config["pillars"]}
         print(self.pillars)
 
