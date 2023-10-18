@@ -25,7 +25,7 @@ class Controller():
 
         # HH - adding link into pillar sequencers so we can flash each tube when it's note is playing the sequence
         self.pillar_sequencers = []
-        for p in self.num_pillars:
+        for p in range(self.num_pillars):
             self.pillar_sequencers.append(self.sound_manager.pillar_data_in_queues[p])
         # HH - end
 
