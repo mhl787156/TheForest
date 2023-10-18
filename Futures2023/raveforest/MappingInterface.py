@@ -44,31 +44,37 @@ class MappingInterface(object):
         # 'active' is a list of boolean touch sensor results where 1=cap sensor active
         self.Active_Tubes=active
         if self.notes_to_color:
-            self.update_notes() # Updates notes
-            self.notes_to_light_mappings[self.mapping_id]() # Uses mapping to update colours based on chosen notes
+            self.update_lights_notes() # Changed this to update lights and notes at the same time as they are related
+            #self.update_notes() # Updates notes
+            #self.notes_to_light_mappings[self.mapping_id]() # Uses mapping to update colours based on chosen notes
         else:
             self.update_light()
             self.light_to_notes_mappings[self.mapping_id]()
         return self.send_light(), self.send_notes()
 
-    def update_notes (self):
+    def update_lights_notes(self):
+        # Notes chosen based on perceptable MIDI notes with our current speaker setup (oct 2023)
+        # Notes are mapped to colours
         # lower note: 50
         # higher note: 100
         for t in range(len(self.Active_Tubes)):
-            if self.Active_Tubes[t]==1:
-                self.Tubes_Colors[t][0] = (self.Tubes_Colors[t][0] + 5.1) % 255 #[0,255]
-                #self.Tubes_Notes[t] = self.Tubes_Colors[t][0] / 5.1
-                if (self.Tubes_Notes[t]%100) <= 50:
-                    self.Tubes_Notes[t] = 50 + (self.Tubes_Notes[t] + 1) % 50 #[50,100]
+            if self.Active_Tubes[t] == 1:
+                self.Tubes_Colors[t][0] = (self.Tubes_Colors[t][0] + 5.1) % 255  # [0,255]
+                self.Tubes_Notes[t] = int(50 + self.Tubes_Colors[t][0] / 5.1)
+                '''if (self.Tubes_Notes[t] % 100) <= 50:
+                    self.Tubes_Notes[t] = 50 + (self.Tubes_Notes[t] + 1) % 50  # [50,100]
                 else:
-                    self.Tubes_Notes[t] = (self.Tubes_Notes[t] + 1) % 50
+                    self.Tubes_Notes[t] = (self.Tubes_Notes[t] + 1) % 50'''
 
-
-            #else:
-             #   self.Tubes_Notes[t] = self.Init_Tubes_Notes[t]
-
-            # else:
-            #     self.Tubes_Notes[t]=255
+    def update_notes (self):
+        for t in range(len(self.Active_Tubes)):
+            for t in range(len(self.Active_Tubes)):
+                # if self.Active_Tubes[t]==1:
+                # if self.Active_Tubes[t]==1:
+                self.Tubes_Notes[t] = self.Init_Tubes_Notes[t]
+                # else:
+                # else:
+                #     self.Tubes_Notes[t]=255
 
     def update_light (self):
         for t in range(len(self.Active_Tubes)):
