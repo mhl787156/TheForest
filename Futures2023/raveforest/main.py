@@ -18,7 +18,7 @@ class Controller():
 
         self.num_pillars = len(config["pillars"])
         print(f"Num pillars: {self.num_pillars}")
-        self.pillars = {p["id"]: Pillar(**p) for p in config["pillars"]}
+        self.pillars = {p["id"]: Pillar(pillar_config=config, **p) for p in config["pillars"]}
         print(self.pillars)
 
         #self.mapping = MappingInterface(copy.deepcopy(config))
@@ -100,7 +100,7 @@ class Controller():
                 "pillars": {pid: p.to_dict() for pid, p in self.pillars.items()},
                 "current_state": self.current_states,
                 "bpm": self.sound_manager.get_bpm(),
-                "mapping_id": self.mapping.mapping_id,
+                "mapping_id": {pid: p.mapping.mapping_id for pid, p in self.pillars.items()},# ,self.mapping.mapping_id,
                 "synths": self.sound_manager.get_synths(),
                 "amp": self.sound_manager.get_amps(),
                 "notes": self.sound_manager.get_all_notes()
@@ -126,7 +126,7 @@ class Controller():
             print("current btn press:", current_btn_press)
 
             # Generate the lights and notes based on the current btn inputs
-            lights, notes = self.p.mapping.generate_tubes(current_btn_press)
+            lights, notes = p.mapping.generate_tubes(current_btn_press)
 
             # Send Lights On The Beat
             # def temp_func():

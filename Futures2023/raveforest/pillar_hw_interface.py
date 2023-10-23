@@ -57,11 +57,11 @@ def write_serial_data(serial_port, write_queue):
 
 class Pillar():
 
-    def __init__(self, id, port, pan, baud_rate=9600):
+    def __init__(self, pillar_config, id, port, pan, baud_rate=9600):
         self.id = id
         self.pan = pan
 
-        self.mapping = MappingInterface(copy.deepcopy(config))
+        self.mapping = MappingInterface(copy.deepcopy(pillar_config))
 
         self.serial_read_rate = 10
 
