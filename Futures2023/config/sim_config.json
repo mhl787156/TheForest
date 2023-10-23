@@ -1,0 +1,14 @@
+{
+    "agents": [
+        {
+            "type": "RandomAgent", 
+            "kwargs": {
+                "delay_sigma": 0.5
+            }
+        },
+        {
+            "type": "RandomAgent", 
+            "kwargs": {}
+        }
+    ]
+}
