@@ -6,10 +6,13 @@ from functools import partial
 import argparse
 import json
 import copy
+from datetime import datetime
 
 from pillar_hw_interface import Pillar
 from MappingInterface import MappingInterface
 from sonic import SoundManager, setup_psonic
+
+import csv
 
 class Controller():
 
@@ -22,6 +25,7 @@ class Controller():
         print(self.pillars)
 
         #self.mapping = MappingInterface(copy.deepcopy(config))
+        self.savefolder_name = f"raveforest_data_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.csv"
 
         self.sound_manager = SoundManager(config["bpm"], self.pillars)
 
@@ -53,7 +57,8 @@ class Controller():
                 if "bpm" in data:
                     self.sound_manager.set_bpm(data["bpm"])
                 if "mapping_id" in data:
-                    self.mapping.mapping_id = data["mapping_id"]
+                    for p_id,p in self.pillars.items():
+                        p.mapping.mapping_id = data["mapping_id"]
                 if "amp" in data:
                     for p_id, amp in data["amp"].items():
                         self.sound_manager.set_amp(int(p_id), float(amp))
@@ -86,6 +91,7 @@ class Controller():
         Args:
             frequency (_type_): _description_
         """
+        index = 0 
 
         while self.running:
 
@@ -93,14 +99,18 @@ class Controller():
 
             # Your state machine logic here
             self.loop()
+            args = parser.parse_args()
+            print(args)
+
 
             # Update websocket clients
             state_dicts = {
+                "time": datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
                 "num_pillars": self.num_pillars,
                 "pillars": {pid: p.to_dict() for pid, p in self.pillars.items()},
                 "current_state": self.current_states,
                 "bpm": self.sound_manager.get_bpm(),
-                "mapping_id": self.mapping.mapping_id,
+                "mapping_id": 1,
                 "synths": self.sound_manager.get_synths(),
                 "amp": self.sound_manager.get_amps(),
                 "notes": self.sound_manager.get_all_notes()
@@ -111,6 +121,12 @@ class Controller():
             sleep_interval = 1 / frequency - elapsed_time
             if sleep_interval > 0:
                 await asyncio.sleep(sleep_interval)
+            index += 1
+            if index % 5 == 0:
+                with open(self.savefolder_name, mode='a') as csv_file:
+                    fields =['time', 'num_pillars','pillars','current_state','bpm','mapping_id','synths','amp','notes']
+                    writer = csv.DictWriter(csv_file,fieldnames=fields)
+                    writer.writerow(state_dicts)
 
     def stop(self):
         self.running = False
@@ -126,7 +142,7 @@ class Controller():
             print("current btn press:", current_btn_press)
 
             # Generate the lights and notes based on the current btn inputs
-            lights, notes = self.p.mapping.generate_tubes(current_btn_press)
+            lights, notes = p.mapping.generate_tubes(current_btn_press)
 
             # Send Lights On The Beat
             # def temp_func():
@@ -170,4 +186,5 @@ if __name__=="__main__":
     # controller.start(args.frequency)
     asyncio.get_event_loop().run_until_complete(controller.run(args.frequency))
     # asyncio.get_event_loop().run_forever()
+
 

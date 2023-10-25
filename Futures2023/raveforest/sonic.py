@@ -60,6 +60,7 @@ class SoundManager(object):
             pthread.start()
             self.pillar_sequencers[p_id] = pthread
 
+
             self.set_amp(p_id, 1.0)
             self.set_synth(p_id, "SAW")
 
@@ -134,6 +135,7 @@ class PillarSequencer(object):
         self.bpm_value = bpm
         self.notes_in_queue = notes_in_queue
         self.amp = 1.0
+        self.delay =  (1.0 / (self.bpm_value.value / 60)) / 2.0 
 
         self.current_notes = []
         self.seq_current_idx = 1
@@ -164,6 +166,8 @@ class PillarSequencer(object):
 
             except queue.Empty:
                 pass
+
+            time.sleep(self.delay * int(self.pillar.id))
 
             # Play the note
             current_note = self.current_notes[self.seq_current_idx]

@@ -1,29 +1,29 @@
 {
     "notes_to_color": 1,
-    "notes": [50, 63, 70, 100, 86, 95, 60],
+    "notes": [50, 63, 70, 100, 86, 90, 60],
     "colors": [
-        [100, 50],
-        [70, 50],
-        [30, 50],
-        [150, 50],
-        [220, 50],
-        [80, 50],
-        [180, 50]
+        [0, 250],
+        [70,  250],
+        [30,  250],
+        [150, 250],
+        [220, 250],
+        [80,  250],
+        [180, 250]
     ],
-    "mapping_id": 1,
+    "mapping_id": 2,
     "pillars": [
         {
             "id": 0,
             "port": "/dev/ttyACM0",
             "pan": -1
         },
-        {
-            "id": 1,
-            "port": "/dev/ttyACM1",
-            "pan": 1
-        }
+	{
+	    "id": 1,
+	    "port": "/dev/ttyACM1",
+	    "pan": 1 
+	}
     ],
-    "bpm": 60,
-    "sonic-pi-ip": "172.18.144.1",
-    "sonic-pi-config-file": "/mnt/c/Users/qo18522/.sonic-pi/log/spider.log"
+    "bpm": 120,
+    "sonic-pi-ip": "127.0.0.1",
+    "sonic-pi-config-file": "/home/pi/.sonic-pi/log/spider.log"
 }

@@ -12,15 +12,15 @@ class MappingInterface(object):
     mapping_id =1
 
     def __init__(self, cfg):
-        self.Init_Tubes_Notes= [50, 50, 50, 50, 50, 50, 50]#cfg['notes']
+        self.Init_Tubes_Notes= [47, 49, 51, 52, 54, 56, 58]#cfg['notes']
         self.Init_Tubes_Colors = [
-                                    [0, 50],
-                                    [0, 50],
-                                    [0, 50],
-                                    [0, 50],
-                                    [0, 50],
-                                    [0, 50],
-                                    [0, 50]
+                                    [0, 0],
+                                    [0, 200],
+                                    [0, 200],
+                                    [0, 200],
+                                    [0, 200],
+                                    [0, 200],
+                                    [0, 200]
                                 ]#cfg['colors']
         self.Tubes_Notes = self.Init_Tubes_Notes#['notes']
         self.Tubes_Colors = self.Init_Tubes_Colors#cfg['colors']
