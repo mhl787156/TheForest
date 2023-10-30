@@ -76,10 +76,10 @@ class Forest_Agent_Yellow(Forest_Agent):
 
             for t in(range(self.num_tubes)):
                 if(current_lights[pillar_choice][t] == self.trigger):
-                    rule1 = random.choices([True, False], weights=self.action_bias)
-                    if (rule1):
-                        left_action = random.choice([True, False])
-                        if (left_action):
+                    rule1 = random.choices([1, 0], weights=self.action_bias)
+                    if (rule1==1):
+                        left_action = random.choice([1, 0])
+                        if (left_action==1):
                             if (t + 1 == self.num_tubes):
                                 current_lights[pillar_choice][0] = 160
                             else:
@@ -127,10 +127,10 @@ class Forest_Agent_Yellow(Forest_Agent):
 
             for t in(range(self.num_tubes)):
                 if(current_lights[pillar_choice][t] == self.trigger):
-                    rule1 = random.choices([True, False], weights=self.action_bias)
-                    if (rule1):
-                        left_action = random.choice([True, False])
-                        if (left_action):
+                    rule1 = random.choices([1, 0], weights=self.action_bias)
+                    if (rule1==1):
+                        left_action = random.choice([1, 0])
+                        if (left_action==1):
                             if (t + 1 == self.num_tubes):
                                 current_lights[pillar_choice][0] = 160
                             else:
@@ -182,10 +182,10 @@ class Forest_Agent_Red(Forest_Agent):
 
             for t in(range(self.num_tubes)):
                 if(current_lights[pillar_choice][t] == self.trigger):
-                    rule1 = random.choices([True, False], weights=self.action_bias)
-                    if (rule1):
-                        left_action = random.choice([True, False])
-                        if (left_action):
+                    rule1 = random.choices([1, 0], weights=self.action_bias)
+                    if (rule1==1):
+                        left_action = random.choice([1, 0])
+                        if (left_action==1):
                             if (t + 1 == self.num_tubes):
                                 current_lights[pillar_choice][0] = 90
                             else:
@@ -237,10 +237,10 @@ class Forest_Agent_Blue_Green(Forest_Agent):
             pillar_choice=random.choice(range(self.num_pillars))
 
             for t in(range(self.num_tubes)):
-                rule1 = random.choices([True, False], weights=self.action_bias)
-                if(current_lights[pillar_choice][t] == self.trigger1 and rule1):
-                        left_action = random.choice([True, False])
-                        if (left_action):
+                rule1 = random.choices([1, 0], weights=self.action_bias)
+                if(current_lights[pillar_choice][t] == self.trigger1 and rule1==1):
+                        left_action = random.choice([1, 0])
+                        if (left_action==1):
                             if (t + 1 == self.num_tubes):
                                 current_lights[pillar_choice][0] = 40
                             else:
@@ -251,9 +251,9 @@ class Forest_Agent_Blue_Green(Forest_Agent):
                             else:
                                 current_lights[pillar_choice][t - 1] = 40
                         return current_lights
-                elif (current_lights[pillar_choice][t] == self.trigger2 and not rule1) :
-                    left_action = random.choice([True, False])
-                    if (left_action):
+                elif (current_lights[pillar_choice][t] == self.trigger2 and rule1==0) :
+                    left_action = random.choice([1, 0])
+                    if (left_action==1):
                         if (t + 1 == self.num_tubes):
                             current_lights[pillar_choice][0] = 255
                         else:
