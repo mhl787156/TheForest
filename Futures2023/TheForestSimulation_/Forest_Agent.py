@@ -39,7 +39,7 @@ class Forest_Agent_Random(Forest_Agent):
             # Start Press
             pillar_choice=random.choice(range(self.num_pillars))
             tube_choice = random.choice(range(self.num_tubes))
-            current_lights[pillar_choice][tube_choice]=random.choice([40,90,160,255])
+            current_lights[pillar_choice][tube_choice]=random.choice([60,90,160,255])
             return current_lights
         else:
             self.delay = remaining_delay
@@ -54,7 +54,7 @@ class Forest_Agent_Yellow(Forest_Agent):
         self.delay_mu = delay_mu
         self.delay_sigma = delay_sigma
         self.time_since_last_call=0
-        self.trigger=40
+        self.trigger=60
         self.action_bias = action_bias
 
 
@@ -196,11 +196,11 @@ class Forest_Agent_Red(Forest_Agent):
                             else:
                                 current_lights[pillar_choice][t - 1] = 90
                     else:
-                        current_lights[pillar_choice][t] = 40
+                        current_lights[pillar_choice][t] = 60
                         tube_choice = random.choice([a for a in range(self.num_tubes) if a!= t])
-                        current_lights[pillar_choice][tube_choice] = 40
+                        current_lights[pillar_choice][tube_choice] = 60
                         tube_choice = random.choice([a for a in range(self.num_tubes) if a!= t and a!=tube_choice])
-                        current_lights[pillar_choice][tube_choice] = 40
+                        current_lights[pillar_choice][tube_choice] = 60
                     return current_lights
             return []
         else:
@@ -242,14 +242,14 @@ class Forest_Agent_Blue_Green(Forest_Agent):
                         left_action = random.choice([1, 0])
                         if (left_action==1):
                             if (t + 1 == self.num_tubes):
-                                current_lights[pillar_choice][0] = 40
+                                current_lights[pillar_choice][0] = 60
                             else:
-                                current_lights[pillar_choice][t + 1] = 40
+                                current_lights[pillar_choice][t + 1] = 60
                         else:
                             if (t - 1 == -1):
-                                current_lights[pillar_choice][0] = 40
+                                current_lights[pillar_choice][0] = 60
                             else:
-                                current_lights[pillar_choice][t - 1] = 40
+                                current_lights[pillar_choice][t - 1] = 60
                         return current_lights
                 elif (current_lights[pillar_choice][t] == self.trigger2 and rule1==0) :
                     left_action = random.choice([1, 0])
