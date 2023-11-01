@@ -12,6 +12,7 @@ import copy
 
 
 
+
 class Forest_Swarm:
 
     def __init__(self,num_agents,num_tubes,num_pillars):
@@ -25,7 +26,7 @@ class Forest_Swarm:
         for i in range(self.num_pillars):
             pillar=[]
             for j in range(self.num_tubes):
-                pillar.append(random.choice([40,90,160,255]))
+                pillar.append(random.choice([60,90,160,255]))
             self.current_lights.append(pillar)
 
     def simulate(self,time_steps):
@@ -52,6 +53,16 @@ class Forest_Swarm:
 
         # Move (0,0) to front if central tube is first in array
 
+    def get_FastLED_map(self,h_color):
+        """Create a custom colormap with the specified colors and values"""
+        # Create FastLED color map
+        # Define the colors and their corresponding values
+        colors = [(1, 0, 0), (1, 0.5, 0), (1, 1, 0), (0, 1, 0), (0, 1, 1), (0, 0, 1), (0.5, 0, 0.5), (1, 0, 1), (1,0,0)] # RGB values
+        values = [0, 32, 60, 90, 128, 160, 192, 224, 255] # FastLED color values
+
+        idx = values.index(h_color)
+        
+        return colors[idx]
 
     def animation(self):
         fig = plt.figure(figsize=(10, 10), dpi=100, facecolor='w', edgecolor='k')
@@ -76,6 +87,7 @@ class Forest_Swarm:
             patches.append(circle)
 
         # add these circles to a collection
+        #cmap = get_FastLED_map()
         pillar1_tubes = PatchCollection(patches, cmap=matplotlib.colormaps.get_cmap('hsv'), alpha=0.4)
         ax1.add_collection(pillar1_tubes)
         pillar2_tubes = PatchCollection(patches, cmap=matplotlib.colormaps.get_cmap('hsv'), alpha=0.4)
@@ -90,8 +102,9 @@ class Forest_Swarm:
               colors1=[]
               colors2 = []
               for c in(range(self.num_tubes)):
-                  colors1.append(hsv_to_rgb([((self.lights_history[i][0][c]) / 255), 1,0.8 ]))
-                  colors2.append(hsv_to_rgb([((self.lights_history[i][1][c]) / 255), 1,0.8 ]))
+                  colors1.append(self.get_FastLED_map(self.lights_history[i][0][c]))
+                  colors2.append(self.get_FastLED_map(self.lights_history[i][1][c]))
+    
 
               pillar1_tubes.set_color(colors1)
               pillar2_tubes.set_color(colors2)
