@@ -168,7 +168,7 @@ if __name__=="__main__":
     parser.add_argument("--frequency", default=5, type=int, help="Frequency of the controller loop")
     parser.add_argument("--ws-host", default="localhost", help="The internal websocket URI")
     parser.add_argument("--ws-port", default="8765", help="The internal websocket URI")
-    parser.add_argument("--gui", default=False, action="store_true", help="Whether to run the Dash GUI")
+    parser.add_argument("--gui", default=True, action="store_true", help="Whether to run the Dash GUI")
 
     args = parser.parse_args()
     print(args)
