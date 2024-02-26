@@ -10,7 +10,7 @@ def write(conn, q):
 
 q = queue.Queue()
 
-ser = serial.Serial("/dev/ttyACM0", 9600)
+ser = serial.Serial("/dev/ttyACM1", 9600)
 packet="LED,4,250,255;"
 
 thr = threading.Thread(target=write, args=(ser,q,))
