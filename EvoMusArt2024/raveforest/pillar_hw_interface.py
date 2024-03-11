@@ -10,7 +10,7 @@ import json
 import os
 
 
-from MappingInterface import MappingInterface
+from MappingInterface import generate_mapping_interface
 
 path = os.getcwd()
 config_path = os.path.abspath(os.path.join(path, os.pardir, "Futures2023/config/config.json")) #'/home/admin-amcs/Desktop/FUTURES FEST/TheForest/Futures2023/config/config.json'
@@ -38,20 +38,20 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
             elif "LED" in response:
                 status = response.split(",")[1:]
                 light_queue.put([int(i) for i in status])
-            
+
         except Exception as e:
             pass
             # print(f"Error reading data: {e}")
-            
+
     print("Serial Read Thread Killed")
-            
+
 
 def write_serial_data(serial_port, write_queue):
     print(f"Serial Write Thread Started With {serial_port}")
     while True:
         try:
             packet = write_queue.get()
-            
+
             if "kill" in packet:
                 # Method of killing the packet
                 break
@@ -63,7 +63,7 @@ def write_serial_data(serial_port, write_queue):
         time.sleep(0.1)
 
     print("Serial Write Thread Killed")
-            
+
 
 class Pillar():
 
@@ -71,7 +71,7 @@ class Pillar():
         self.id = id
         self.pan = pan
 
-        self.mapping = MappingInterface(copy.deepcopy(config))
+        self.mapping = generate_mapping_interface(id, copy.deepcopy(config))
 
         self.serial_read_rate = 10
 
@@ -96,7 +96,7 @@ class Pillar():
 
         atexit.register(self.cleanup)
 
-    
+
     def restart_serial(self, port, baud_rate=None):
         if self.ser:
             self.cleanup()
@@ -122,7 +122,7 @@ class Pillar():
             print(f"... creating virtual serial port for testing")
             self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
             self.serial_status["connected"] = False
-        
+
         self.kill_read_thread = threading.Event()
         self.serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue, self.kill_read_thread, ))
         self.serial_thread.daemon = True
@@ -133,13 +133,13 @@ class Pillar():
         self.serial_write_thread.start()
 
         print(f"Restarted Serial Connection to {port}, {baud_rate}")
-        return self.ser 
-    
+        return self.ser
+
     def cleanup(self):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
         if self.ser.is_open:
             self.ser.close()
-    
+
     def to_dict(self):
         return dict(
             id=self.id, pan=self.pan, num_tubes=self.num_tubes, num_sensors=self.num_touch_sensors,
@@ -148,16 +148,16 @@ class Pillar():
 
     def get_touch_status(self, tube_id):
         return self.touch_status[tube_id]
-    
+
     def get_all_touch_status(self):
         return self.touch_status
-    
+
     def get_light_status(self, tube_id):
         return self.light_status[tube_id]
 
     def get_all_light_status(self):
         return self.light_status
-    
+
     def send_light_change(self, tube_id, hue, brightness):
         """Sends a LED message to change the hue and brightness of an individual tube
 
@@ -165,15 +165,15 @@ class Pillar():
             tube_id (int): The tube id of the tube to change
             hue (int): [0, 255] the value of the hue
             brightness (int): [0, 255] the value of the brightness
-        
-        This sends a LED,{tube_id},{hue},{brightness}; message to the serial port 
+
+        This sends a LED,{tube_id},{hue},{brightness}; message to the serial port
         for a connected arduino to deal with.
 
         *HOWEVER* note that this message cannot be sent in quick succession without
         delays in between sends. The serial/message read seems to struggle to pick
-        out all of the individual messages. In a case where you need to send all please 
-        use the `send_all_light_chanege` function. 
-            
+        out all of the individual messages. In a case where you need to send all please
+        use the `send_all_light_chanege` function.
+
         """
         assert tube_id < self.num_tubes
         assert 0 <= hue <= 255
@@ -181,10 +181,10 @@ class Pillar():
         message = f"LED,{tube_id},{hue},{brightness};\n\r"
         #print("Pushing to queue", message)
         self.write_queue.put(message)
-    
+
     def send_all_light_change(self, lights):
         """Send all the lights in one go
-        
+
         This uses the ALLLED message
         ALLLED,h1,b1,...,hn,bn;
 
@@ -199,11 +199,11 @@ class Pillar():
         print(f'Message being sent: {message}')
         self.write_queue.empty()
         self.write_queue.put(message)
-    
+
     def set_touch_status(self, touch_status):
         self.touch_status = touch_status
         print(f"UPDATING TOUCH STATUS to: {touch_status}")
-    
+
     def set_touch_status_tube(self, tube_id, status):
         self.touch_status[tube_id] = bool(status)
 
@@ -218,13 +218,10 @@ class Pillar():
                 self.previous_received_status = recevied_status
         except queue.Empty:
             pass
-    
+
         try:
             while True:
                 (tid, hue, sat) = self.light_queue.get(block=False)
                 self.light_status[tid] = (tid, hue, sat)
         except queue.Empty:
             pass
-
-
-    

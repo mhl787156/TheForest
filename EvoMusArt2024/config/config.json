@@ -15,15 +15,21 @@
         {
             "id": 0,
             "port": "/dev/ttyACM0",
-            "pan": 0
+            "pan": 0,
+            "num_tubes": 6,
+            "tube_allocation": ["-p", "-t", "-a", "+p", "+t", "+a"],
+            "map": "RotationMapper"
         },
-	{
-	    "id": 1,
-	    "port": "/dev/ttyACM1",
-	    "pan": 0
-	}
+        {
+            "id": 1,
+            "port": "/dev/ttyACM1",
+            "pan": 0,
+            "num_tubes": 6,
+            "tube_allocation": ["-p", "-t", "-a", "+p", "+t", "+a"],
+            "map": "RotationMapper"
+        }
     ],
     "bpm": 120,
     "sonic-pi-ip": "127.0.0.1",
-    "sonic-pi-config-file": "/home/pi/.sonic-pi/log/spider.log"
+    "sonic-pi-config-file": "/Users/Mickey/.sonic-pi/log/spider.log"
 }

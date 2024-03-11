@@ -34,7 +34,7 @@ class Controller():
         self.websocket_server = websockets.serve(self.websocket_server_callback, *self.websocket_url)
         self.websocket_clients = set()
 
-        self.loop_idx = 0 
+        self.loop_idx = 0
 
         self.running = True
         atexit.register(self.stop)
@@ -43,7 +43,7 @@ class Controller():
         print(f"Starting Websocket server on ws://{self.websocket_url[0]}:{self.websocket_url[1]}")
         async with self.websocket_server:
             await self.start(frequency)
-    
+
     async def websocket_server_callback(self, websocket, path):
         # Handle WebSocket connections and messages from Dash clients
         self.websocket_clients.add(websocket)
@@ -51,7 +51,7 @@ class Controller():
             while True:
                 frontend_data = await websocket.recv()
                 print("Received data from frontend:", frontend_data)
-                
+
                 # Process commands received from Dash and control the state machine
                 data = json.loads(frontend_data)
                 if "bpm" in data:
@@ -71,7 +71,7 @@ class Controller():
                 if "touch" in data:
                     for p_id, touch in data["touch"].items():
                         self.pillars[int(p_id)].set_touch_status(touch)
- 
+
         except websockets.exceptions.ConnectionClosedOK:
             pass
         except websockets.exceptions.ConnectionClosedError:
@@ -84,24 +84,21 @@ class Controller():
         # Send data to all connected Dash clients
         for websocket in self.websocket_clients:
             await websocket.send(message)
-    
+
     async def start(self, frequency):
         """Starts the main control loop
 
         Args:
             frequency (_type_): _description_
         """
-        index = 0 
+        index = 0
 
         while self.running:
 
-            start_time = time.perf_counter()            
+            start_time = time.perf_counter()
 
             # Your state machine logic here
             self.loop()
-            args = parser.parse_args()
-            print(args)
-
 
             # Update websocket clients
             state_dicts = {
@@ -130,13 +127,13 @@ class Controller():
 
     def stop(self):
         self.running = False
-        
+
     def loop(self):
         # Update status of pillars
         for p_id, p in self.pillars.items():
             print(f"------read {p_id}-------")
             p.read_from_serial()
-        
+
             # Check if a button has been pressed
             current_btn_press = p.get_all_touch_status()
             print("current btn press:", current_btn_press)
@@ -154,12 +151,12 @@ class Controller():
             # Send Notes, sound manager manages on the beat
             print("Setting notes", notes)
             self.sound_manager.set_notes(p_id, notes)
-            
+
             # Set current state for sending
             self.current_states[p_id] = dict(lights=lights, notes=notes)
-        
+
         self.loop_idx += 1
-        
+
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")
     parser.add_argument("--host", default="127.0.0.1", help="The host to connect to.")
@@ -186,5 +183,3 @@ if __name__=="__main__":
     # controller.start(args.frequency)
     asyncio.get_event_loop().run_until_complete(controller.run(args.frequency))
     # asyncio.get_event_loop().run_forever()
-
-
