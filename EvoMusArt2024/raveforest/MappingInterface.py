@@ -41,7 +41,7 @@ class SoundState(object):
 
 class LightState(object):
     def __init__(self, num_tubes, random_init=True, lights=None):
-        if self.random_init:
+        if random_init:
             self.lights = [
                 tuple(random.randint(0, 255) for _ in range(3))
                 for _ in range(num_tubes)
@@ -69,7 +69,7 @@ class Pillar_Mapper_Base(object):
         self.num_tubes = pillar_cfg["num_tubes"]
 
         self.sound_state: SoundState = SoundState(random_init=True)
-        self.light_state: LightState = LightState(random_init=True)
+        self.light_state: LightState = LightState(self.num_tubes, random_init=True)
         self.state_array = [False for _ in range(self.num_tubes)]
 
     def update_pillar(self, state_array) -> Tuple[SoundState, LightState]:
@@ -96,9 +96,8 @@ class RotationMapper(Pillar_Mapper_Base):
         self.tube_allocation = pillar_cfg["tube_allocation"]
 
         # Create a colormap from red to blue scaled between 0 and 255
-        cmap = plt.get_cmap('coolwarm')
-        self.colormap = cmap()
-        self.hsv_values = rgb_to_hsv(self.colormap[:, :3])
+        self.cmap = plt.get_cmap('coolwarm')
+        # self.hsv_values = rgb_to_hsv(self.colormap[:, :3])
 
     # This should be implemented in child classes
     def __interaction_update_sound_light(self, old_state, new_state):
@@ -116,10 +115,10 @@ class RotationMapper(Pillar_Mapper_Base):
                 elif 'p' in tube_allocation:
                     value = self.sound_state.change_note(delta)
 
-                self.light_state[tube_id] = tuple(self.hsv_values[value, :])
+                self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(value)))
 
 
-def generate_mapping_interface(self, pillar_id, cfg) -> Pillar_Mapper_Base:
+def generate_mapping_interface(cfg_pillar) -> Pillar_Mapper_Base:
     """Generator Function which you can call which reads the config
     And assigns the correct mapping class based on the configuration file "map"
 
@@ -130,9 +129,6 @@ def generate_mapping_interface(self, pillar_id, cfg) -> Pillar_Mapper_Base:
     Returns:
         Pillar_Mapper_Base: A Child class of Pillar_Mappper_Base which is specified in the 'map' parameter of the configuration file if it exists.
     """
-    self.cfg = cfg
-    cfg_pillar = self.cfg["pillars"][pillar_id]
-
     # Map the name of the mapping method to the Class
     targetClass = getattr(sys.modules[__name__], cfg_pillar['map'])
     return targetClass(cfg_pillar)
