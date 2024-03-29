@@ -57,6 +57,12 @@ class LightState(object):
     def __setitem__(self, key, newvalue):
         self.lights[key] = newvalue
 
+    def __iter__(self):
+        return self.lights.__iter__()
+
+    def __next__(self):
+        return self.lights.__next__()
+
 class Pillar_Mapper_Base(object):
 
     def __init__(self, pillar_cfg):
