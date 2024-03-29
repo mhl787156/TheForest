@@ -94,7 +94,7 @@ class Pillar():
         self.serial_write_threads = []
 
         self.serial_status_cap = dict(connected=False, port=port_cap, baud_rate=baud_rate)
-        self.ser_cap = self.restart_serial(None, self.serial_status_cap self.write_cap_queue)
+        self.ser_cap = self.restart_serial(None, self.serial_status_cap, self.write_cap_queue)
         
         self.serial_status_led = dict(connected=False, port=port_cap, baud_rate=baud_rate)
         self.ser_led = self.restart_serial(None, self.serial_status_led, self.write_led_queue)
