@@ -6,6 +6,7 @@ from functools import partial
 import argparse
 import json
 import copy
+import os
 from datetime import datetime
 
 from pillar_hw_interface import Pillar
@@ -25,7 +26,8 @@ class Controller():
         print(self.pillars)
 
         #self.mapping = MappingInterface(copy.deepcopy(config))
-        self.savefolder_name = f"raveforest_data_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.csv"
+        self.data_dir = os.path.join("data", "raw")
+        self.savefolder_name = os.path.join(self.data_dir, f"data_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.csv")
 
         self.sound_manager = SoundManager(config["bpm"], self.pillars)
 
