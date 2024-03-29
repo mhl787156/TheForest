@@ -67,7 +67,7 @@ def write_serial_data(serial_port, write_queue):
 
 class Pillar():
 
-    def __init__(self, id, port, pan, baud_rate=9600, **kwargs):
+    def __init__(self, id, port_cap, port_led, pan, baud_rate=9600, **kwargs):
         self.id = id
         self.pan = pan
 
@@ -85,33 +85,36 @@ class Pillar():
 
         self.cap_queue = queue.Queue()
         self.light_queue = queue.Queue()
-        self.write_queue = queue.Queue()
-
+        self.write_cap_queue = queue.Queue()
+        self.write_led_queue = queue.Queue()
 
         self.kill_read_thread = threading.Event()
 
-        self.ser = None
-        self.serial_status = dict(connected=False, port=port, baud_rate=baud_rate)
-        self.ser = self.restart_serial(port, baud_rate)
+        self.serial_read_threads = []
+        self.serial_write_threads = []
 
-        atexit.register(self.cleanup)
+        self.serial_status_cap = dict(connected=False, port=port_cap, baud_rate=baud_rate)
+        self.ser_cap = self.restart_serial(None, self.serial_status_cap self.write_cap_queue)
+        
+        self.serial_status_led = dict(connected=False, port=port_cap, baud_rate=baud_rate)
+        self.ser_led = self.restart_serial(None, self.serial_status_led, self.write_led_queue)
+
+        atexit.register(lambda: self.cleanup(self.ser_cap))
+        atexit.register(lambda: self.cleanup(self.ser_led))
 
 
-    def restart_serial(self, port, baud_rate=None):
-        if self.ser:
-            self.cleanup()
-            self.write_queue.put("kill")
+    def restart_serial(self, serial_conn, serial_status, write_queue):
+        if serial_conn:
+            self.cleanup(serial_conn)
+            write_queue.put("kill")
             self.kill_read_thread.set()
 
-        if baud_rate is None:
-            baud_rate = self.serial_status["baud_rate"]
-
-        self.serial_status["port"] = port
-        self.serial_status["baud_rate"] = baud_rate
+        port = serial_status["port"]
+        baud_rate = serial_status["baud_rate"]
 
         try:
             self.ser = serial.Serial(port, baud_rate)
-            self.serial_status["connected"] = True
+            serial_status["connected"] = True
         except serial.SerialException:
             # Generate a virtual serial port for testing
             print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
@@ -121,24 +124,25 @@ class Pillar():
             print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
             print(f"... creating virtual serial port for testing")
             self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
-            self.serial_status["connected"] = False
+            serial_status["connected"] = False
 
         self.kill_read_thread = threading.Event()
-        self.serial_thread = threading.Thread(target=read_serial_data, args=(self.ser, self.cap_queue, self.light_queue, self.kill_read_thread, ))
-        self.serial_thread.daemon = True
-        self.serial_thread.start()
+        serial_thread = threading.Thread(target=read_serial_data, args=(serial_conn, self.cap_queue, self.light_queue, self.kill_read_thread, ))
+        serial_thread.daemon = True
+        serial_thread.start()
+        self.serial_read_threads.append(serial_thread)
 
-        self.serial_write_thread = threading.Thread(target=write_serial_data, args=(self.ser, self.write_queue,))
-        self.serial_write_thread.daemon = True
-        self.serial_write_thread.start()
+        serial_write_thread = threading.Thread(target=write_serial_data, args=(serial_conn, write_queue,))
+        serial_write_thread.daemon = True
+        serial_write_thread.start()
+        self.serial_write_threads.append(serial_write_thread)
 
-        print(f"Restarted Serial Connection to {port}, {baud_rate}")
-        return self.ser
+        print(f"Restarted Serial Connection to {serial_status}")
 
-    def cleanup(self):
+    def cleanup(self, ser):
         print(f"Cleaning up and closing the serial connection for pillar {self.id}")
-        if self.ser.is_open:
-            self.ser.close()
+        if ser.is_open:
+            ser.close()
 
     def to_dict(self):
         return dict(

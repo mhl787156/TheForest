@@ -14,7 +14,8 @@
     "pillars": [
         {
             "id": 0,
-            "port": "/dev/ttyACM0",
+            "port_cap": "/dev/ttyACM0",
+            "port_led": "/dev/ttyACM2",
             "pan": 0,
             "num_tubes": 6,
             "tube_allocation": ["-p", "-t", "-a", "+p", "+t", "+a"],
@@ -22,7 +23,8 @@
         },
         {
             "id": 1,
-            "port": "/dev/ttyACM1",
+            "port_cap": "/dev/ttyACM1",
+            "port_led": "/dev/ttyACM3",
             "pan": 0,
             "num_tubes": 6,
             "tube_allocation": ["-p", "-t", "-a", "+p", "+t", "+a"],
