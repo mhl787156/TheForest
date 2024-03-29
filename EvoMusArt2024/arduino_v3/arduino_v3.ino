@@ -9,14 +9,13 @@
 #define NUM_LEDS_4 48
 #define NUM_LEDS_5 48
 
-#define LED_PIN_0 6
-#define LED_PIN_1 6
-#define LED_PIN_2 7
-#define LED_PIN_3 8
-#define LED_PIN_4 9
-#define LED_PIN_5 10
+#define LED_PIN_0 2
+#define LED_PIN_1 3
+#define LED_PIN_2 4
+#define LED_PIN_3 5
+#define LED_PIN_4 6
+#define LED_PIN_5 7
 
-#define BRIGHTNESS 200
 
 // Timings
 unsigned long startMillis1; 
@@ -87,7 +86,7 @@ void light_tube_number(int tnum, int hue, int brightness)
   {
     light_tube(3, hue, brightness);
     led_status[3][0] = hue;
-    led_status[4][1] = brightness;
+    led_status[3][1] = brightness;
   }
   if (tnum == 4 || tnum == 999)
   {
@@ -215,7 +214,12 @@ void parseledfromserial()
 
 void setup() {
   Serial.begin(9600);
+  FastLED.addLeds<NEOPIXEL, LED_PIN_0>(leds[0], NUM_LEDS_0);
   FastLED.addLeds<NEOPIXEL, LED_PIN_1>(leds[1], NUM_LEDS_1);
+  FastLED.addLeds<NEOPIXEL, LED_PIN_2>(leds[2], NUM_LEDS_2);
+  FastLED.addLeds<NEOPIXEL, LED_PIN_3>(leds[3], NUM_LEDS_3);
+  FastLED.addLeds<NEOPIXEL, LED_PIN_4>(leds[4], NUM_LEDS_4);
+  FastLED.addLeds<NEOPIXEL, LED_PIN_5>(leds[5], NUM_LEDS_5);
 
   // Setup flash
   for (int i = 0; i<6; i++) {
@@ -241,10 +245,10 @@ void loop() {
     parseledfromserial();
   }
 
-  if (currentMillis - startMillis2 >= period2) 
-  {
-    startMillis2 = currentMillis;
+  // if (currentMillis - startMillis2 >= period2) 
+  // {
+  //   startMillis2 = currentMillis;
     //sendledstatus();
-  }
+  // }
     
 }
