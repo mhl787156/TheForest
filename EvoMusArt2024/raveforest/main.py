@@ -141,7 +141,7 @@ class Controller():
             print("current btn press:", current_btn_press)
 
             # Generate the lights and notes based on the current btn inputs
-            lights, notes = p.mapping.update_tubes(current_btn_press)
+            lights, notes = p.mapping.update_pillar(current_btn_press)
 
             # Send Lights On The Beat
             # def temp_func():
