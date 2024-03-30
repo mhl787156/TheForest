@@ -40,6 +40,9 @@ class SoundState(object):
 
     def __repr__(self) -> str:
         return f"SoundState[NOTE:{self.note},AMP:{self.amp},SYNTH:{self.synth}]"
+    
+    def serialise(self) -> Tuple[float]:
+        return (self.note, self.synth, self.amp)
 
 class LightState(object):
     def __init__(self, num_tubes, random_init=True, lights=None):
@@ -67,6 +70,9 @@ class LightState(object):
 
     def __repr__(self) -> str:
         return f"LightState[{self.lights}]"
+
+    def serialise(self) -> str:
+        return self.lights
 
 class Pillar_Mapper_Base(object):
 
