@@ -137,7 +137,7 @@ class PillarSequencer(object):
         self.amp = 1.0
         self.delay =  (1.0 / (self.bpm_value.value / 60)) / 2.0 
 
-        self.current_notes = []
+        self.current_notes = None # This is now a sound state object
         self.seq_current_idx = 1
     
     def run(self):
@@ -170,7 +170,7 @@ class PillarSequencer(object):
             time.sleep(self.delay * int(self.pillar.id))
 
             # Play the note
-            current_note = self.current_notes[self.seq_current_idx]
+            current_note = self.current_notes.note
             print(f"{self.pillar.id} playing {current_note} with seqidx: {self.seq_current_idx}")
             play(current_note, amp=self.amp)
 
