@@ -140,8 +140,8 @@ class Pillar():
         print(f"Restarted Serial Connection to {serial_status}")
 
     def cleanup(self, ser):
-        print(f"Cleaning up and closing the serial connection for pillar {self.id}")
-        if ser.is_open:
+        print(f"Cleaning up and closing the serial connection ({ser}) for pillar {self.id}")
+        if ser is not None and ser.is_open:
             ser.close()
 
     def to_dict(self):
@@ -184,7 +184,7 @@ class Pillar():
         assert 0 <= brightness <= 255
         message = f"LED,{tube_id},{hue},{brightness};\n\r"
         #print("Pushing to queue", message)
-        self.write_queue_led.put(message)
+        self.write_led_queue.put(message)
 
     def send_all_light_change(self, lights):
         """Send all the lights in one go
@@ -201,8 +201,8 @@ class Pillar():
             light_list.extend([str(hue), str(bright)])
         message = f"ALLLED,{','.join(light_list)};"
         print(f'Message being sent: {message}')
-        self.write_queue_led.empty()
-        self.write_queue_led.put(message)
+        self.write_led_queue.empty()
+        self.write_led_queue.put(message)
 
     def set_touch_status(self, touch_status):
         self.touch_status = touch_status
