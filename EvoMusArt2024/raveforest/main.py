@@ -8,6 +8,7 @@ import json
 import copy
 import os
 from datetime import datetime
+import os
 
 from pillar_hw_interface import Pillar
 from MappingInterface import MappingInterface
@@ -28,6 +29,12 @@ class Controller():
         #self.mapping = MappingInterface(copy.deepcopy(config))
         self.data_dir = os.path.join("data", "raw")
         self.savefolder_name = os.path.join(self.data_dir, f"data_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.csv")
+
+        try:
+            os.makedirs(self.data_dir)
+        except Exceptions as e:
+            print(f"Directory might already exist {self.data_dir}")
+            pass
 
         self.sound_manager = SoundManager(config["bpm"], self.pillars)
 
