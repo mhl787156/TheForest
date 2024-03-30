@@ -94,10 +94,10 @@ class Pillar():
         self.serial_write_threads = []
 
         self.serial_status_cap = dict(connected=False, port=port_cap, baud_rate=baud_rate)
-        self.ser_cap, self.serial_status_cap = self.restart_serial("cap", None, self.serial_status_cap, self.write_cap_queue)
+        self.ser_cap, self.serial_status_cap = self.restart_serial(f"cap-{self.id}", None, self.serial_status_cap, self.write_cap_queue)
         
         self.serial_status_led = dict(connected=False, port=port_led, baud_rate=baud_rate)
-        self.ser_led, self.serial_status_led = self.restart_serial("led", None, self.serial_status_led, self.write_led_queue)
+        self.ser_led, self.serial_status_led = self.restart_serial(f"led-{self.id}", None, self.serial_status_led, self.write_led_queue)
 
         atexit.register(lambda: self.cleanup(self.ser_cap))
         atexit.register(lambda: self.cleanup(self.ser_led))
@@ -123,19 +123,19 @@ class Pillar():
             print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
             print(f"!!!!!!!!!!!!!!!!!!!!!!!! SERIAL PORT: {port} NOT FOUND !!!!!!!!!!!!!!!!!!!!!")
             print(f"... creating virtual serial port for testing")
-            self.ser = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
+            serial_conn = serial.serial_for_url(f"loop://{port}", baudrate=baud_rate)
             serial_status["connected"] = False
 
         self.kill_read_thread = threading.Event()
         serial_thread = threading.Thread(target=read_serial_data, args=(serial_conn, self.cap_queue, self.light_queue, self.kill_read_thread, ))
         serial_thread.daemon = True
         serial_thread.start()
-        self.serial_read_threads.append(serial_thread)
+        # self.serial_read_threads.append(serial_thread)
 
         serial_write_thread = threading.Thread(target=write_serial_data, args=(name, serial_conn, write_queue,))
         serial_write_thread.daemon = True
         serial_write_thread.start()
-        self.serial_write_threads.append(serial_write_thread)
+        # self.serial_write_threads.append(serial_write_thread)
 
         print(f"Restarted Serial Connection to {serial_status}")
         return serial_conn, serial_status
