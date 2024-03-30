@@ -96,7 +96,7 @@ class Pillar():
         self.serial_status_cap = dict(connected=False, port=port_cap, baud_rate=baud_rate)
         self.ser_cap, self.serial_status_cap = self.restart_serial("cap", None, self.serial_status_cap, self.write_cap_queue)
         
-        self.serial_status_led = dict(connected=False, port=port_cap, baud_rate=baud_rate)
+        self.serial_status_led = dict(connected=False, port=port_led, baud_rate=baud_rate)
         self.ser_led, self.serial_status_led = self.restart_serial("led", None, self.serial_status_led, self.write_led_queue)
 
         atexit.register(lambda: self.cleanup(self.ser_cap))
