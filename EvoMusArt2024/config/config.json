@@ -33,5 +33,5 @@
     ],
     "bpm": 120,
     "sonic-pi-ip": "127.0.0.1",
-    "sonic-pi-config-file": "/Users/pi/.sonic-pi/log/spider.log"
+    "sonic-pi-config-file": "/home/pi/.sonic-pi/log/spider.log"
 }
