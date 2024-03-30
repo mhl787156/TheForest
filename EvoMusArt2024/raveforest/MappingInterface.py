@@ -38,6 +38,8 @@ class SoundState(object):
         self.synth = self.available_synths[self.synth_id]
         return self.synth_id / len(self.available_synths)
 
+    def __repr__(self) -> str:
+        return f"SoundState[NOTE:{self.note},AMP:{self.amp},SYNTH:{self.synth}]"
 
 class LightState(object):
     def __init__(self, num_tubes, random_init=True, lights=None):
@@ -62,6 +64,9 @@ class LightState(object):
 
     def __next__(self):
         return self.lights.__next__()
+
+    def __repr__(self) -> str:
+        return f"LightState[{self.lights}]"
 
 class Pillar_Mapper_Base(object):
 
