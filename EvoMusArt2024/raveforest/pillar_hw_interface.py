@@ -46,8 +46,8 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
     print("Serial Read Thread Killed")
 
 
-def write_serial_data(serial_port, write_queue):
-    print(f"Serial Write Thread Started With {serial_port}")
+def write_serial_data(name, serial_port, write_queue):
+    print(f"Serial Write Thread ({name}) Started With {serial_port}")
     while True:
         try:
             packet = write_queue.get()
@@ -59,7 +59,7 @@ def write_serial_data(serial_port, write_queue):
             # print("Packet Sending", packet)
             serial_port.write(packet.encode())
         except Exception as e:
-            print(f"Error writing data: {e}")
+            print(f"Error writing data for {name}, {serial_port}: {e}")
         time.sleep(0.1)
 
     print("Serial Write Thread Killed")
@@ -94,16 +94,16 @@ class Pillar():
         self.serial_write_threads = []
 
         self.serial_status_cap = dict(connected=False, port=port_cap, baud_rate=baud_rate)
-        self.ser_cap, self.serial_status_cap = self.restart_serial(None, self.serial_status_cap, self.write_cap_queue)
+        self.ser_cap, self.serial_status_cap = self.restart_serial("cap", None, self.serial_status_cap, self.write_cap_queue)
         
         self.serial_status_led = dict(connected=False, port=port_cap, baud_rate=baud_rate)
-        self.ser_led, self.serial_status_led = self.restart_serial(None, self.serial_status_led, self.write_led_queue)
+        self.ser_led, self.serial_status_led = self.restart_serial("led", None, self.serial_status_led, self.write_led_queue)
 
         atexit.register(lambda: self.cleanup(self.ser_cap))
         atexit.register(lambda: self.cleanup(self.ser_led))
 
 
-    def restart_serial(self, serial_conn, serial_status, write_queue):
+    def restart_serial(self, name, serial_conn, serial_status, write_queue):
         if serial_conn is not None:
             self.cleanup(serial_conn)
             write_queue.put("kill")
@@ -132,7 +132,7 @@ class Pillar():
         serial_thread.start()
         self.serial_read_threads.append(serial_thread)
 
-        serial_write_thread = threading.Thread(target=write_serial_data, args=(serial_conn, write_queue,))
+        serial_write_thread = threading.Thread(target=write_serial_data, args=(name, serial_conn, write_queue,))
         serial_write_thread.daemon = True
         serial_write_thread.start()
         self.serial_write_threads.append(serial_write_thread)
