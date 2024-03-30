@@ -107,7 +107,7 @@ class Controller():
                 "time": datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
                 "num_pillars": self.num_pillars,
                 "pillars": {pid: p.to_dict() for pid, p in self.pillars.items()},
-                "current_state": self.current_states,
+                "current_state": [dict{lights=lights.toJSON(), notes=notes.toJSON()} for cs in self.current_states for l, n in cs.items()],
                 "bpm": self.sound_manager.get_bpm(),
                 "mapping_id": 1,
                 "synths": self.sound_manager.get_synths(),
