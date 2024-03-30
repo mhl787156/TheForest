@@ -110,6 +110,8 @@ class Controller():
                     out_dict[c] = o.__json__()
                 current_states_json[p_id] = out_dict
 
+            print(current_states_json)
+
             # Update websocket clients
             state_dicts = {
                 "time": datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
