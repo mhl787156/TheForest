@@ -56,7 +56,7 @@ def write_serial_data(name, serial_port, write_queue):
                 # Method of killing the packet
                 break
 
-            # print("Packet Sending", packet)
+            print(f"Packet Sending to {name}", packet)
             serial_port.write(packet.encode())
         except Exception as e:
             print(f"Error writing data for {name}, {serial_port}: {e}")
