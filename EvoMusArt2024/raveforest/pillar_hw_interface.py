@@ -148,7 +148,8 @@ class Pillar():
     def to_dict(self):
         return dict(
             id=self.id, pan=self.pan, num_tubes=self.num_tubes, num_sensors=self.num_touch_sensors,
-            touch_status=self.touch_status, light_status=self.light_status, serial_status=self.serial_status
+            touch_status=self.touch_status, light_status=self.light_status, serial_status=self.serial_status_led,
+            serial_status_cap=self.serial_status_cap
         )
 
     def get_touch_status(self, tube_id):
