@@ -43,7 +43,7 @@ class SoundState(object):
         return f"SoundState[NOTE:{self.note},AMP:{self.amp},SYNTH:{self.synth}]"
     
     def __json__(self):
-        return dict(note=self.note, synth=self.synth, amp=self.amp))
+        return dict(note=self.note, synth=self.synth, amp=self.amp)
 
 class LightState(object):
     def __init__(self, num_tubes, random_init=True, lights=None):
