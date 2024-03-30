@@ -49,7 +49,7 @@ class LightState(object):
     def __init__(self, num_tubes, random_init=True, lights=None):
         if random_init:
             self.lights = [
-                tuple(random.randint(0, 255) for _ in range(3))
+                tuple(random.randint(0, 255) for _ in range(2))
                 for _ in range(num_tubes)
             ]
         else:
