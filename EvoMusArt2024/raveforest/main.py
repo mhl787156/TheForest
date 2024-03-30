@@ -102,12 +102,21 @@ class Controller():
             # Your state machine logic here
             self.loop()
 
+            # Convert current states into json
+            current_states_json = {}
+            for p_id, cs in self.current_states.items():
+                out_dict = {}
+                for c, o in cs.items():
+                    out_dict[c] = o.__json__()
+                current_states_json[p_id] = out_dict
+
+
             # Update websocket clients
             state_dicts = {
                 "time": datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
                 "num_pillars": self.num_pillars,
                 "pillars": {pid: p.to_dict() for pid, p in self.pillars.items()},
-                "current_state": [dict(lights=lights.toJSON(), notes=notes.toJSON()) for cs in self.current_states for l, n in cs.items()],
+                "current_state": current_states_json
                 "bpm": self.sound_manager.get_bpm(),
                 "mapping_id": 1,
                 "synths": self.sound_manager.get_synths(),

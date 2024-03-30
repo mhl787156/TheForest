@@ -42,8 +42,8 @@ class SoundState(object):
     def __repr__(self) -> str:
         return f"SoundState[NOTE:{self.note},AMP:{self.amp},SYNTH:{self.synth}]"
     
-    def toJSON(self):
-        return json.dumps((self.note, self.synth, self.amp))
+    def __json__(self):
+        return dict(note=self.note, synth=self.synth, amp=self.amp))
 
 class LightState(object):
     def __init__(self, num_tubes, random_init=True, lights=None):
@@ -72,8 +72,8 @@ class LightState(object):
     def __repr__(self) -> str:
         return f"LightState[{self.lights}]"
 
-    def toJSON(self) -> str:
-        return json.dumps(self.lights)
+    def __json__(self) -> str:
+        return self.lights
 
 class Pillar_Mapper_Base(object):
 
