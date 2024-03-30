@@ -40,7 +40,8 @@ class SoundState(object):
         return self.synth_id / len(self.available_synths)
 
     def __repr__(self) -> str:
-        return f"SoundState[NOTE:{self.note},AMP:{self.amp},SYNTH:{self.synth.__name__}]"
+        print(self.synth)
+        return f"SoundState[NOTE:{self.note},AMP:{self.amp},SYNTH:{self.synth[0]}]"
     
     def __json__(self):
         return dict(note=self.note, synth=self.synth, amp=self.amp)
