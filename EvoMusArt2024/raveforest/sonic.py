@@ -170,11 +170,12 @@ class PillarSequencer(object):
             time.sleep(self.delay * int(self.pillar.id))
 
             # Play the note
-            current_note = self.current_notes.note
-            print(f"{self.pillar.id} playing {current_note} with seqidx: {self.seq_current_idx}")
-            play(current_note, amp=self.amp)
+            if self.current_note is not None:
+                current_note = self.current_notes.note
+                print(f"{self.pillar.id} playing {current_note} with seqidx: {self.seq_current_idx}")
+                play(current_note, amp=self.amp)
 
-            self.advance_seq()
+            # self.advance_seq()
 
     def advance_seq(self):
         self.seq_current_idx = (self.seq_current_idx + 1) % self.pillar.num_touch_sensors
