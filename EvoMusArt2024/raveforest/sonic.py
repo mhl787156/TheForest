@@ -87,10 +87,7 @@ class SoundManager(object):
     def get_all_notes_json(self):
         current_states_json = {}
         for p_id, cs in self.current_notes.items():
-            out_dict = {}
-            for c, o in cs.items():
-                out_dict[c] = o.__json__()
-            current_states_json[p_id] = out_dict
+            current_states_json[p_id] = cs.__json__()
         return current_states_json
 
     def set_synth(self, pillar_id:int, synth:str):
