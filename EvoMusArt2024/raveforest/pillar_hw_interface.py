@@ -104,7 +104,7 @@ class Pillar():
 
 
     def restart_serial(self, serial_conn, serial_status, write_queue):
-        if serial_conn:
+        if serial_conn is not None:
             self.cleanup(serial_conn)
             write_queue.put("kill")
             self.kill_read_thread.set()
@@ -184,7 +184,7 @@ class Pillar():
         assert 0 <= brightness <= 255
         message = f"LED,{tube_id},{hue},{brightness};\n\r"
         #print("Pushing to queue", message)
-        self.write_queue.put(message)
+        self.write_queue_led.put(message)
 
     def send_all_light_change(self, lights):
         """Send all the lights in one go
@@ -201,8 +201,8 @@ class Pillar():
             light_list.extend([str(hue), str(bright)])
         message = f"ALLLED,{','.join(light_list)};"
         print(f'Message being sent: {message}')
-        self.write_queue.empty()
-        self.write_queue.put(message)
+        self.write_queue_led.empty()
+        self.write_queue_led.put(message)
 
     def set_touch_status(self, touch_status):
         self.touch_status = touch_status
