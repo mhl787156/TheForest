@@ -122,7 +122,7 @@ class Controller():
                 "mapping_id": 1,
                 "synths": self.sound_manager.get_synths(),
                 "amp": self.sound_manager.get_amps(),
-                "notes": self.sound_manager.get_all_notes()
+                "notes": self.sound_manager.get_all_notes_json()
             }
             await self.send_to_clients(json.dumps(state_dicts))
 
