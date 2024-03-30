@@ -32,7 +32,7 @@ class Controller():
 
         try:
             os.makedirs(self.data_dir)
-        except Exceptions as e:
+        except Exception as e:
             print(f"Directory might already exist {self.data_dir}")
             pass
 
