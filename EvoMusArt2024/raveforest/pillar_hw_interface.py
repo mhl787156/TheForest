@@ -10,10 +10,10 @@ import json
 import os
 
 
-from MappingInterface import generate_mapping_interface
+from MappingInterface import  MappingInterface
 
 path = os.getcwd()
-config_path = os.path.abspath(os.path.join(path, os.pardir, "Futures2023/config/config.json")) #'/home/admin-amcs/Desktop/FUTURES FEST/TheForest/Futures2023/config/config.json'
+config_path = os.path.abspath(os.path.join(path, os.pardir, "EvoMusArt2024/config/config.json")) #'/home/admin-amcs/Desktop/FUTURES FEST/TheForest/Futures2023/config/config.json'
 
 # Read the JSON config file
 with open(config_path, 'r') as config_file:
@@ -67,15 +67,16 @@ def write_serial_data(serial_port, write_queue):
 
 class Pillar():
 
-    def __init__(self, id, port, pan, baud_rate=9600, **kwargs):
+    def __init__(self, id, port, baud_rate=9600, **kwargs):
         self.id = id
-        self.pan = pan
 
-        self.mapping = generate_mapping_interface(copy.deepcopy(kwargs))
+        self.mapping = MappingInterface(copy.deepcopy(kwargs))
+        # Print all elements of the mapping object
+        #print(f"Mapping Interface: {self.mapping.__dict__}")
 
         self.serial_read_rate = 10
 
-        self.num_tubes = 6
+        self.num_tubes = 7
 
         self.num_touch_sensors = 6
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
@@ -142,7 +143,7 @@ class Pillar():
 
     def to_dict(self):
         return dict(
-            id=self.id, pan=self.pan, num_tubes=self.num_tubes, num_sensors=self.num_touch_sensors,
+            id=self.id, num_tubes=self.num_tubes, num_sensors=self.num_touch_sensors,
             touch_status=self.touch_status, light_status=self.light_status, serial_status=self.serial_status
         )
 
@@ -201,7 +202,9 @@ class Pillar():
         self.write_queue.put(message)
 
     def set_touch_status(self, touch_status):
-        self.touch_status = touch_status
+        # Do the filter here
+        
+        self.touch_status = touch_status[:-1]
         print(f"UPDATING TOUCH STATUS to: {touch_status}")
 
     def set_touch_status_tube(self, tube_id, status):
@@ -225,3 +228,31 @@ class Pillar():
                 self.light_status[tid] = (tid, hue, sat)
         except queue.Empty:
             pass
+
+
+    def reset_touch_status(self):
+        self.touch_status = [0 for _ in range(self.num_touch_sensors)]
+
+    def read_from_serial(self):
+        # Existing implementation...
+        try:
+            while not self.cap_queue.empty():
+                received_status = self.cap_queue.get_nowait()
+                if received_status != self.previous_received_status:
+                    self.set_touch_status(received_status)
+                    # Assuming a function to handle end of touch event
+                    self.handle_end_of_touch(received_status)
+                self.previous_received_status = received_status
+        except queue.Empty:
+            pass
+
+    def handle_end_of_touch(self, received_status):
+        if all(status == 0 for status in received_status):  # All touch sensors are inactive
+            self.reset_touch_status()
+            # Function to send a WebSocket message to frontend
+            self.notify_frontend_touch_reset()
+
+    def notify_frontend_touch_reset(self):
+        reset_message = json.dumps({"type": "touch_reset", "pillar_id": self.id})
+        # Placeholder for actual WebSocket sending logic
+        # send_to_all_clients(reset_message)  # You need to implement this based on your WebSocket setup

@@ -2,11 +2,11 @@ import time
 import atexit
 import asyncio
 import websockets
+from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 from functools import partial
 import argparse
 import json
 import copy
-import os
 from datetime import datetime
 
 from pillar_hw_interface import Pillar
@@ -15,21 +15,28 @@ from sonic import SoundManager, setup_psonic
 
 import csv
 
+
+# Constants for parameter names
+AMP = "amp"
+NOTE_PITCH = "note-pitch"
+SYNTH = "synth"
+BPM = "bpm"
+PAN = "pan"
+ENVELOPE = "envelope"
+PARAMS = [AMP, NOTE_PITCH, SYNTH, BPM, PAN, ENVELOPE]
+
 class Controller():
 
     def __init__(self, config, ws_host, ws_port):
         self.websocket_url = (ws_host, ws_port)
 
         self.num_pillars = len(config["pillars"])
-        print(f"Num pillars: {self.num_pillars}")
+        #print(f"Num pillars: {self.num_pillars}")
         self.pillars = {p["id"]: Pillar(**p) for p in config["pillars"]}
-        print(self.pillars)
+ 
+        #self.savefolder_name = f"raveforest_data_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.csv"
 
-        #self.mapping = MappingInterface(copy.deepcopy(config))
-        self.data_dir = os.path.join("data", "raw")
-        self.savefolder_name = os.path.join(self.data_dir, f"data_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.csv")
-
-        self.sound_manager = SoundManager(config["bpm"], self.pillars)
+        self.sound_manager = SoundManager(self.pillars)
 
         self.current_states = {p: None for p in self.pillars}
 
@@ -42,9 +49,10 @@ class Controller():
         atexit.register(self.stop)
 
     async def run(self, frequency):
+        #print("frequency:", frequency)
         print(f"Starting Websocket server on ws://{self.websocket_url[0]}:{self.websocket_url[1]}")
         async with self.websocket_server:
-            await self.start(frequency)
+            await self.start(frequency)  
 
     async def websocket_server_callback(self, websocket, path):
         # Handle WebSocket connections and messages from Dash clients
@@ -56,24 +64,23 @@ class Controller():
 
                 # Process commands received from Dash and control the state machine
                 data = json.loads(frontend_data)
-                if "bpm" in data:
-                    self.sound_manager.set_bpm(data["bpm"])
-                if "mapping_id" in data:
-                    for p_id,p in self.pillars.items():
-                        p.mapping.mapping_id = data["mapping_id"]
-                if "amp" in data:
-                    for p_id, amp in data["amp"].items():
-                        self.sound_manager.set_amp(int(p_id), float(amp))
+                #await self.process_received_data(data)
+                
                 if "serial_port" in data:
                     for p_id, serial_port in data["serial_port"].items():
+                        
                         self.pillars[int(p_id)].restart_serial(serial_port)
-                if "synth" in data:
-                    for p_id, synth in data["synth"].items():
-                        self.sound_manager.set_synth(int(p_id), synth)
+                
                 if "touch" in data:
                     for p_id, touch in data["touch"].items():
                         self.pillars[int(p_id)].set_touch_status(touch)
-
+                        
+                # Set parameters for the sound manager
+                #  ["amp", "note-pitch", "synth", "bpm", "pan", "envelope"]
+                for name, value in data.items():
+                    if name in PARAMS:
+                        for p_id, v in value.items():
+                            self.sound_manager.update_pillar_setting(int(p_id), name, v)
         except websockets.exceptions.ConnectionClosedOK:
             pass
         except websockets.exceptions.ConnectionClosedError:
@@ -108,11 +115,6 @@ class Controller():
                 "num_pillars": self.num_pillars,
                 "pillars": {pid: p.to_dict() for pid, p in self.pillars.items()},
                 "current_state": self.current_states,
-                "bpm": self.sound_manager.get_bpm(),
-                "mapping_id": 1,
-                "synths": self.sound_manager.get_synths(),
-                "amp": self.sound_manager.get_amps(),
-                "notes": self.sound_manager.get_all_notes()
             }
             await self.send_to_clients(json.dumps(state_dicts))
 
@@ -122,10 +124,11 @@ class Controller():
                 await asyncio.sleep(sleep_interval)
             index += 1
             if index % 5 == 0:
-                with open(self.savefolder_name, mode='a') as csv_file:
-                    fields =['time', 'num_pillars','pillars','current_state','bpm','mapping_id','synths','amp','notes']
-                    writer = csv.DictWriter(csv_file,fieldnames=fields)
-                    writer.writerow(state_dicts)
+                pass
+                #with open(self.savefolder_name, mode='a') as csv_file:
+                #    fields =["time", "num_pillars","pillars","current_state","bpm","synths","amp","notes"] #'mapping_id',
+                #    writer = csv.DictWriter(csv_file,fieldnames=fields)
+                #    writer.writerow(state_dicts)
 
     def stop(self):
         self.running = False
@@ -141,7 +144,10 @@ class Controller():
             print("current btn press:", current_btn_press)
 
             # Generate the lights and notes based on the current btn inputs
-            notes, lights = p.mapping.update_pillar(current_btn_press)
+            lights, params = p.mapping.generate_tubes(current_btn_press)
+            print("lights:", lights)
+            #print("params:", params)
+            
 
             # Send Lights On The Beat
             # def temp_func():
@@ -151,11 +157,13 @@ class Controller():
             # self.sound_manager.run_on_next_beat(temp_func, force_unique_id=(5678 + self.loop_idx))
 
             # Send Notes, sound manager manages on the beat
-            print("Setting notes", notes)
-            self.sound_manager.set_notes(p_id, notes)
+            #print("Setting params", params)
+            for param_name, value in params.items():
+                self.sound_manager.update_pillar_setting(p_id, param_name, value) 
 
             # Set current state for sending
-            self.current_states[p_id] = dict(lights=lights, notes=notes)
+            self.current_states[p_id] = dict(lights=lights, params=params)
+            #print("current states:", self.current_states[p_id])
 
         self.loop_idx += 1
 
@@ -175,6 +183,8 @@ if __name__=="__main__":
     # Read the JSON config file
     with open(args.config, 'r') as config_file:
         config = json.load(config_file)
+        
+
 
     # Setup Python-Sonic connection
     setup_psonic(config["sonic-pi-ip"], config["sonic-pi-config-file"])
