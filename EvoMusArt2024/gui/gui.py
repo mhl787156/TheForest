@@ -25,7 +25,8 @@ class GUI():
         self.ws = (ws_host, ws_port)
 
         self.pillar_figure = go.Figure()
-        print("Pillar figure", self.pillar_figure)
+        #print("Pillar figure", self.pillar_figure)
+        
 
         self.pillar_status_children = None
         self.data = None
@@ -54,7 +55,8 @@ class GUI():
         ###############
 
         self.pillar_graph = html.Div([
-            dcc.Graph(id="pillar_graph", figure=self.pillar_figure)
+            dcc.Graph(id="pillar_graph", figure=self.pillar_figure, hoverData=None),
+            dcc.Interval(id='graph_click_end', interval=256, n_intervals=0)
         ])
 
         self.system_status = html.Div([
@@ -76,7 +78,7 @@ class GUI():
         
 
         self.utility_content = html.Div([
-            dcc.Interval(id='interval-component', interval=1000/5, n_intervals=0),  # Trigger every 200ms
+            dcc.Interval(id='interval-component', interval=20, n_intervals=0),  # Trigger every 200ms
             html.Div(id="websocket-holder", children=WebSocket(id="ws", url=f"ws://{self.ws[0]}:{self.ws[1]}")),
             html.Div(id='dummy-output', style={'display': 'none'}),  # Hidden dummy output component
             html.Div(id={"type": f"pillar-status-label", "index": "dummy"}, style={'display':'none'})
@@ -164,18 +166,22 @@ class GUI():
             [
                 Output("ws", "send"),
                 Output("system-status-dummy-output", "children"),
+                Output("graph_click_end", "disabled")
             ],
-                Input("pillar_graph", "clickData"),
+            [ Input("pillar_graph", "clickData"),
+              Input("graph_click_end", "n_intervals")
+            ],
                 State({"type": f"pillar-status-input", "index": ALL}, "value") # pillar-status-input 
         )
-        def update_output(graph_click_data, psi_values):
+        def update_output(graph_click_data, graph_click_end, psi_values):
             ws_out = {}
             msg = "No updates"  # Default message when there are no updates
+            run_click_end_interval = True
 
             ctx = callback_context
             triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]  # Extract the component ID that triggered the callback
 
-            if triggered_id == "pillar_graph" and graph_click_data:
+            if triggered_id == "pillar_graph":
                 # Handle clicks on the graph
                 print("Graph clicked")
                 if 'points' in graph_click_data:
@@ -190,11 +196,14 @@ class GUI():
                             out[t_id] = True
                             ws_out["touch"] = {str(p_id): out}
                             msg = f"Updated pillar {p_id}, tube {t_id}"
+                            run_click_end_interval = False
                             
-                        else:
-                            out = [False for _ in range(int(self.data["pillars"][str(p_id)]["num_tubes"]))]
-                            ws_out["touch"] = {str(p_id): out}
-                            msg = f"Tubes stop been touched"
+            elif triggered_id == "graph_click_end" and self.data["pillars"]:
+                print("TUBES STOP RIHGT NOW AS INTERVASL SHAS ENDED")
+                out = [False for _ in range(int(self.data["pillars"][str(0)]["num_tubes"]))]
+                ws_out["touch"] = {k: out for k, v in self.data["pillars"].items()}
+                msg = f"Tubes stop been touched"
+    
             elif "{" in triggered_id:  # Handle dynamic triggers
                 try:
                     # Assuming triggered_id is a stringified JSON that includes "index" key
@@ -213,74 +222,9 @@ class GUI():
                         msg = f"Dynamic update for {var} on pillar {p_id}"
                 except json.JSONDecodeError:
                     print("Error decoding JSON from triggered_id")
-            else:
-                ws_out = {}
-                raise PreventUpdate
 
             print(f"WS_OUT: {ws_out}")
-            return json.dumps(ws_out), msg
-                
-    """    
-        def update_output(graph_click_data, psi_n_clicks):
-            ctx = dash.callback_context
-            msg = dash.no_update
-            ws_out = {}
-            #out = None
-            if ctx.triggered:
-                print("Triggered")
-                triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                if triggered_id == "pillar_graph" and graph_click_data:
-                    print("Graph clicked")
-                    print(graph_click_data)  
-                    if 'points' in graph_click_data:
-                        print("Points in graph click data")
-                        data = graph_click_data['points']
-                        print("Data",data)
-                        if len(data) > 0:
-                            point = data[0]
-                            print("Point", point)
-                            if "curveNumber" in point and "pointNumber" in point:
-                                p_id = point['curveNumber']
-                                t_id = point['pointNumber']
-                                out = [False for _ in range(int(self.data["pillars"][str(p_id)]["num_tubes"]))]
-                                out[t_id] = True
-                    else:
-                        out = [False for _ in range(int(self.data["pillars"][str(p_id)]["num_tubes"]))]
-                        print("STOP TOUCHING THE PILLARS")
-                    if "touch" not in ws_out:
-                        print("STOP TOUCHING THE PILLARS")
-                        ws_out["touch"]  = {}
-                    ws_out["touch"][str(p_id)] = out
-                elif "{" in triggered_id and any(psi_value):
-                    
-                    print("INSIDE ELSE IF")
-                    
-                    # One of the dynamic ones triggered lets find which one
-                    print("Pillar status triggered")
-                    prop_dict = json.loads(triggered_id)
-
-                    l = [s["id"]['index'] for s in ctx.states_list[5]]
-                    #psi_value_idx = l.index(prop_dict["index"])
-                    
-                    p_id, var = prop_dict["index"].split("-")
-                    if var not in ws_out:
-                        ws_out[var] = {}
-                    #ws_out[var][p_id] = psi_value[psi_value_idx]
-            #else:
-            #    print("No trigger")
-                #out = [False for _ in range(int(self.data["pillars"][str(0)]["num_tubes"]))]
-                #if "touch" not in ws_out:
-                #    ws_out["touch"]  = {}
-                
-            print(f"WS_OUT: {ws_out}")        
-            if ws_out:
-                print(f"Sending {ws_out}")
-            print(f"Sending {json.dumps(ws_out)}")
-            return json.dumps(ws_out), msg
-
-        
-        print("Callbacks initialized")
-        """
+            return json.dumps(ws_out), msg, run_click_end_interval
 
     def generate_pillars_figure(self, data):
         pillars_dict, current_status = data['pillars'], data["current_state"]
@@ -338,7 +282,7 @@ class GUI():
             fig.add_trace(trace, row=1, col=i+1)
         
         fig.update_layout(showlegend=False)
-        fig.update_layout(clickmode='event+select')
+        fig.update_layout(hovermode='closest')#clickmode='event+select')
             
         return fig
 
