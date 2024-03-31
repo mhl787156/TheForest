@@ -134,12 +134,12 @@ class RotationMapper(Pillar_Mapper_Base):
         for tube_id, (active, tube_allocation) in enumerate(zip(new_state, self.tube_allocation)):
             # ["a", "n", "t", "b", "p", "e"] == ["amp", "note-pitch", "synth", "bpm", "pan", "envelope"]
             if active:
-                delta = 1 if '+' in tube_allocation else -1
+                delta = 1 
                 if 't' in tube_allocation:
                     value = self.sound_state.change_synth(delta)
                 elif 'a' in tube_allocation:
                     value = self.sound_state.change_amp(delta)
-                elif 'p' in tube_allocation:
+                elif 'n' in tube_allocation:
                     value = self.sound_state.change_note(delta)
                 elif 'b' in tube_allocation:
                     value = self.sound_state.change_bpm(delta)
@@ -243,7 +243,10 @@ class MappingInterface(object):
                 # and note-pitch is between 50 and 100
                 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------
                 min_val, num_elements = self.get_param_range(t)
-                self.Tubes_Param[t] = int(min_val + self.Tubes_Colors[t][0] / (256/num_elements)) # TO BE TESTED
+                self.Tubes_Param[t] = int(min_val + self.Tubes_Colors[t][0] / (256/num_elements))
+                # if synth is being changed, update the synth
+                if t==2:
+                    self.Tubes_Param[t] = self.available_synths[self.Tubes_Param[t]]
                 #self.Tubes_Notes[t] = 50 + ((self.Tubes_Notes[t] + 1) % 51)
                 '''if (self.Tubes_Notes[t] % 100) <= 50:
                     self.Tubes_Notes[t] = 50 + (self.Tubes_Notes[t] + 1) % 50  # [50,100]
