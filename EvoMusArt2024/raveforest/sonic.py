@@ -1,187 +1,227 @@
-from threading import Thread, Condition, Event
-from multiprocessing import Value
-import time
-import queue
-import socket
 
+"""
+    The code defines classes and functions for managing and playing sounds using the psonic library in
+    Python, including setting parameters, scheduling callbacks on future beats, and running a sequencer
+    for each pillar.
+    
+    :param udp_ip: The `udp_ip` parameter is used to specify the IP address of the UDP server
+    for communication. This is used in networking applications to define the destination IP
+    address for sending UDP packets
+    :param log_file: The `log_file` parameter in the `setup_psonic` function is used to specify the path
+    to a log file that contains information needed to set up the Psonic server. This log file likely
+    contains details such as the UDP IP address for communication
+    
+    SoundManager: The `SoundManager` class is used to manage the threading and scheduling of sounds
+    between the two pillars. Each pillars has six tubes, where each tube corresponds to a different
+    sound parameter. The `SoundManager` class is responsible for setting and getting parameters for
+    each tube, running callbacks on the next beat, and managing the timing of the sequencer.
+    
+    timing_thread: The `timing_thread` function is a thread that runs in the background to manage the
+    timing of the sequencer. It uses a condition variable to notify other threads when a new beat has
+    occurred, based on the current BPM value of each pillar. 
+    
+    run_next_beat: The `run_next_beat` function is used to run a callback on the next beat in the future.
+    It takes a callback function, the number of beats in the future to run the callback, and a kill event
+    to cancel the callback if needed. This function is used by the `SoundManager` class to schedule
+    callbacks for each pillar.
+    
+    sonic_thread: The `sonic_thread` function is a thread that runs the sound for each pillar. It uses
+    the `PillarSound` class to play the sound based on the parameters retrieved by the `SoundManager` class.
+    
+    pillar_params = {"amp": 1.0, "pitch": 50, "synth": "SAW", "bpm": 120, "pan": 0.0, "envelope": "default}
+    
+    pillar_params: The `pillar_params` dictionary contains the parameters for each pillar, including the
+    amplitude, pitch, synth, BPM, pan, and envelope. These parameters are used to set the sound for each
+    tube in the pillar. 
+"""
+from threading import Thread, Condition, Event
+import time
 from psonic import *
+from psonic import play, set_server_parameter_from_log, use_synth
 
 def setup_psonic(udp_ip, log_file):
+    #print(f"Setting up Psonic with UDP IP: {udp_ip} and log file: {log_file}")
     set_server_parameter_from_log(udp_ip, log_file)
 
-def timing_thread(condition, bpm_value):
-    print(f"Started timing thread")
-    while True:
-        with condition:
-            condition.notifyAll()
-        delay = 1.0 / (bpm_value.value / 60)
-        time.sleep(delay)
-
-
-def run_next_beat(condition, callback, kill_event, beats_in_the_future):
-    for _ in range(beats_in_the_future):
-        with condition:
-            condition.wait()
-    # If it has not been cancelled
-    if not kill_event.is_set():
-        callback()
-    else:
-        print("Thread killed")
-
-def sonic_thread(pillar, bpm, condition, notes_in_queue):
-    print(f"Started sonic thread sequencer for {pillar.id}")
-    p = PillarSequencer( pillar, bpm, condition, notes_in_queue)
-    p.run()
-
-class SoundManager(object):
-
-    def __init__(self, bpm, pillars):
-        
-        self.bpm_shared = Value('i', bpm)
+class SoundManager:
+    """Manages and schedules sound playback for pillars using the Sonic Pi server."""
+    
+    def __init__(self, pillar_configs):
         self.timing_condition = Condition()
-        self.current_synths = {}
-        self.current_amp = {}
-        self.current_notes = {}
-
-        # Start BPM Thread
-        bpm_thread = Thread(name="bpm_thread", 
-                            target=timing_thread, 
-                            args=(self.timing_condition, self.bpm_shared,))
-        bpm_thread.daemon = True
-        bpm_thread.start()
-
-        # Start queue and thread for each pillar
-        self.pillar_data_in_queues = {p_id: queue.Queue() for p_id in pillars.keys()}
-        self.pillar_sequencers = {}
-        for p_id, pillar  in pillars.items():
-            pthread = Thread(target=sonic_thread, 
-                                args=(pillar, self.bpm_shared, self.timing_condition, self.pillar_data_in_queues[p_id],))
-            pthread.daemon = True
-            pthread.start()
-            self.pillar_sequencers[p_id] = pthread
-
-
-            self.set_amp(p_id, 1.0)
-            self.set_synth(p_id, "SAW")
-
-        
-        # Others
+        self.pillars = {}
+        self.pillar_settings = {}  
         self.run_on_next_beat_events = {}
 
-    def get_bpm(self):
-        return self.bpm_shared.value
-
-    def set_bpm(self, bpm):
-        self.bpm_shared.value = bpm
-
-    def set_notes(self, pillar_id, notes):
-        self.current_notes[pillar_id] = notes
-        self.pillar_data_in_queues[pillar_id].put({"notes": notes})
+        tube_param = {0: 'amp', 1: 'pitch', 2: 'synth', 3: 'bpm', 4: 'pan', 5: 'envelope'}
+                
+        # Iterate through the provided pillar configurations to initialize Pillar instances
+        for p_id, pillar_config in pillar_configs.items():
+            # Extract parameters from Tubes_Param
+            params = {tube_param[idx]: pillar_config.mapping.__dict__['Tubes_Param'][idx] for idx in tube_param}
+            
+            #print(f"Initializing Pillar {p_id} with parameters: {params}")
+            
+            # Create Pillar 
+            new_pillar = Pillar(p_id, **params)
+            self.pillars[p_id] = new_pillar
+        
+        #print("SoundManager initialized with the following pillars:")
+        #for pillar_id, pillar in self.pillars.items():
+        #    print(f"Pillar {pillar_id} Info: {pillar}")
     
-    def get_notes(self, pillar_id):
-        return self.current_notes[pillar_id]
+    def update_pillar_setting(self, pillar_id, setting_name, value):
+        """Updates the settings dictionary for a specific pillar."""
+        if pillar_id not in self.pillar_settings:
+            self.pillar_settings[pillar_id] = {}
+        self.pillar_settings[pillar_id][setting_name] = value
+        
+        # Update the actual pillar object
+        if pillar_id in self.pillars:
+            getattr(self.pillars[pillar_id], f'set_{setting_name}')(value)  # Dynamically call the set method
 
-    def get_all_notes(self):
-        return self.current_notes
 
-    def get_all_notes_json(self):
-        current_states_json = {}
-        for p_id, cs in self.current_notes.items():
-            current_states_json[p_id] = cs.__json__()
-        return current_states_json
 
-    def set_synth(self, pillar_id:int, synth:str):
-        if synth in globals():
-            self.current_synths[pillar_id] = synth
-            # Convert synth name as a string into the variable
-            var = globals()[synth]
-            self.pillar_data_in_queues[pillar_id].put({"synth": var})
-        else:
-            print(f"Synth '{synth}' not found")
+        # Initialize sound parameters for each pillar
+        for pillar_id, pillar in self.pillars.items():
+            pillar.init_sound_thread(self.timing_condition)
+
+        # Debugging: Print Pillar Information
+        #print("SoundManager initialized with the following pillars:")
+        #for pillar_id, pillar in self.pillars.items():
+        #    print(f"Pillar {pillar_id} Info: {pillar}")
+            
+            
+    def set_amp(self, pillar_id, amp):
+        if pillar_id in self.pillars:
+            self.pillars[pillar_id].set_amp(amp)
     
-    def set_amp(self, pillar_id:int, amp:float):
-        self.current_amp[pillar_id] = amp
-        self.pillar_data_in_queues[pillar_id].put({"amp": amp})
+    def set_pitch(self, pillar_id, pitch):
+        if pillar_id in self.pillars:
+            self.pillars[pillar_id].set_pitch(pitch)
     
-    def get_amps(self):
-        return self.current_amp
-
-    def get_synths(self):
-        return self.current_synths
+    def set_synth(self, pillar_id, synth):
+        if pillar_id in self.pillars:
+            self.pillars[pillar_id].set_synth(synth)
     
-    def get_synth(self, pillar_id):
-        return self.current_synths[pillar_id]
+    def set_bpm(self, pillar_id, bpm):
+        if pillar_id in self.pillars:
+            self.pillars[pillar_id].set_bpm(bpm)
+    
+    def set_pan(self, pillar_id, pan):
+        if pillar_id in self.pillars:
+            self.pillars[pillar_id].set_pan(pan)
+    
+    def set_envelope(self, pillar_id, envelope):
+        if pillar_id in self.pillars:
+            self.pillars[pillar_id].set_envelope(envelope)
 
-    def run_on_next_beat(self, callback, beats_in_the_future=1, force_unique_id=None):
-        """Run a callback on one of the next beats in the future (defaults to next beat)
-
-        Args:
-            callback (function): Any function that can be passed to a thread
-            beats_in_the_future (int, optional): Number of beats in the future to schedule this callback. Defaults to 1.
-            force_unique_id (Union[int, None], optional): if there should only ever be one version of this callback
-        """
+    def run_on_next_beat(self, callback, beats_in_the_future=1, unique_id=None):
+        """Schedules a callback to run on the next beat."""
         kill_event = Event()
-        t = Thread(target=run_next_beat, args=(self.timing_condition, callback, kill_event, beats_in_the_future, ))
+        t = Thread(target=self._run_callback_on_next_beat, args=(callback, kill_event, beats_in_the_future))
         t.daemon = True
         t.start()
 
-        if force_unique_id is not None:
-            if force_unique_id in self.run_on_next_beat_events:
-                self.run_on_next_beat_events[force_unique_id].set()
+        if unique_id:
+            if unique_id in self.run_on_next_beat_events:
+                self.run_on_next_beat_events[unique_id].set()  # Cancel the previous event if exists
+            self.run_on_next_beat_events[unique_id] = kill_event
 
-            self.run_on_next_beat_events[force_unique_id] = kill_event
+    def _run_callback_on_next_beat(self, callback, kill_event, beats_in_the_future):
+        """Internal method to wait for the specified beats and then execute the callback if not killed."""
+        with self.timing_condition:
+            for _ in range(beats_in_the_future):
+                self.timing_condition.wait()
+                if kill_event.is_set():
+                    return  # Exit if the event has been canceled
+        callback()  # Execute the callback
 
-            print("Setting unique id", force_unique_id)
-
-class PillarSequencer(object):
-
-    def __init__(self, pillar, bpm, condition, notes_in_queue):
-        self.condition = condition
-        self.pillar = pillar
-        self.bpm_value = bpm
-        self.notes_in_queue = notes_in_queue
-        self.amp = 1.0
-        self.delay =  (1.0 / (self.bpm_value.value / 60)) / 2.0 
-
-        self.current_notes = None # This is now a sound state object
-        self.seq_current_idx = 1
+class Pillar:
+    """Represents a sound pillar with unique sound parameters."""
     
-    def run(self):
+    def __init__(self, pillar_id, bpm=120, amp=1.0, pitch=50, synth="saw", pan=0.0, envelope=0):
+        self.pillar_id = pillar_id
+        self.bpm = bpm
+        self.amp = amp
+        self.pitch = pitch
+        self.synth = synth
+        self.pan = pan
+        self.envelope = envelope
+
+        # For debugging and information
+        self.parameters = {
+            "amp": self.amp, "pitch": self.pitch, "synth": self.synth,
+            "bpm": self.bpm, "pan": self.pan, "envelope": self.envelope
+        }
+
+    def __repr__(self):
+        """String representation of the pillar for debugging."""
+        return f"Pillar({self.pillar_id}) {self.parameters}"
+
+    def set_amp(self, amp):
+        self.amp = amp
+    
+    def set_pitch(self, pitch):
+        self.pitch = pitch
+    
+    def set_synth(self, synth):
+        self.synth = globals()[synth]
+        
+    def set_synth(self, synth:str):
+        
+        if synth in globals():
+            #self.synth = synth  
+            #self.current_synths[pillar_id] = synth
+            # Convert synth name as a string into the variable
+            var = globals()[synth]
+            self.synth = var
+            #self.pillar_data_in_queues[pillar_id].put({"synth": var})
+        else:
+            print(f"Synth '{synth}' not found")
+    
+    def set_bpm(self, bpm):
+        self.bpm = bpm
+    
+    def set_pan(self, pan):
+        self.pan = pan
+    
+    def set_envelope(self, envelope):
+        self.envelope = envelope
+
+        
+    def init_sound_thread(self, timing_condition):
+
+        """Initializes and starts the thread responsible for handling sound playback."""
+        thread = Thread(target=self._pillar_sound_thread, args=(timing_condition,))
+        thread.daemon = True
+        thread.start()
+        
+
+
+    def _pillar_sound_thread(self, timing_condition):
+        
+        """Internal method run by a thread to handle sound playback synchronized with beats."""
         while True:
-            with self.condition:
-                self.condition.wait()
-            
-            try:
-                while True:
-                    packet = self.notes_in_queue.get(block=False)
-                    
-                    if "notes" in packet:
-                        new_notes = packet["notes"]
-                        print(f"Got New Notes! {new_notes}")
-                        # Check new note properties and do something?
-                        self.current_notes = new_notes
+            with timing_condition:
+                #timing_condition.wait()  # Wait for the next beat
+                timing_condition.notifyAll()
+                
+                # Placeholder for actual sound playing logic
+                #print(f"Pillar {self.pillar_id} playing sound with parameters: {self.parameters}")
+                
+                #sythesize(self.synth, self.pitch, amp=self.amp, pan=self.pan, decay=self.envelope)
+                synthesis = convert_synth(self.synth)
+                use_synth(synthesis)
+                play(self.pitch, amp=self.amp, pan=self.pan, decay=self.envelope)
 
-                    if "synth" in packet:
-                        print(f"Setting Synth to {packet['synth'].name}")
-                        use_synth(packet["synth"])
-                    
+                delay = 1. / (self.bpm / 60)
+                time.sleep(delay)
 
-                    if "amp" in packet:
-                        print(f"Setting amp {packet['amp']}")
-                        self.amp = packet["amp"]
 
-            except queue.Empty:
-                pass
-
-            time.sleep(self.delay * int(self.pillar.id))
-
-            # Play the note
-            if self.current_notes is not None:
-                current_note = self.current_notes.note
-                print(f"{self.pillar.id} playing {current_note} with seqidx: {self.seq_current_idx}")
-                play(current_note, amp=self.amp)
-
-            # self.advance_seq()
-
-    def advance_seq(self):
-        self.seq_current_idx = (self.seq_current_idx + 1) % self.pillar.num_touch_sensors
+def convert_synth(synth:str):
+    synth = synth.upper()
+    if synth in globals():
+        return globals()[synth]
+    else:
+        print(f"Synth '{synth}' not found")
+        return None

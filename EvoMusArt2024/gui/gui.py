@@ -1,8 +1,9 @@
 import argparse
 import dash
-from dash import Dash, html, dcc, ClientsideFunction
+from dash import Dash, html, dcc, ClientsideFunction, callback_context
 from dash.dependencies import Input, Output, State, ALL
 from dash_extensions import WebSocket 
+from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import numpy as np
 import plotly.graph_objects as go
@@ -24,24 +25,29 @@ class GUI():
         self.ws = (ws_host, ws_port)
 
         self.pillar_figure = go.Figure()
+        #print("Pillar figure", self.pillar_figure)
+        
 
         self.pillar_status_children = None
         self.data = None
 
-        self.update_dat = dict(
+        self.update_dat = dict( # ["amp", "note-pitch", "synth", "bpm", "pan", "envelope"]
             serial_port={},
             amp = {},
+            pitch = {},
             synth = {},
+            bpm = {},
+            pan = {},
+            envelope = {}
         )
 
         self.display_dat = dict(
             touch = {},
-            notes = {}
+            #params = {}
         )
 
-        self.app.layout = self.init_layout
+        self.app.layout = self.init_layout()
         self.init_callbacks()
-
 
     def init_layout(self):
         ###############
@@ -49,28 +55,16 @@ class GUI():
         ###############
 
         self.pillar_graph = html.Div([
-            dcc.Graph(id="pillar_graph", figure=self.pillar_figure)
+            dcc.Graph(id="pillar_graph", figure=self.pillar_figure, hoverData=None),
+            dcc.Interval(id='graph_click_end', interval=256, n_intervals=0)
         ])
 
         self.system_status = html.Div([
             html.Div(id='output', style={'display': 'none'}),
-            dbc.Row([
-                dbc.Label("Current Beats Per Minute", width=2),
-                dbc.Label(id="bpm-output", width=1),
-                dbc.Col(dbc.Input(id="bpm-input", type="number", placeholder="Enter BPM"), width=4),
-                dbc.Col(dbc.Button("Update", id="bpm-button", color="primary"), width=2),
-            ]),
-    
-            dbc.Row([
-                dbc.Label("Mapping ID", width=2),
-                dbc.Label(id="mapping-output", width=1),
-                dbc.Col(dbc.Input(id="mapping-input", type="number", placeholder="Enter Mapping ID"),width=4),
-                dbc.Col(dbc.Button("Update", id="mapping-button", color="primary"),width=2),
-            ]),
             html.Div(id='system-status-dummy-output')
         ])
 
-        self.pillar_status = html.Div(id="pillar-status", children=[]) # Fill in dynamically
+        self.pillar_status = html.Div(id="pillar-status",  children=[]) # Fill in dynamically
 
         self.html_main_content = html.Div(className='container-fluid', children=[
             html.Div(className='row', children=[
@@ -84,7 +78,7 @@ class GUI():
         
 
         self.utility_content = html.Div([
-            dcc.Interval(id='interval-component', interval=1000/5, n_intervals=0),  # Trigger every 200ms
+            dcc.Interval(id='interval-component', interval=20, n_intervals=0),  # Trigger every 200ms
             html.Div(id="websocket-holder", children=WebSocket(id="ws", url=f"ws://{self.ws[0]}:{self.ws[1]}")),
             html.Div(id='dummy-output', style={'display': 'none'}),  # Hidden dummy output component
             html.Div(id={"type": f"pillar-status-label", "index": "dummy"}, style={'display':'none'})
@@ -93,10 +87,9 @@ class GUI():
         self.html_header_content = html.Div([
                 dbc.Row([
                     dbc.Col(html.Div(
-                    html.H1('RaveForest Dashboard'),
+                    html.H1('Alien-Forest Dashboard'),
                     style=dict(padding=5)
                     ), width=6),
-                    # dbc.Col(dbc.Input(id="websocket-input"), width=4),
                     dbc.Col(dbc.Button("Refresh", id="refresh-button"), width="auto")
                     ], justify="end"
                 ),
@@ -131,7 +124,9 @@ class GUI():
             Input("refresh-button", "n_clicks")
         )
         def refresh_page(n_clicks):
+            print("I am refreshing the page")
             if self.data:
+                print("Get data and go to generate pillars")
                 return self.generate_pillar_status(self.data)
             return dash.no_update
         
@@ -139,102 +134,110 @@ class GUI():
             [
                 Output("output", "children"),
                 Output("pillar_graph", "figure"),
-                Output("bpm-output", "children"),
-                Output("mapping-output", "children"),
                 Output({"type": f"pillar-status-label", "index": ALL}, "children") 
             ], 
-            [Input("ws", "message")])
-        def receive_from_websocket(e):
+            Input("ws", "message"),
+            prevent_initial_call=False)
+        def receive_from_websocket(e): 
             if e is None:
-                return [dash.no_update for _ in range(4)] + [ [dash.no_update] for _ in dash.callback_context.outputs_list[4] ]    
+                print("e is none")
+                #return [dash.no_update for _ in range(2)] + [ [dash.no_update] for _ in dash.callback_context.outputs_list[2] ] 
+                #return dash.no_update, dash.no_update, [dash.no_update] * len(dash.callback_context.outputs_list[2])  
+                raise PreventUpdate
 
-            data = json.loads(e['data'])
+            data = json.loads(e['data']) # This is the data from the websocket?
             self.data = data
+            # print(f"Received data: {data}")
 
             self.update_data(data)
+            #print(len(data), data.keys())
 
             self.pillar_figure = self.generate_pillars_figure(data)
 
             outputs = dash.callback_context.outputs_list
-            status_labels_update = outputs[4]
+        
+            status_labels_update = outputs[2]
+            #print("Status labels update", status_labels_update)
             labs = self.generate_updated_labels(status_labels_update)
 
-            return [
-                f"Response from websocket: {data}", 
-                self.pillar_figure,
-                data["bpm"],
-                data["mapping_id"],
-                labs
-            ]
+            return f"Response from websocket: {data}", self.pillar_figure, labs # data update the children of output, self.pillar_figure update the figure of pillar_graph, labs update the children of pillar-status-label
 
         @self.app.callback(
             [
                 Output("ws", "send"),
                 Output("system-status-dummy-output", "children"),
+                Output("graph_click_end", "disabled")
             ],
-            [
-                Input("bpm-button", "n_clicks"),
-                Input("mapping-button", "n_clicks"),
-                Input({"type": f"pillar-status-button", "index": ALL}, "n_clicks"),
-                Input("pillar_graph", "clickData")
+            [ Input("pillar_graph", "clickData"),
+              Input("graph_click_end", "n_intervals")
             ],
-            [
-                State("bpm-input", "value"),
-                State("mapping-input", "value"),
-                State({"type": f"pillar-status-input", "index": ALL}, "value")
-            ]
+                State({"type": f"pillar-status-input", "index": ALL}, "value") # pillar-status-input 
         )
-        def update_output(bpm_n_clicks, mapping_n_clicks, psi_n_clicks, graph_click_data,
-                          bpm_value, mapping_value, psi_value):
-            ctx = dash.callback_context
-            msg = dash.no_update
+        def update_output(graph_click_data, graph_click_end, psi_values):
             ws_out = {}
-            if ctx.triggered:
-                triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
+            msg = "No updates"  # Default message when there are no updates
+            run_click_end_interval = True
 
-                if triggered_id == "bpm-button" and bpm_value is not None:
-                    msg=f"Updating Current BPM: {bpm_value}"
-                    ws_out["bpm"] = bpm_value
-                elif triggered_id == "mapping-button" and mapping_value is not None:
-                    msg=f"Updating Mapping ID: {mapping_value}"
-                    ws_out["mapping_id"] = mapping_value
-                elif triggered_id == "pillar_graph":
-                    data = graph_click_data["points"]
+            ctx = callback_context
+            triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]  # Extract the component ID that triggered the callback
+
+            if triggered_id == "pillar_graph":
+                # Handle clicks on the graph
+                print("Graph clicked")
+                if 'points' in graph_click_data:
+                    data = graph_click_data['points']
                     if len(data) > 0:
                         point = data[0]
-                        p_id = point["curveNumber"]
-                        t_id = point["pointNumber"]
-                        out = [False for _ in range(int(self.data["pillars"][str(p_id)]["num_tubes"]))]
-                        out[t_id] = True
-                    else:
-                        out = [False for _ in range(int(self.data["pillars"][str(0)]["num_tubes"]))]
-                    if "touch" not in ws_out:
-                        ws_out["touch"]  = {}
-                    ws_out["touch"][str(p_id)] = out
-                elif "{" in triggered_id and any(psi_value):
-                    # One of the dynamic ones triggered lets find which one
-                    prop_dict = json.loads(triggered_id)
-
-                    l = [s["id"]['index'] for s in ctx.states_list[2]]
-                    psi_value_idx = l.index(prop_dict["index"])
-                    
+                        if "curveNumber" in point and "pointNumber" in point:
+                            p_id = point['curveNumber']
+                            t_id = point['pointNumber']
+                            # Touch status of tubes in a pillar
+                            out = [False for _ in range(int(self.data["pillars"][str(p_id)]["num_tubes"]))]
+                            out[t_id] = True
+                            ws_out["touch"] = {str(p_id): out}
+                            msg = f"Updated pillar {p_id}, tube {t_id}"
+                            run_click_end_interval = False
+                            
+            elif triggered_id == "graph_click_end" and self.data["pillars"]:
+                print("TUBES STOP RIHGT NOW AS INTERVASL SHAS ENDED")
+                out = [False for _ in range(int(self.data["pillars"][str(0)]["num_tubes"]))]
+                ws_out["touch"] = {k: out for k, v in self.data["pillars"].items()}
+                msg = f"Tubes stop been touched"
+    
+            elif "{" in triggered_id:  # Handle dynamic triggers
+                try:
+                    # Assuming triggered_id is a stringified JSON that includes "index" key
+                    prop_dict = json.loads(triggered_id.replace("'", "\""))  # Ensure proper JSON format
                     p_id, var = prop_dict["index"].split("-")
+
+                    # If psi_value (pillar_status_input_values) is not directly provided, ensure it's obtained properly
+                    psi_value = [state['value'] for state in psi_values if state['id']['index'] == prop_dict["index"]]
+
                     if var not in ws_out:
                         ws_out[var] = {}
-                    ws_out[var][p_id] = psi_value[psi_value_idx]
-                    
-            if ws_out:
-                print(f"Sending {ws_out}")
-            return [
-                json.dumps(ws_out),
-                msg
-            ]
+
+                    if psi_value:
+                        
+                        ws_out[var][p_id] = psi_value['value']  # Example of updating ws_out with the first relevant value
+                        msg = f"Dynamic update for {var} on pillar {p_id}"
+                except json.JSONDecodeError:
+                    print("Error decoding JSON from triggered_id")
+
+            print(f"WS_OUT: {ws_out}")
+            return json.dumps(ws_out), msg, run_click_end_interval
 
     def generate_pillars_figure(self, data):
         pillars_dict, current_status = data['pillars'], data["current_state"]
+
         num_pillars = len(pillars_dict)
+        #print("CURRENT STATUS", current_status)
+        
+        print("Pillars have been generated")
+
 
         def generate_coords_tubes(num_tubes, radius):
+           # print("NUM TUBES", num_tubes)
+
 
             # Calculate the angles at which the points should be placed
             angles = np.linspace(0, 2*np.pi, num_tubes, endpoint=False)
@@ -254,6 +257,7 @@ class GUI():
                             subplot_titles=[f"Pillar {p_id}" for p_id in pillars_dict])
 
         for i, (p_id, pillar) in enumerate(pillars_dict.items()):
+            #print("Pillar", pillar)
             tube_coords = generate_coords_tubes(int(pillar["num_sensors"]), 1)
             current_status_lights = current_status[str(i)]["lights"]
             colours = [f"hsv({l[0]}, 255, {l[1]})" for l in current_status_lights]
@@ -278,52 +282,71 @@ class GUI():
             fig.add_trace(trace, row=1, col=i+1)
         
         fig.update_layout(showlegend=False)
-        fig.update_layout(clickmode='event')
+        fig.update_layout(hovermode='closest')#clickmode='event+select')
             
         return fig
 
 
     def update_data(self, data):
+        #print("Updating data", data["current_state"]['0'])
         num_pillars = data["num_pillars"]
-        for p_id in range(num_pillars):
-            self.update_dat["serial_port"][p_id]=data["pillars"][str(p_id)]["serial_status"]["port"]
-            self.update_dat["amp"][p_id] = data["amp"][str(p_id)]
-            self.update_dat["synth"][p_id] = data["synths"][str(p_id)]
 
-            self.display_dat["touch"][p_id] = data["pillars"][str(p_id)]["touch_status"]
-            self.display_dat["notes"][p_id] = data["notes"][str(p_id)]
+        
+        #print("Current state", data["current_state"])
+        for p_id in range(num_pillars):
+            print("DATA CURRENT STATE", data["current_state"])
+            # data["pillars"] = {'id', 'num_tubes', 'num_sensors', 'touch_status', 'light_status', 'serial_status': {'connected':, 'port':, 'baud_rate'} --- 6 keys
+            # data["current_state"] = {'lights', 'params'} --- 2 keys
+            # Current state {{'lights': 
+            # 'params': {'amp': 10, 'pitch': 60, 'synth': 'dsaw', 'bpm': 50, 'pan': -1, 'envelope': 1}}
+            #["amp", "note-pitch", "synth", "bpm", "pan", "envelope"]
+            self.update_dat["serial_port"][p_id]=data["pillars"][str(p_id)]["serial_status"]["port"]
+            self.update_dat["amp"][p_id] = data["current_state"][str(p_id)]["params"]["amp"]
+            self.update_dat["pitch"][p_id] = data["current_state"][str(p_id)]["params"]["pitch"]#data.get("pitch", {}).get(str(p_id))
+            self.update_dat["synth"][p_id] = data["current_state"][str(p_id)]["params"]["synth"]#data.get("synth", {}).get(str(p_id))
+            self.update_dat["bpm"][p_id] = data["current_state"][str(p_id)]["params"]["bpm"]#data.get("bpm", {}).get(str(p_id))
+            self.update_dat["pan"][p_id] = data["current_state"][str(p_id)]["params"]["pan"]#data.get("pan", {}).get(str(p_id))
+            self.update_dat["envelope"][p_id] = data["current_state"][str(p_id)]["params"]["envelope"]#data.get("envelope", {}).get(str(p_id))         
+
+            self.display_dat["touch"][p_id] = data["pillars"][str(p_id)]["touch_status"] # display what? where? GOT IT
+            self.display_dat["touch"][p_id] = [int(t) for t in self.display_dat["touch"][p_id]]
+            #self.display_dat["params"][p_id] = data["current_state"][str(p_id)]["params"] # put params in display data
+            #self.display_dat["pan"][p_id] = data["pan"][str(p_id)]
 
     def generate_pillar_status(self, data):
+        #print("I got here")
         num_pillars = data["num_pillars"]
 
         output_div = []
         for p_id in range(num_pillars):
             
-            update_dat = {n: d[p_id] for n, d in self.update_dat.items()}
+            update_dat = {n: d[p_id] for n, d in self.update_dat.items() if p_id in d}
 
-            display_dat = {n: d[p_id] for n, d in self.display_dat.items()}
+            display_dat = {n: d[p_id] for n, d in self.display_dat.items() if p_id in d}
 
             connected = bool(data["pillars"][str(p_id)]["serial_status"]["connected"])
             row_div = [
                 html.Div(children=f"Pillar {p_id} status: {'connected' if connected else 'not-connected'}"),
             ]
             for n, val in display_dat.items():
+                #print(f"Display data: {n} {val}")
                 h = dbc.Col(dbc.Row([
                     dbc.Label(f"{n}", width=2),
-                    dbc.Label(id={"type": f"pillar-status-label", "index": f"{p_id}-{n}"}, width="auto"),
+                    dbc.Label(id={"type": f"pillar-status-label", "index": f"{p_id}-{n}"}, width=2), # add default value default_value = val
                 ]))
                 row_div.append(h)
-
+                
             for n, val in update_dat.items():
                 h = dbc.Row([
                     dbc.Label(f"{n}", width=2),
                     dbc.Label(id={"type": f"pillar-status-label", "index": f"{p_id}-{n}"}, width=2),
-                    dbc.Col(dbc.Input(id={"type": f"pillar-status-input", "index": f"{p_id}-{n}"}, placeholder=f"Enter {n}"),width="auto"),
-                    dbc.Col(dbc.Button("Update", id={"type": f"pillar-status-button", "index": f"{p_id}-{n}"}, color="primary"),width=1),
+            #        dbc.Col(dbc.Input(id={"type": f"pillar-status-input", "index": f"{p_id}-{n}"}, placeholder=f"Enter {n}"),width="auto"),
+            #        dbc.Col(dbc.Button("Update", id={"type": f"pillar-status-button", "index": f"{p_id}-{n}"}, color="primary"),width=1),
                 ])
                 row_div.append(h)
-            output_div.append(dbc.Col(html.Div(row_div), width="auto"))
-    
+            
+            output_div.append(dbc.Col(html.Div(row_div), width=5))
+                
         return dbc.Row(output_div, justify="evenly")
     
     def generate_updated_labels(self, label_objs):
