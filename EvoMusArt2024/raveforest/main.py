@@ -115,17 +115,7 @@ class Controller():
 
             # Your state machine logic here
             self.loop()
-
-            # Convert current states into json
-            current_states_json = {}
-            for p_id, cs in self.current_states.items():
-                out_dict = {}
-                for c, o in cs.items():
-                    out_dict[c] = o.__json__()
-                current_states_json[p_id] = out_dict
-
-            print(current_states_json)
-
+            
             # Update websocket clients
             state_dicts = {
                 "time": datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
