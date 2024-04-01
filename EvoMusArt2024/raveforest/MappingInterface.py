@@ -11,8 +11,8 @@ from matplotlib.colors import rgb_to_hsv
 
 class SoundState(object):
     def __init__(self, random_init=True, amp=0, bpm=50, synth="saw", note=0, pan=-1, envelope=0):
-        self.available_synths = [(a, d) for (a, d) in getmembers(synthesizers) if isinstance(d, synthesizers.Synth)] # Available synths, there are 42
-
+        #self.available_synths = [(a, d) for (a, d) in getmembers(synthesizers) if isinstance(d, synthesizers.Synth)] # Available synths, there are 42
+        self.available_synths = [BEEP, BLADE, CHIPBASS, CHIPLEAD, DPULSE, DTRI, FM, GROWL, HOLLOW, MOD_FM, MOD_PULSE, MOD_SAW, MOD_SINE, MOD_TRI, PIANO, PLUCK, PULSE, SAW, SINE, SQUARE, SUBPULSE, TECHSAWS, TB303, TRI] #24
         self.amp = random.randint(0, 255) if random_init else amp # Amplitude
         
         self.bpm = random.randint(50, 150) if random_init else bpm # Beats per minute
@@ -198,7 +198,7 @@ class MappingInterface(object):
         self.param_range = {
                             "a":[20,50],
                             "n": [50,100],
-                            "t":[0,42],
+                            "t":[0,24],
                             "b":[50,140],
                             "p":[-1,1],
                             "e":[0,1]
