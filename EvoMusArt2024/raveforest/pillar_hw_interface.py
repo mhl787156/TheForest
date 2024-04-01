@@ -76,7 +76,7 @@ class Pillar():
 
         self.serial_read_rate = 10
 
-        self.num_tubes = 7
+        self.num_tubes = 6
 
         self.num_touch_sensors = 6
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
