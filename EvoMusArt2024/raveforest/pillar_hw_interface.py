@@ -95,12 +95,12 @@ class Pillar():
         self.serial_write_threads = []
 
         self.serial_status_cap = dict(connected=False, port=port_cap, baud_rate=baud_rate)
-        self.ser_cap, self.serial_status_cap = self.restart_serial(f"cap-{self.id}", None, self.serial_status_cap, self.write_cap_queue)
+        # self.ser_cap, self.serial_status_cap = self.restart_serial(f"cap-{self.id}", None, self.serial_status_cap, self.write_cap_queue)
         
         self.serial_status_led = dict(connected=False, port=port_led, baud_rate=baud_rate)
-        self.ser_led, self.serial_status_led = self.restart_serial(f"led-{self.id}", None, self.serial_status_led, self.write_led_queue)
+        # self.ser_led, self.serial_status_led = self.restart_serial(f"led-{self.id}", None, self.serial_status_led, self.write_led_queue)
 
-        atexit.register(lambda: self.cleanup(self.ser_cap))
+        # atexit.register(lambda: self.cleanup(self.ser_cap))
         atexit.register(lambda: self.cleanup(self.ser_led))
 
 
@@ -239,19 +239,6 @@ class Pillar():
 
     def reset_touch_status(self):
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
-
-    def read_from_serial(self):
-        # Existing implementation...
-        try:
-            while not self.cap_queue.empty():
-                received_status = self.cap_queue.get_nowait()
-                if received_status != self.previous_received_status:
-                    self.set_touch_status(received_status)
-                    # Assuming a function to handle end of touch event
-                    self.handle_end_of_touch(received_status)
-                self.previous_received_status = received_status
-        except queue.Empty:
-            pass
 
     def handle_end_of_touch(self, received_status):
         if all(status == 0 for status in received_status):  # All touch sensors are inactive
