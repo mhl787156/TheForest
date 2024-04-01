@@ -119,10 +119,9 @@ String readserial()
   static unsigned int message_pos =0;
   static char message[max_message_length];
 
-  while (Serial.available() == 0) 
+  while (Serial.available() > 0) 
   {
     char byte = Serial.read();
-
     if (byte != ';' && message_pos < max_message_length)
     {
       message[message_pos] = byte;
@@ -134,6 +133,8 @@ String readserial()
       return message;
     }
   }
+
+  return "";
 }  
 
 // Function to parse a string into an array of substrings
@@ -161,6 +162,7 @@ int splitString(String input, char separator, String* output, int outputSize) {
 void parseledfromserial()
 {
   String receivedMessage = readserial();
+  receivedMessage.trim();
   const int numTubes = 6;
 
   // Check if message is for all tubes
@@ -169,7 +171,9 @@ void parseledfromserial()
   receivedMessage.toCharArray(messageArray, 256);
 
   char *token = strtok(messageArray, ",");
+  
   if (token != NULL && strcmp(token, "ALLLED") == 0) {
+
     int ledHue[numTubes];
     int ledBrightness[numTubes];
     for (int i = 0; i < numTubes; i++) {
@@ -195,6 +199,7 @@ void parseledfromserial()
   // Check if message is for single tube
   // Messageformat: 'LED,tnum,hue,brightness'
   else if (receivedMessage.startsWith("LED,")) {
+
       String values = receivedMessage.substring(4); // Skip "LED,"
       int commaIndex1 = values.indexOf(',');
       int commaIndex2 = values.lastIndexOf(',');
@@ -245,10 +250,10 @@ void loop() {
     parseledfromserial();
   }
 
-  // if (currentMillis - startMillis2 >= period2) 
-  // {
-  //   startMillis2 = currentMillis;
-    //sendledstatus();
-  // }
+  if (currentMillis - startMillis2 >= period2) 
+  {
+    startMillis2 = currentMillis;
+    // sendledstatus();
+  }
     
 }
