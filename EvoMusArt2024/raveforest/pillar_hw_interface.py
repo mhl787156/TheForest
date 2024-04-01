@@ -204,7 +204,7 @@ class Pillar():
     def set_touch_status(self, touch_status):
         # Do the filter here
         
-        self.touch_status = touch_status[:-1]
+        self.touch_status = touch_status #[:-1]
         print(f"UPDATING TOUCH STATUS to: {touch_status}")
 
     def set_touch_status_tube(self, tube_id, status):
@@ -256,3 +256,4 @@ class Pillar():
         reset_message = json.dumps({"type": "touch_reset", "pillar_id": self.id})
         # Placeholder for actual WebSocket sending logic
         # send_to_all_clients(reset_message)  # You need to implement this based on your WebSocket setup
+        
