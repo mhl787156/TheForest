@@ -4,9 +4,12 @@ import pickle
 from math import cos, sin, radians
 import argparse
 import uuid
+import numpy as np
+
+from scamp import Session
 
 from player import Player
-from pillar import Pillar
+from pillar import MusicPillar, Pillar
 
 # Screen settings
 WIDTH, HEIGHT = 800, 600
@@ -22,7 +25,11 @@ class GameClient:
         self.player = Player(self.id)
         
         self.game_state = None
+        self.music_pillars = None
         self.screen = None
+
+        self.session = Session()
+        self.session.tempo=60
 
         print("Waiting for game state...")
 
@@ -42,6 +49,13 @@ class GameClient:
             self.game_state = pickle.loads(data)
             self.game_state["players"] = [Player(**d) for d in self.game_state["players"]]
             self.game_state["pillars"] = [Pillar(**d) for d in self.game_state["pillars"]]
+
+            if self.music_pillars is None:
+                self.music_pillars = [MusicPillar(self.session)for p in self.game_state["pillars"]]
+
+            for mp, pillar in zip(self.music_pillars, self.game_state["pillars"]):
+                mp.set_pillar(pillar)
+
         except socket.timeout as e:
             print("Socket timeout", e)
             pass
@@ -93,6 +107,13 @@ class GameClient:
                 self.draw_game_state()
 
                 pygame.display.flip()
+
+                # Play sound
+                dists = np.array([pillar.distance(self.player) for pillar in self.game_state["pillars"]])
+                norm_dists = dists/np.max(dists)
+
+                for pillar, volume in zip(self.music_pillars, norm_dists):
+                    pillar.play(volume)
             clock.tick(60)
 
 if __name__ == "__main__":

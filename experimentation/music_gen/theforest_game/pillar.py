@@ -1,12 +1,85 @@
 import pygame
 import math
+import random
+from enum import Enum
+
+import music
+from mingus.core import notes, scales
+from mingus.containers import NoteContainer
 
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
 font2 = pygame.font.SysFont(None, 19)
 
+class NODE_FUNCTION(Enum):
+    SCALE_TYPE=1
+    SCALE_KEY=2
+    INSTRUMENT=3
+    TEMPO=4
+
+SCALE_TYPES = {
+    "blues": music.BluesScale,
+    "mpentatonic": music.MinorPentatonic,
+    "pentatonic": music.Pentatonic,
+    "ionian": scales.Ionian,
+    "minor": scales.HarmonicMinor
+}
+
+INSTRUMENTS = [
+    "trumpet",
+    "brass",
+    "piano",
+    "strings",
+    "oboe"
+]
+  
+
+class MusicPillar():
+
+    def __init__(self, session):
+        self.session = session
+
+        self.instrument_name = None
+        self.instrument = None
+        self.scale = None
+
+        self.note_numbers = []
+
+    def set_pillar(self, pillar):
+        self.pillar = pillar
+
+        if pillar.scale != self.scale:
+            self.scale = pillar.scale
+            self.set_music_seq()
+
+        if pillar.instrument != self.instrument_name:
+            if self.instrument_name is not None:
+                current_instruments = self.session.instruments
+                idx = list(current_instruments).index(self.instrument_name)
+                self.session.pop_instrument(idx)
+            self.instrument = self.session.new_part(pillar.instrument)
+            self.instrument_name = pillar.instrument        
+
+    def set_music_seq(self):
+        scale = SCALE_TYPES[self.scale](self.pillar.key)
+
+        # Note containers 
+        scale_asc = scale.ascending()
+        note_container = NoteContainer()
+        note_container.add_notes(scale_asc)
+        self.note_numbers = [int(n) for n in note_container]
+    
+    def play_notes(self, instrument, volume):
+        for n in self.note_numbers:
+            instrument.play_note(n, random.random(), volume)
+
+    def play(self, volume):
+        # self.session.fork(self.play_notes, args=[self.instrument, 0.5])
+        self.instrument.play_note(random.choice(self.note_numbers), random.random(), 0.5, blocking=False)
+
+
 class Pillar:
-    def __init__(self, id, x, y, num_nodes=6, size=50, **kwargs):
+    def __init__(self, id, x, y, size=50, **kwargs):
         self.id = id
         self.x = x
         self.y = y
@@ -15,16 +88,22 @@ class Pillar:
         if 'nodes' in kwargs:
             self.nodes = kwargs['nodes']  # Allow loading nodes from kwargs
         else:
-            self.generate_nodes(num_nodes)
+            self.generate_nodes()
 
-    def generate_nodes(self, num_nodes):
-        for i in range(num_nodes):
-            angle = math.radians(i * (360 / num_nodes))
+        self.key = kwargs["key"] if "key" in kwargs else notes.int_to_note(random.randint(0, 11))
+        self.instrument = kwargs["instrument"] if "instrument" in kwargs else random.choice(INSTRUMENTS)
+        self.scale = kwargs["scale"] if "scale" in kwargs else random.choice(list(SCALE_TYPES.keys()))
+        self.tempo = kwargs["tempo"] if "tempo" in kwargs else 60
+
+    def generate_nodes(self):
+        num_funcs = len(NODE_FUNCTION)
+        for i in range(num_funcs):
+            angle = math.radians(i * (360 / num_funcs))
             node_x = self.x + self.size * math.cos(angle)
             node_y = self.y + self.size * math.sin(angle)
             self.nodes.append({
                 "x": node_x, "y": node_y,
-                "active": False
+                "active": False, "function": NODE_FUNCTION(i+1)
             })
 
     def draw(self, surface):
@@ -41,6 +120,9 @@ class Pillar:
 
             label = font.render(str(f"n{i}"), True, (0, 0, 255)) 
             surface.blit(label, (node["x"], node["y"]))  # Adjust label position
+
+    def distance(self, player) -> float:
+        return math.hypot(self.x - player.x, self.y - player.y)
 
     def activate_node(self, player):
         """
@@ -129,3 +211,4 @@ class Pillar:
                 pillars.append(Pillar(len(pillars), x, y, size=size))
 
         return pillars
+ 

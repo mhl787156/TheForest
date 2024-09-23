@@ -7,7 +7,7 @@ pygame.font.init()
 font = pygame.font.SysFont(None, 24)
 
 class Player:
-    def __init__(self, player_id, x=0, y=0, angle=0, **kwargs):
+    def __init__(self, player_id, x=0, y=0, angle=-90, **kwargs):
         self.x = x
         self.y = y
         self.angle = angle
