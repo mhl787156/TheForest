@@ -3,11 +3,12 @@ import math
 import random
 from enum import Enum
 import numpy as np
+import multiprocessing as mp
 
-from scamp import Session
+from scamp import Session, wait
 
 import music
-from mingus.core import notes, scales, value
+from mingus.core import notes, scales, value, intervals
 from mingus.containers import Note
 
 pygame.font.init()
@@ -19,6 +20,13 @@ class NODE_FUNCTION(Enum):
     SCALE_KEY=2
     INSTRUMENT=3
     TEMPO=4
+
+NODE_FUNCTION_NAMES = {
+    NODE_FUNCTION.SCALE_KEY: "key",
+    NODE_FUNCTION.SCALE_TYPE: "scale",
+    NODE_FUNCTION.INSTRUMENT: "instr",
+    NODE_FUNCTION.TEMPO: "tempo"
+}
 
 SCALE_TYPES = {
     "blues": music.BluesScale,
@@ -40,7 +48,7 @@ class MusicPillarManager():
 
     def __init__(self):
         self.session = Session()
-        self.session.tempo = 40
+        # self.session.tempo = 40
         self.music_pillars = None
         self.pillar_state = None
         self.player = None
@@ -69,13 +77,18 @@ class MusicPillarManager():
         
         # Play sound (ideally each beat)
         dists = np.array([pillar.distance(self.player) for pillar in self.pillar_state])
-        norm_dists = 1.0 - dists/np.max(dists)
-        norm_dists_r2 = np.power(norm_dists, 2)
+        # norm_dists = 1.0 - dists/np.max(dists)
+        dists_r = (1.0/ dists) * 20
+        # norm_dists_r2 = (1.0 / np.power(dists, 2)) * 150 
+        offset_norm_dist_r2 = 0.2 + dists_r
 
-        for pillar, volume in zip(self.music_pillars, norm_dists_r2):
+        # print(dists_r)
+
+        for pillar, volume in zip(self.music_pillars, offset_norm_dist_r2):
+            pillar.mp_volume_shared.value = volume
             pillar.play(volume)
         
-        self.session.wait(0.25)
+        wait(1/30.0, units="time")
 
 class MusicPillar():
 
@@ -86,45 +99,65 @@ class MusicPillar():
         self.instrument = None
         self.scale_name = None
         self.scale = None
+        self.key = None
 
         self.note_numbers = []
 
+        self.notehandle = None
         self.playing_fork = None
+
+        self.mp_manager = mp.Manager()
+        self.mp_volume_shared = self.mp_manager.Value('f', 0.0)
 
     def set_pillar(self, pillar):
         self.pillar = pillar
 
-        if pillar.scale != self.scale_name:
-            self.scale_name = pillar.scale
-            self.set_music_seq()
-
         if pillar.instrument != self.instrument_name:
             # Switch instrument if requested
             if self.instrument_name is not None:
-                current_instruments = self.session.instruments
+                current_instruments = [i.name for i in self.session.instruments]
                 idx = list(current_instruments).index(self.instrument_name)
                 self.session.pop_instrument(idx)
             self.instrument = self.session.new_part(pillar.instrument)
-            self.instrument_name = pillar.instrument        
+            self.instrument_name = pillar.instrument    
+
+        play_key_chord = False
+        if pillar.scale != self.scale_name:
+            self.scale_name = pillar.scale
+            self.set_music_seq()
+            play_key_chord = True
+            self.play_key_chord() 
+
+        if pillar.key != self.key:
+            self.key = pillar.key
+            self.set_music_seq()
+            play_key_chord = True
+        
+        if play_key_chord:
+            self.play_key_chord() 
+
+        self.session.tempo = pillar.tempo   
 
     def set_music_seq(self):
         self.scale = SCALE_TYPES[self.scale_name](self.pillar.key, octaves=3)
 
-        # # Note containers 
-        # scale_asc = scale.ascending()
-        # note_container = NoteContainer()
-        # note_container.add_notes(scale_asc)
-        # self.note_numbers = [int(n) for n in note_container]
+    def play_key_chord(self):
+        chord = [Note(self.scale.degree(i), 4) for i in [1, 3, 5, 7]]
+        chord_notes = [int(n.__int__()) for n in chord]
+        print(f"Playing chord {chord}")
+        self.instrument.play_chord(chord_notes, 0.8, 0.5, blocking=False)
+
     
-    def play_notes(self, instrument, volume):
+    def play_notes(self, instrument, mp_volume_shared):
 
         # Random: 
         # 1. If playing a note
-        play_note_thresh = 0.2
+        play_note_thresh = 0.05
         # 2. Number of notes (heavily weigted to 1,2,3)
         geom_p = 0.00001
         # 3. The duration of each of those notes
-        duration_weightings = [1, 1, 1, 50, 200, 150, 100, 50, 2, 2]
+        # duration_weightings = [1, 1, 1, 50, 200, 150, 100, 50, 2, 2]
+        duration_weightings = [0, 3, 3, 1, 0, 0, 0, 0, 0, 0]
         # 4. Generate initial note from scale in a random octave weighted between 3-6
         # octave_weightings = {0:}
         # 5. The weighted notes themselves OR weighted intervals between them (4th/5ths etc)
@@ -149,23 +182,28 @@ class MusicPillar():
         notes = [Note(n, o) for n, o in zip(note_name, note_octaves)]
         note_numbers = [int(n.__int__()) for n in notes]
         
-        print(f"[{self.pillar.id}] Generated notes: {notes} {note_numbers}")
-        print(f"[{self.pillar.id}] Volume: {volume}")
-        print(f"[{self.pillar.id}] Duration: {durations}")
+        volume = mp_volume_shared.value
+        print(f"[{self.pillar.id}] Generated notes: {notes}, volume: {volume:.2f}, duration: {durations}")
 
         for n, d in zip(note_numbers, durations):
-            instrument.play_note(n, volume, d)
+            # instrument.play_note(n, volume, d)
+            volume = mp_volume_shared.value
+            self.play_note(instrument, n, volume, d)
+            pass
+
+    def play_note(self, instrument, note, volume, duration):
+        self.notehandle = instrument.start_note(note, volume)
+        wait(duration)# TODO Somehow keep checking volume until duration is over? 
+        self.notehandle.end()
+        self.notehandle = None
 
     def play(self, volume):
         if self.playing_fork is not None and self.playing_fork.alive:
             # Already playing something
-            # print("already_playing")
             return
         
-        self.playing_fork = self.session.fork(self.play_notes, args=[self.instrument, volume])
+        self.playing_fork = self.session.fork(self.play_notes, args=[self.instrument, self.mp_volume_shared])
         # self.instrument.play_note(random.choice(self.note_numbers), volume, 0.5, blocking=False)
-        # pass
-
 
 class Pillar:
     def __init__(self, id, x, y, size=50, **kwargs):
@@ -179,10 +217,29 @@ class Pillar:
         else:
             self.generate_nodes()
 
-        self.key = kwargs["key"] if "key" in kwargs else notes.int_to_note(random.randint(0, 11))
+        self.key = kwargs["key"] if "key" in kwargs else notes.int_to_note(0) # Start on same key
         self.instrument = kwargs["instrument"] if "instrument" in kwargs else random.choice(INSTRUMENTS)
         self.scale = kwargs["scale"] if "scale" in kwargs else random.choice(list(SCALE_TYPES.keys()))
         self.tempo = kwargs["tempo"] if "tempo" in kwargs else 60
+        self.tempo_advance_direction = 1
+
+    def update_node(self, node):
+        print(f"Update Node: {node}")
+        if node["function"] == NODE_FUNCTION.SCALE_KEY:
+            key_lookup = {"G#": "Ab"}
+            key = key_lookup[self.key] if self.key in key_lookup else self.key
+            self.key = intervals.fifth(key, key)
+        elif node["function"] == NODE_FUNCTION.INSTRUMENT:
+            self.instrument = INSTRUMENTS[(INSTRUMENTS.index(self.instrument) + 1) % len(INSTRUMENTS)]
+        elif node["function"] == NODE_FUNCTION.SCALE_TYPE:
+            scales = list(SCALE_TYPES.keys())
+            self.scale = scales[(scales.index(self.scale) + 1) % len(scales)]
+        elif node["function"] == NODE_FUNCTION.TEMPO:
+            self.tempo = self.tempo + 5 * self.tempo_advance_direction
+            if self.tempo > 180: 
+                self.tempo_advance_direction = -1
+            elif self.tempo < 30:
+                self.tempo_advance_direction = 1
 
     def generate_nodes(self):
         num_funcs = len(NODE_FUNCTION)
@@ -207,8 +264,15 @@ class Pillar:
             node_color = (0, 125, 125) if node['active'] else (255, 255, 255)
             pygame.draw.circle(surface, node_color, (int(node["x"]), int(node["y"])), 10)
 
-            label = font.render(str(f"n{i}"), True, (0, 0, 255)) 
-            surface.blit(label, (node["x"], node["y"]))  # Adjust label position
+            if node["function"] == NODE_FUNCTION.SCALE_KEY:
+                label = font.render(str(f"key: {self.key}"), True, (0, 0, 255)) 
+            elif node["function"] == NODE_FUNCTION.INSTRUMENT:
+                label = font.render(str(f"instr: {self.instrument}"), True, (0, 0, 255)) 
+            elif node["function"] == NODE_FUNCTION.SCALE_TYPE:
+                label = font.render(str(f"scale: {self.scale}"), True, (0, 0, 255)) 
+            elif node["function"] == NODE_FUNCTION.TEMPO:
+                label = font.render(str(f"tempo: {self.tempo}"), True, (0, 0, 255)) 
+            surface.blit(label, (node["x"]-50, node["y"] - i*5))  # Adjust label position
 
     def distance(self, player) -> float:
         return math.hypot(self.x - player.x, self.y - player.y)
@@ -228,6 +292,7 @@ class Pillar:
                 if distance < player.selection_radius+5:
                     if not node["active"]:
                         node["active"] = True
+                        self.update_node(node)
                     return i
 
             elif node["active"]:

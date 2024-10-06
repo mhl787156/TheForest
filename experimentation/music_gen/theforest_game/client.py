@@ -50,7 +50,6 @@ class GameClient:
 
         self.sound_proc = mp.Process(target=scamp_session_manager,
                                      args=(self.shared_state,))
-        self.sound_proc.daemon = True
         self.sound_proc.start()
 
         print("Waiting for game state...")
