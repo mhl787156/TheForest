@@ -61,7 +61,7 @@ s.tempo = 100
 
 # for pitch, dur in zip(plist, dlist):
 #     clarinet.play_note(pitch, 0.8, dur)
-s.
+
 
 trumpet = s.new_part("trumpet")
 brass = s.new_part("brass")

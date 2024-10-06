@@ -6,13 +6,23 @@ import argparse
 import uuid
 import numpy as np
 
+import multiprocessing as mp
+
 from scamp import Session
 
 from player import Player
-from pillar import MusicPillar, Pillar
+from pillar import MusicPillar, Pillar, MusicPillarManager
 
 # Screen settings
 WIDTH, HEIGHT = 800, 600
+
+def scamp_session_manager(shared_state):
+    man = MusicPillarManager()
+    print("Started SCAMP Music Manager")
+    while man.is_alive():
+        man.update_pillar_state(shared_state["pillars"])
+        man.update_player_state(shared_state["player"])
+        man.play()
 
 class GameClient:
     def __init__(self, ip="localhost", port=6000, name=None):
@@ -25,11 +35,23 @@ class GameClient:
         self.player = Player(self.id)
         
         self.game_state = None
-        self.music_pillars = None
+        # self.music_pillars = None
         self.screen = None
 
-        self.session = Session()
-        self.session.tempo=60
+        # self.session = Session()
+        # self.session.tempo=60 # beats per minute
+        # self.bps = self.session.tempo / 60
+
+        self.manager = mp.Manager()
+        self.shared_state = self.manager.dict({
+            "player": self.player,
+            "pillars": []
+        })
+
+        self.sound_proc = mp.Process(target=scamp_session_manager,
+                                     args=(self.shared_state,))
+        self.sound_proc.daemon = True
+        self.sound_proc.start()
 
         print("Waiting for game state...")
 
@@ -50,11 +72,14 @@ class GameClient:
             self.game_state["players"] = [Player(**d) for d in self.game_state["players"]]
             self.game_state["pillars"] = [Pillar(**d) for d in self.game_state["pillars"]]
 
-            if self.music_pillars is None:
-                self.music_pillars = [MusicPillar(self.session)for p in self.game_state["pillars"]]
+            self.shared_state["player"] = self.player
+            self.shared_state["pillars"] = self.game_state["pillars"]
 
-            for mp, pillar in zip(self.music_pillars, self.game_state["pillars"]):
-                mp.set_pillar(pillar)
+            # if self.music_pillars is None:
+            #     self.music_pillars = [MusicPillar(self.session)for p in self.game_state["pillars"]]
+
+            # for mp, pillar in zip(self.music_pillars, self.game_state["pillars"]):
+            #     mp.set_pillar(pillar)
 
         except socket.timeout as e:
             print("Socket timeout", e)
@@ -108,13 +133,7 @@ class GameClient:
 
                 pygame.display.flip()
 
-                # Play sound
-                dists = np.array([pillar.distance(self.player) for pillar in self.game_state["pillars"]])
-                norm_dists = dists/np.max(dists)
-
-                for pillar, volume in zip(self.music_pillars, norm_dists):
-                    pillar.play(volume)
-            clock.tick(60)
+            clock.tick(30)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Forest Game Client")

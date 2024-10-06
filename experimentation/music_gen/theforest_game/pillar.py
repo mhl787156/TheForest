@@ -2,10 +2,13 @@ import pygame
 import math
 import random
 from enum import Enum
+import numpy as np
+
+from scamp import Session
 
 import music
-from mingus.core import notes, scales
-from mingus.containers import NoteContainer
+from mingus.core import notes, scales, value
+from mingus.containers import Note
 
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
@@ -32,7 +35,47 @@ INSTRUMENTS = [
     "strings",
     "oboe"
 ]
-  
+
+class MusicPillarManager(): 
+
+    def __init__(self):
+        self.session = Session()
+        self.session.tempo = 40
+        self.music_pillars = None
+        self.pillar_state = None
+        self.player = None
+    
+    def is_alive(self):
+        return self.session.alive
+
+    def update_pillar_state(self, pillar_state):
+        if len(pillar_state) == 0:
+            return
+        
+        self.pillar_state = pillar_state
+        if self.music_pillars is None:
+            self.music_pillars = [MusicPillar(self.session)for p in pillar_state]
+
+        for mp, pillar in zip(self.music_pillars, pillar_state):
+            mp.set_pillar(pillar)
+    
+    def update_player_state(self, player):
+        self.player = player
+
+    def play(self):
+
+        if self.pillar_state is None or len(self.pillar_state) == 0:
+            return
+        
+        # Play sound (ideally each beat)
+        dists = np.array([pillar.distance(self.player) for pillar in self.pillar_state])
+        norm_dists = 1.0 - dists/np.max(dists)
+        norm_dists_r2 = np.power(norm_dists, 2)
+
+        for pillar, volume in zip(self.music_pillars, norm_dists_r2):
+            pillar.play(volume)
+        
+        self.session.wait(0.25)
 
 class MusicPillar():
 
@@ -41,18 +84,22 @@ class MusicPillar():
 
         self.instrument_name = None
         self.instrument = None
+        self.scale_name = None
         self.scale = None
 
         self.note_numbers = []
 
+        self.playing_fork = None
+
     def set_pillar(self, pillar):
         self.pillar = pillar
 
-        if pillar.scale != self.scale:
-            self.scale = pillar.scale
+        if pillar.scale != self.scale_name:
+            self.scale_name = pillar.scale
             self.set_music_seq()
 
         if pillar.instrument != self.instrument_name:
+            # Switch instrument if requested
             if self.instrument_name is not None:
                 current_instruments = self.session.instruments
                 idx = list(current_instruments).index(self.instrument_name)
@@ -61,21 +108,63 @@ class MusicPillar():
             self.instrument_name = pillar.instrument        
 
     def set_music_seq(self):
-        scale = SCALE_TYPES[self.scale](self.pillar.key)
+        self.scale = SCALE_TYPES[self.scale_name](self.pillar.key, octaves=3)
 
-        # Note containers 
-        scale_asc = scale.ascending()
-        note_container = NoteContainer()
-        note_container.add_notes(scale_asc)
-        self.note_numbers = [int(n) for n in note_container]
+        # # Note containers 
+        # scale_asc = scale.ascending()
+        # note_container = NoteContainer()
+        # note_container.add_notes(scale_asc)
+        # self.note_numbers = [int(n) for n in note_container]
     
     def play_notes(self, instrument, volume):
-        for n in self.note_numbers:
-            instrument.play_note(n, random.random(), volume)
+
+        # Random: 
+        # 1. If playing a note
+        play_note_thresh = 0.2
+        # 2. Number of notes (heavily weigted to 1,2,3)
+        geom_p = 0.00001
+        # 3. The duration of each of those notes
+        duration_weightings = [1, 1, 1, 50, 200, 150, 100, 50, 2, 2]
+        # 4. Generate initial note from scale in a random octave weighted between 3-6
+        # octave_weightings = {0:}
+        # 5. The weighted notes themselves OR weighted intervals between them (4th/5ths etc)
+        # note_weightings = 
+
+        if random.random() >= play_note_thresh:
+            return
+        
+        number_of_notes  = random.choices([1, 2, 3, 4, 5], weights=[300, 100, 50, 50, 30], k=1)[0]
+
+        if number_of_notes == 0:
+            return
+
+        durations = random.choices(value.base_values, 
+            weights=duration_weightings, k=number_of_notes)
+        durations = [1.0/d for d in durations]
+        
+        # Generate initial note
+        note_name = random.choices(self.scale.ascending(), k=number_of_notes)
+        note_octaves = np.clip(np.round(np.random.normal(4, 1.5, number_of_notes)).astype(int), 0, 7)
+
+        notes = [Note(n, o) for n, o in zip(note_name, note_octaves)]
+        note_numbers = [int(n.__int__()) for n in notes]
+        
+        print(f"[{self.pillar.id}] Generated notes: {notes} {note_numbers}")
+        print(f"[{self.pillar.id}] Volume: {volume}")
+        print(f"[{self.pillar.id}] Duration: {durations}")
+
+        for n, d in zip(note_numbers, durations):
+            instrument.play_note(n, volume, d)
 
     def play(self, volume):
-        # self.session.fork(self.play_notes, args=[self.instrument, 0.5])
-        self.instrument.play_note(random.choice(self.note_numbers), random.random(), 0.5, blocking=False)
+        if self.playing_fork is not None and self.playing_fork.alive:
+            # Already playing something
+            # print("already_playing")
+            return
+        
+        self.playing_fork = self.session.fork(self.play_notes, args=[self.instrument, volume])
+        # self.instrument.play_note(random.choice(self.note_numbers), volume, 0.5, blocking=False)
+        # pass
 
 
 class Pillar:
