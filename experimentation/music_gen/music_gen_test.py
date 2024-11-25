@@ -65,9 +65,15 @@ s.tempo = 100
 
 trumpet = s.new_part("trumpet")
 brass = s.new_part("brass")
-
+import scamp_extensions.pitch as sepitch 
+# note_numbers = sepitch.scale.Scale.blues(60)
+# note_numbers = list(note_numbers)
+note_numbers = [50 + i for i in range(12)]
 for p in note_numbers:
+    print(p)
     trumpet.play_note(p, 0.5, 0.5)
+
+exit()
 
 # def melody(instr, volume=0.8, transposition=0):
 #     plist = np.array([60, 61, 63, 64, 61, 73, 78, 79, 80]) + transposition
@@ -85,4 +91,15 @@ for p in note_numbers:
 # s.fork(melody, args=[trumpet, 0.8, 5], initial_beat_length=1.2)
 # s.fork(bass, args=[brass])
 
+import scamp_extensions.process as sep 
+rw = sep.generators.non_repeating_shuffle(note_numbers)
+
+for r in rw:
+    print(r)
+    trumpet.play_note(r, 0.5, 0.5)
+
 s.wait_for_children_to_finish()
+# import time
+# while True:
+#     # time.sleep(1)
+#     s.wait(0.1)

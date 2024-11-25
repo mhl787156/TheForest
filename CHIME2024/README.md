@@ -1,4 +1,4 @@
-# Future 2023 Project "The Pillars"
+# CHIME 2024 
 
 ## Concept
 
