@@ -182,7 +182,7 @@ class RotationMapper(Pillar_Mapper_Base):
                 elif 'b' in tube_allocation:
                     value = self.sound_state.change_baseline()
 
-                self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(value)))
+                self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(random.random())))
 
 
 def generate_mapping_interface(cfg_pillar) -> Pillar_Mapper_Base:
