@@ -162,7 +162,6 @@ class RotationMapper(Pillar_Mapper_Base):
         # This function takes the tube_id and the current tube states (sound and light)
         # It changes the amplitude, synth and note and color for this pillar
         # Internally changes self.sound_state and self.light_state
-        print("HELLO")
         for tube_id, (active, tube_allocation) in enumerate(zip(new_state, self.tube_allocation)):
             # ["a", "n", "t", "b", "p", "e"] == ["amp", "note-pitch", "synth", "bpm", "pan", "envelope"]
             # ["i", "t", "k", "m", "s", "b"]
