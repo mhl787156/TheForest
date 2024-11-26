@@ -34,11 +34,11 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
             print("response", response, "CAP" in response)
 
             if "CAP" in response:
-                status = response.split(",")[:-1]
+                status = response.split(",")[1:-1]
                 print("TEENSY RESPONSE", status, [bool(int(i)) for i in status])
                 cap_queue.put([bool(int(i)) for i in status])
             elif "LED" in response:
-                status = response.split(",")[:-1]
+                status = response.split(",")[1:-1]
                 light_queue.put([int(i) for i in status])
 
         except Exception as e:
