@@ -43,7 +43,7 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
 
         except Exception as e:
             pass
-            # print(f"Error reading data: {e}")
+            print(f"Error reading data: {e}")
 
     print("Serial Read Thread Killed")
 
