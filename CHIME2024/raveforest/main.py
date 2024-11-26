@@ -1,6 +1,6 @@
 import argparse
 import json
-import os
+import socket
 
 from pillar_hw_interface import Pillar
 from mapping_interface import generate_mapping_interface
@@ -70,7 +70,7 @@ if __name__=="__main__":
     print(args)
 
     # Get Hostname
-    hostname = args.hostname if args.hostname is not None else os.getenv("HOSTNAME")
+    hostname = args.hostname if args.hostname is not None else socket.gethostname()
     print("HOSTNAME is ", hostname)
         
 
