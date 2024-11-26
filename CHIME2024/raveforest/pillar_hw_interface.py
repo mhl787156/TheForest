@@ -211,41 +211,42 @@ class Pillar():
     def set_touch_status_tube(self, tube_id, status):
         self.touch_status[tube_id] = bool(status)
 
-    def read_from_serial(self):
-        try:
-            while True:
-                recevied_status = self.cap_queue.get(block=False)
-                if recevied_status != self.previous_received_status:
-                    # Only update touch status if different
-                    # This enables other sources of touch status
-                    self.set_touch_status(recevied_status)
-                self.previous_received_status = recevied_status
-        except queue.Empty:
-            pass
+    # def read_from_serial(self):
+    #     try:
+    #         while True:
+    #             recevied_status = self.cap_queue.get(block=False)
+    #             if recevied_status != self.previous_received_status:
+    #                 # Only update touch status if different
+    #                 # This enables other sources of touch status
+    #                 self.set_touch_status(recevied_status)
+    #             self.previous_received_status = recevied_status
+    #     except queue.Empty:
+    #         pass
 
-        try:
-            while True:
-                (tid, hue, sat) = self.light_queue.get(block=False)
-                self.light_status[tid] = (tid, hue, sat)
-        except queue.Empty:
-            pass
+    #     try:
+    #         while True:
+    #             (tid, hue, sat) = self.light_queue.get(block=False)
+    #             self.light_status[tid] = (tid, hue, sat)
+    #     except queue.Empty:
+    #         pass
 
 
     def reset_touch_status(self):
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
 
-    # def read_from_serial(self):
-    #     # Existing implementation...
-    #     try:
-    #         while not self.cap_queue.empty():
-    #             received_status = self.cap_queue.get_nowait()
-    #             if received_status != self.previous_received_status:
-    #                 self.set_touch_status(received_status)
-    #                 # Assuming a function to handle end of touch event
-    #                 self.handle_end_of_touch(received_status)
-    #             self.previous_received_status = received_status
-    #     except queue.Empty:
-    #         pass
+    def read_from_serial(self):
+        # Existing implementation...
+        try:
+            while not self.cap_queue.empty():
+                received_status = self.cap_queue.get_nowait()
+                print("Receiving", received_status)
+                if received_status != self.previous_received_status:
+                    self.set_touch_status(received_status)
+                    # Assuming a function to handle end of touch event
+                    self.handle_end_of_touch(received_status)
+                self.previous_received_status = received_status
+        except queue.Empty:
+            pass
 
     def handle_end_of_touch(self, received_status):
         if all(status == 0 for status in received_status):  # All touch sensors are inactive
