@@ -178,7 +178,7 @@ class Composer:
         chord = []
         gen_chords = [0, 2, 4] + [6 + 2*chord_levels*i for i in range(chord_levels)]
         for offset in gen_chords:
-            if offset > len(scale):
+            if offset >= len(scale):
                 new_offset = offset % len(scale)
                 number_up = offset // len(scale)
                 print(offset, new_offset, number_up)
