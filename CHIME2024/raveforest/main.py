@@ -71,6 +71,7 @@ if __name__=="__main__":
 
     # Get Hostname
     hostname = args.hostname if args.hostname is not None else os.getenv("HOSTNAME")
+    print("HOSTNAME is ", hostname)
         
 
     # Read the JSON config file
