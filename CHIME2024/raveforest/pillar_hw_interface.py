@@ -31,7 +31,7 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 break
 
             response = serial_port.readline().decode().strip()
-            # print("TEENSY RESPONSE", response)
+            print("TEENSY RESPONSE", response)
 
             if "CAP" in response:
                 status = response.split(",")[:-1]
@@ -234,18 +234,18 @@ class Pillar():
     def reset_touch_status(self):
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
 
-    def read_from_serial(self):
-        # Existing implementation...
-        try:
-            while not self.cap_queue.empty():
-                received_status = self.cap_queue.get_nowait()
-                if received_status != self.previous_received_status:
-                    self.set_touch_status(received_status)
-                    # Assuming a function to handle end of touch event
-                    self.handle_end_of_touch(received_status)
-                self.previous_received_status = received_status
-        except queue.Empty:
-            pass
+    # def read_from_serial(self):
+    #     # Existing implementation...
+    #     try:
+    #         while not self.cap_queue.empty():
+    #             received_status = self.cap_queue.get_nowait()
+    #             if received_status != self.previous_received_status:
+    #                 self.set_touch_status(received_status)
+    #                 # Assuming a function to handle end of touch event
+    #                 self.handle_end_of_touch(received_status)
+    #             self.previous_received_status = received_status
+    #     except queue.Empty:
+    #         pass
 
     def handle_end_of_touch(self, received_status):
         if all(status == 0 for status in received_status):  # All touch sensors are inactive
