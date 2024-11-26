@@ -132,14 +132,14 @@ class Pillar_Mapper_Base(object):
     def update_pillar(self, state_array) -> Tuple[SoundState, LightState]:
 
         # Update internal state
-        self.__interaction_update_sound_light(self.state_array, state_array)
+        self.interaction_update_sound_light(self.state_array, state_array)
 
         self.state_array = state_array
 
         return self.sound_state, self.light_state
 
     # This should be implemented in child classes
-    def __interaction_update_sound_light(self, old_state, new_state):
+    def interaction_update_sound_light(self, old_state, new_state):
         # This function takes the tube_id and the current tube states (sound and light)
         # It changes the amplitude, synth and note and color for this pillar
         # Internally changes self.sound_state and self.light_state
@@ -158,7 +158,7 @@ class RotationMapper(Pillar_Mapper_Base):
         # self.hsv_values = rgb_to_hsv(self.colormap[:, :3])
 
     # This should be implemented in child classes
-    def __interaction_update_sound_light(self, old_state, new_state):
+    def interaction_update_sound_light(self, old_state, new_state):
         # This function takes the tube_id and the current tube states (sound and light)
         # It changes the amplitude, synth and note and color for this pillar
         # Internally changes self.sound_state and self.light_state
