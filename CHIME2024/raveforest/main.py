@@ -11,7 +11,7 @@ import csv
 class Controller():
 
     def __init__(self, hostname, config):
-
+        
         if hostname not in config["pillars"]:
             raise RuntimeError(f"This hostname {hostname} not present in configuration")
 
@@ -21,6 +21,7 @@ class Controller():
         self.mapping_interface = generate_mapping_interface(self.pillar_config)
         self.sound_manager = SoundManager(hostname)
         self.loop_idx = 0
+        self.running = True
 
     def start(self, frequency):
         """Starts the main control loop
@@ -41,19 +42,19 @@ class Controller():
         self.pillar_manager.read_from_serial()
 
         current_btn_press = self.pillar_manager.get_all_touch_status()
-        print("current btn press:", current_btn_press)
+        # print("current btn press:", current_btn_press)
 
         # Generate the lights and notes based on the current btn inputs
-        lights, params = self.mapping_interface.generate_tubes(current_btn_press)
-        print("lights:", lights)
-        #print("params:", params)
+        sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
+        # print("lights:", light_state)
+        # print("sounds:", sound_state)
 
-        print(f"Sending Lights {self.pillar_manager.id}: {lights}")
-        self.pillar_manager.send_all_light_change(lights)
+        # print(f"Sending Lights {self.pillar_manager.id}: {light_state}")
+        self.pillar_manager.send_all_light_change(light_state)
 
-        print("Setting params", params)
-        for param_name, value in params.items():
-            self.sound_manager.update_pillar_setting(self.pillar_manager.id, param_name, value) 
+        # print("Setting params", sound_state)
+        for param_name, value in sound_state.items():
+            self.sound_manager.update_pillar_setting(param_name, value) 
 
         self.sound_manager.tick(time_delta=1/30.0)
 
@@ -69,7 +70,7 @@ if __name__=="__main__":
     print(args)
 
     # Get Hostname
-    hostname = args.hostname if args.hostname is None else os.getnev("HOSTNAME")
+    hostname = args.hostname if args.hostname is not None else os.getenv("HOSTNAME")
         
 
     # Read the JSON config file

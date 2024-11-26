@@ -1,0 +1,35 @@
+{
+    "notes_to_color": 1,
+    "notes": [50, 63, 70, 100, 86, 90, 60],
+    "colors": [
+        [0, 250],
+        [70,  250],
+        [30,  250],
+        [150, 250],
+        [220, 250],
+        [80,  250],
+        [180, 250]
+    ],
+    "mapping_id": 2,
+    "pillars": {
+        "fon006": {
+            "id": 0,
+            "port": "/dev/ttyACM0",
+            "pan": 0,
+            "num_tubes": 6,
+            "tube_allocation": ["-p", "-t", "-a", "+p", "+t", "+a"],
+            "map": "RotationMapper"
+        },
+        "fon002": {
+            "id": 1,
+            "port": "/dev/ttyACM1",
+            "pan": 0,
+            "num_tubes": 6,
+            "tube_allocation": ["-p", "-t", "-a", "+p", "+t", "+a"],
+            "map": "RotationMapper"
+        }
+    },
+    "bpm": 120,
+    "sonic-pi-ip": "127.0.0.1",
+    "sonic-pi-config-file": "/Users/Mickey/.sonic-pi/log/spider.log"
+}

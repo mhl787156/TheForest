@@ -1,10 +1,7 @@
-import json
 import random
 import sys
 from typing import Tuple
 import numpy as np
-from psonic import synthesizers
-from inspect import getmembers
 
 from interfaces import DEFAULT_STATE, SCALE_TYPES, INSTRUMENTS, MELODIES, SCALES_TYPES_LIST, BASELINE_STYLE
 
@@ -30,6 +27,23 @@ class SoundState(object):
         self.tempo_max = 200
         self.tempo_min = 30
         self.key_center = 60
+
+    def __repr__(self):
+        return f"{self.to_json()}"
+
+    def to_json(self):
+        return {
+            "volume": self.volume,
+            "instruments": self.instruments,
+            "key": self.key,
+            "bpm": self.bpm,
+            "melody_scale": self.melody_scale,
+            "melody_number": self.melody_number,
+            "baseline_style": self.baseline_style,
+        }
+    
+    def items(self):
+        return self.to_json().items()
 
     def change_instrument(self):
         curr_instr = self.instruments[self.change_instrument_next_layer]
@@ -86,10 +100,16 @@ class LightState(object):
         else:
             self.lights = lights
 
+    def __repr__(self):
+        return f"{self.lights}"
+
     def __getitem__(self, indices):
-        if not isinstance(indices, tuple):
-            indices = tuple(indices)
-        return [self.lights[i] for i in indices]
+        if not isinstance(indices, list):
+            indices = [indices]
+        ret = [self.lights[i] for i in indices]
+        if len(ret) == 1:
+            return ret[0]
+        return ret
 
     def __setitem__(self, key, newvalue):
         self.lights[key] = newvalue

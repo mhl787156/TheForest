@@ -101,6 +101,7 @@ DEFAULT_STATE = {
     "bpm": 120,
     "melody_scale": "pentatonic",
     "melody_number": 0,
-    "baseline_style": "long"
+    "baseline_style": "long",
+    "chord_levels": 0
 }
 

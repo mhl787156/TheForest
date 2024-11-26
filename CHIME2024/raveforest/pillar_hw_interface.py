@@ -197,7 +197,7 @@ class Pillar():
             bright = clamp(l[1])
             light_list.extend([str(hue), str(bright)])
         message = f"ALLLED,{','.join(light_list)};"
-        print(f'Message being sent: {message}')
+        # print(f'Message being sent: {message}')
         self.write_queue.empty()
         self.write_queue.put(message)
 

@@ -59,8 +59,7 @@ class Composer:
 
         # Instruments
         self.instrument_manager = InstrumentManager(self.session)
-        for k,v in initial_state["instruments"].items():
-            self.instrument_manager.update_instrument(v, function=k)
+        self.update_instruments(self.state["instruments"])
 
         # Note pitch-wise "60" = Middle C
         # Harmony (key - random shuffle of circle of fifths)
@@ -79,11 +78,28 @@ class Composer:
             "background": None
         }
 
-    def update(self, new_state):
-        pass
+    def update(self, setting_name, value):
+        
+        if self.state[setting_name] != value:
+            # Interaction
+            self.shared_state["chord_levels"] += 1
 
-    def update_key(self):
-        self.shared_state["key"].value += 5
+        self.state[setting_name] = value
+        if setting_name == "volume":
+            self.state["volume"] = value
+        if setting_name == "instruments":
+            self.update_instruments(value)
+        if setting_name == "key":
+            self.update_key(value)
+        if setting_name == "bpm":
+            self.session.bpm = value
+
+    def update_instruments(self, instruments):
+        for k,v in instruments.items():
+            self.instrument_manager.update_instrument(v, function=k)
+
+    def update_key(self, key):
+        self.shared_state["key"].value = key
 
     def update_chord_leve(self, level):
         self.shared_state["chord_levels"].value += level
@@ -174,7 +190,7 @@ class Composer:
         chord[key_idx:] += 12 # If some of the chords are below tonic, shift down octave
         # print(chord)
 
-        shared_state["key"].value = key
+        
         volume = self.state["volume"]["harmony"]
         envelope = expe.envelope.Envelope.from_levels_and_durations(
             [0.1, volume, 1.0], [0.5, 3.0]
@@ -184,6 +200,8 @@ class Composer:
         if chord_levels > 0:
             shared_state["chord_levels"].value -= 1
 
+        shared_state["key"].value = key
+
     def fork_background(self, shared_state):
         # current_clock().tempo = self.state["bpm"]["background"]
         instrument = self.instrument_manager.background_instrument()
@@ -192,7 +210,14 @@ class Composer:
         while True:
             note = shared_state["key"].value - 24
             # print("background", note)
-            instrument.play_note(note, volume, 4.0*4, blocking=True)
+            if self.state["baseline_style"] == "long":
+                instrument.play_note(note, volume, 4.0*4, blocking=True)
+            elif self.state["baseline_style"] == "pulse":
+                instrument.play_note(note, volume, 4.0*4, "tremolo", blocking=True)
+            else:
+                for _ in range(4):
+                    instrument.play_note(note, volume, 0.5, "staccato", blocking=True)
+                    wait(0.5)
 
 
 class SoundManager:
@@ -213,8 +238,7 @@ class SoundManager:
     
     def update_pillar_setting(self, setting_name, value):
         """Updates the settings dictionary for a specific pillar."""
-        # Update the actual pillar object
-        getattr(self, f'set_{setting_name}')(value)  # Dynamically call the set method
+        self.composer.update(setting_name, value)
 
     def tick(self, time_delta=1/30.0):
         self.composer.play()
