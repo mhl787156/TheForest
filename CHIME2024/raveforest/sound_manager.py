@@ -100,7 +100,7 @@ class Composer:
     def play(self):
         # self.start_fork("melody", self.fork_melody)
         self.start_fork("harmony", self.fork_harmony)
-        # self.start_fork("background", self.fork_background)
+        self.start_fork("background", self.fork_background)
         
     def start_fork(self, function_name, function):
         # If a fork is active or not alive, then start the new fork
@@ -148,10 +148,23 @@ class Composer:
         # current_clock().tempo = self.state["bpm"]["harmony"]
         instrument = self.instrument_manager.harmony_instrument()
         key = next(self.key_generator)
+        # print("harmony", key)
+        scale = list(SCALE_TYPES[self.state["melody_scale"]](key))
 
         # Add 7/9/11/13 etc depending on chord_levels
         chord_levels = shared_state["chord_levels"].value
-        chord = [key, key+2, key+4] + [key+6 + 2*chord_levels*i for i in range(chord_levels)]
+
+        chord = []
+        gen_chords = [0, 2, 4] + [6 + 2*chord_levels*i for i in range(chord_levels)]
+        for offset in gen_chords:
+            if offset > len(scale):
+                new_offset = offset % len(scale)
+                number_up = offset // len(scale)
+                print(offset, new_offset, number_up)
+                note = scale[new_offset] + number_up * 12
+            else:
+                note = scale[offset]
+            chord.append(int(note))
 
         # Adjust voicings
         # print(chord)
@@ -175,9 +188,10 @@ class Composer:
         # current_clock().tempo = self.state["bpm"]["background"]
         instrument = self.instrument_manager.background_instrument()
         volume = self.state["volume"]["background"]
-        for note in seprocess.generators.random_walk(40, clamp_min=35, clamp_max=50):
-        # while True:
-            # note = shared_state["key"].value - 24
+        # for note in seprocess.generators.random_walk(40, clamp_min=35, clamp_max=50):
+        while True:
+            note = shared_state["key"].value - 24
+            # print("background", note)
             instrument.play_note(note, volume, 4.0*4, blocking=True)
 
 
