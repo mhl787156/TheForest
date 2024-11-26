@@ -31,11 +31,9 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 break
 
             response = serial_port.readline().decode().strip()
-            print("response", response, "CAP" in response)
 
             if "CAP" in response:
                 status = response.split(",")[1:-1]
-                print("TEENSY RESPONSE", status, [bool(int(i)) for i in status])
                 cap_queue.put([bool(int(i)) for i in status])
             elif "LED" in response:
                 status = response.split(",")[1:-1]
@@ -237,19 +235,19 @@ class Pillar():
 
     def read_from_serial(self):
         # Existing implementation...
-        print("Reading from serial")
+        # print("Reading from serial")
         try:
             while not self.cap_queue.empty():
-                print("HELLLOOOOOO")
+                # print("HELLLOOOOOO")
                 received_status = self.cap_queue.get_nowait()
-                print("Receiving", received_status)
+                # print("Receiving", received_status)
                 if received_status != self.previous_received_status:
                     self.set_touch_status(received_status)
                     # Assuming a function to handle end of touch event
                     self.handle_end_of_touch(received_status)
                 self.previous_received_status = received_status
         except queue.Empty:
-            print("Queue Empty")
+            # print("Queue Empty")
             pass
 
     def handle_end_of_touch(self, received_status):
