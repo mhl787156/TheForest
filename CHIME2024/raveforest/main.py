@@ -19,6 +19,7 @@ class Controller():
         self.pillar_config = config["pillars"][hostname]
         self.pillar_manager = Pillar(**self.pillar_config)
         self.mapping_interface = RotationMapper(self.pillar_config)
+        print(isinstance(self.mapping_interface, RotationMapper))  # Should return True
         self.sound_manager = SoundManager(hostname)
         self.loop_idx = 0
         self.running = True
