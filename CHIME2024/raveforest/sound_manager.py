@@ -116,7 +116,7 @@ class Composer:
         return seprocess.generators.non_repeating_shuffle(list(notes))
 
     def play(self):
-        # self.start_fork("melody", self.fork_melody)
+        self.start_fork("melody", self.fork_melody)
         self.start_fork("harmony", self.fork_harmony)
         self.start_fork("background", self.fork_background)
         
@@ -128,7 +128,7 @@ class Composer:
     def fork_melody(self, shared_state):
                 # Random: 
         # 1. If playing a note
-        play_note_thresh = 0.05
+        play_note_thresh = 0.03
         # 2. Number of notes (heavily weigted to 1,2,3)
         geom_p = 0.00001
         # 3. The duration of each of those notes
@@ -155,12 +155,13 @@ class Composer:
         # Generate initial note
         scale = SCALE_TYPES[self.state["melody_scale"]](self.shared_state["key"].value)
         note_numbers = random.choices(list(scale) + [None], k=number_of_notes)
-        print(list(scale))
+        # print(list(scale))
         note_octaves = np.clip(np.round(np.random.normal(4, 1.5, number_of_notes)).astype(int), 0, 7)
 
+        volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
         for n, d in zip(note_numbers, durations):
-            instrument.play_note(n, 0.5, d, blocking=True)
+            instrument.play_note(n, volume, d, blocking=True)
 
     def fork_harmony(self, shared_state):
         # current_clock().tempo = self.state["bpm"]["harmony"]
