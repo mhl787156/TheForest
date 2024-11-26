@@ -165,7 +165,7 @@ class RotationMapper(Pillar_Mapper_Base):
         for tube_id, (active, tube_allocation) in enumerate(zip(new_state, self.tube_allocation)):
             # ["a", "n", "t", "b", "p", "e"] == ["amp", "note-pitch", "synth", "bpm", "pan", "envelope"]
             # ["i", "t", "k", "m", "s", "b"]
-            print(f"Updating tube {tube_id}, {tube_allocation}, {active}")
+            # print(f"Updating tube {tube_id}, {tube_allocation}, {active}")
             if active:
                 delta = 1 
                 if 'i' in tube_allocation:

@@ -83,10 +83,8 @@ class Composer:
         print("Sound State Updating", setting_name, value)
         if self.state[setting_name] != value:
             # Interaction
-            self.shared_state["chord_levels"].value += 1
-
-            print("different")
-            
+            if self.shared_state["chord_levels"].value < 4:
+                self.shared_state["chord_levels"].value += 1
 
         self.state[setting_name] = value
         if setting_name == "volume":
