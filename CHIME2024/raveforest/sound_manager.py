@@ -1,4 +1,4 @@
-from scamp import Session, wait
+from scamp import Session, wait, current_clock
 import scamp_extensions.pitch as sepitch 
 import scamp_extensions.process as seprocess
 import expenvelope as expe
@@ -56,7 +56,7 @@ DEFAULT_STATE = {
     "volume": {
         "melody": 0.5,
         "harmony": 0.5,
-        "background": 0.5
+        "background": 0.1
     },
     "instruments": {
         "melody": "trumpet",
@@ -66,9 +66,9 @@ DEFAULT_STATE = {
     "bpm": {
         "melody": 120,
         "harmony": 60,
-        "background": 1
+        "background": 30
     },
-    "melody_scale": "blues"
+    "melody_scale": "diatonic"
 }
 
 
@@ -132,7 +132,8 @@ class Composer:
         self.melody_generator = self.generate_melody_generator(next(self.key_generator))
 
         self.shared_state = {
-            "key": self.mp_manager.Value('s', next(self.key_generator))
+            "key": self.mp_manager.Value('s', next(self.key_generator)),
+            "chord_levels": self.mp_manager.Value('d', 0)
         }
 
         self.active_forks = {
@@ -144,6 +145,12 @@ class Composer:
     def update(self, new_state):
         pass
 
+    def update_key(self):
+        self.shared_state["key"].value += 5
+
+    def update_chord_leve(self, level):
+        self.shared_state["chord_levels"].value += level
+
     def generate_key_generator(self):
         # return seprocess.generators.random_walk(self.all_keys[0], clamp_min=min(self.all_keys), clamp_max=max(self.all_keys))
         circle_fifths = [48 + (i*5) % 12 for i in range(11)]
@@ -154,7 +161,7 @@ class Composer:
         return seprocess.generators.non_repeating_shuffle(list(notes))
 
     def play(self):
-        self.start_fork("melody", self.fork_melody)
+        # self.start_fork("melody", self.fork_melody)
         self.start_fork("harmony", self.fork_harmony)
         self.start_fork("background", self.fork_background)
         
@@ -176,7 +183,7 @@ class Composer:
         # 4. Generate initial note from scale in a random octave weighted between 3-6
         # octave_weightings = {0:}
         # 5. The weighted notes themselves OR weighted intervals between them (4th/5ths etc)
-        # note_weightings = [1.0, 1.0, ]
+        # note_weightings = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
         if random.random() >= play_note_thresh:
             return
@@ -193,6 +200,7 @@ class Composer:
         # Generate initial note
         scale = SCALE_TYPES[self.state["melody_scale"]](self.shared_state["key"].value)
         note_numbers = random.choices(list(scale) + [None], k=number_of_notes)
+        print(list(scale))
         note_octaves = np.clip(np.round(np.random.normal(4, 1.5, number_of_notes)).astype(int), 0, 7)
 
         instrument = self.instrument_manager.melody_instrument()
@@ -200,24 +208,40 @@ class Composer:
             instrument.play_note(n, 0.5, d, blocking=True)
 
     def fork_harmony(self, shared_state):
+        # current_clock().tempo = self.state["bpm"]["harmony"]
         instrument = self.instrument_manager.harmony_instrument()
         key = next(self.key_generator)
-        chord = [key, key+3, key+5]
+
+        # Add 7/9/11/13 etc depending on chord_levels
+        chord_levels = shared_state["chord_levels"].value
+        chord = [key, key+2, key+4] + [key+6 + 2*chord_levels*i for i in range(chord_levels)]
+
+        # Adjust voicings
+        # print(chord)
+        random.shuffle(chord)
+        key_idx = chord.index(key)
+        chord = np.array(chord)
+        chord[key_idx:] += 12 # If some of the chords are below tonic, shift down octave
+        # print(chord)
 
         shared_state["key"].value = key
-
+        volume = self.state["volume"]["harmony"]
         envelope = expe.envelope.Envelope.from_levels_and_durations(
-            [0.1, 0.5, 1.0], [0.5, 3.0]
+            [0.1, volume, 1.0], [0.5, 3.0]
         )
         instrument.play_chord(chord, envelope, 4.0, blocking=True)
 
-    def fork_background(self, shared_state):
-        instrument = self.instrument_manager.background_instrument()
+        if chord_levels > 0:
+            shared_state["chord_levels"].value -= 1
 
+    def fork_background(self, shared_state):
+        # current_clock().tempo = self.state["bpm"]["background"]
+        instrument = self.instrument_manager.background_instrument()
+        volume = self.state["volume"]["background"]
         for note in seprocess.generators.random_walk(40, clamp_min=35, clamp_max=50):
         # while True:
             # note = shared_state["key"].value - 24
-            instrument.play_note(note, 0.05, 4.0*4, blocking=True)
+            instrument.play_note(note, volume, 4.0*4, blocking=True)
 
 
 class SoundManager:
@@ -241,31 +265,21 @@ class SoundManager:
         # Update the actual pillar object
         getattr(self, f'set_{setting_name}')(value)  # Dynamically call the set method
 
-    def set_amp(self, amp):
-        self.amp = amp
-    
-    def set_pitch(self, pitch):
-        self.pitch = pitch
-    
-    def set_synth(self, synth):
-        self.synth = globals()[synth]
-        
-    def set_bpm(self, bpm):
-        self.bpm = bpm
-    
-    def set_pan(self, pan):
-        self.pan = pan
-    
-    def set_envelope(self, envelope):
-        self.envelope = envelope
+    def tick(self, time_delta=1/30.0):
+        self.composer.play()
+        wait(time_delta, units="time")
 
 
 if __name__=="__main__":
 
-    # sm = SoundManager("test")
-    session = Session()
-    session.bpm = 60
-    comp = Composer(session, DEFAULT_STATE)
+    sm = SoundManager("test")
     while True:
-        comp.play()
-        wait(1/30.0, units="time")
+        sm.tick()
+    # session = Session()
+    # session.bpm = 60
+    # comp = Composer(session, DEFAULT_STATE)
+    # while True:
+        # comp.play()
+        # wait(1/30.0, units="time")
+
+    

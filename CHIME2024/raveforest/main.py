@@ -75,6 +75,8 @@ class Controller():
         for param_name, value in params.items():
             self.sound_manager.update_pillar_setting(self.pillar_manager.id, param_name, value) 
 
+        self.sound_manager.tick(time_delta=1/30.0)
+
         self.loop_idx += 1
 
 if __name__=="__main__":
