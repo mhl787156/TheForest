@@ -10,7 +10,7 @@ import json
 import os
 
 
-from MappingInterface import  MappingInterface
+# from MappingInterface import  MappingInterface
 
 path = os.getcwd()
 config_path = os.path.abspath(os.path.join(path, os.pardir, "EvoMusArt2024/config/config.json")) #'/home/admin-amcs/Desktop/FUTURES FEST/TheForest/Futures2023/config/config.json'
@@ -70,7 +70,7 @@ class Pillar():
     def __init__(self, id, port, baud_rate=9600, **kwargs):
         self.id = id
 
-        self.mapping = MappingInterface(copy.deepcopy(kwargs))
+        # self.mapping = MappingInterface(copy.deepcopy(kwargs))
         # Print all elements of the mapping object
         #print(f"Mapping Interface: {self.mapping.__dict__}")
 

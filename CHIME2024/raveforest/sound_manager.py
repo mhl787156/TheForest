@@ -1,5 +1,4 @@
 from scamp import Session, wait, current_clock
-import scamp_extensions.pitch as sepitch 
 import scamp_extensions.process as seprocess
 import expenvelope as expe
  
@@ -8,69 +7,7 @@ from queue import Queue
 import random
 import numpy as np
 
-# Mapping
-# class NODE_FUNCTION(Enum):
-#     SCALE_TYPE=1
-#     SCALE_KEY=2
-#     INSTRUMENT=3
-#     TEMPO=4
-
-# NODE_FUNCTION_NAMES = {
-#     NODE_FUNCTION.SCALE_KEY: "key",
-#     NODE_FUNCTION.SCALE_TYPE: "scale",
-#     NODE_FUNCTION.INSTRUMENT: "instr",
-#     NODE_FUNCTION.TEMPO: "tempo"
-# }
-
-SCALE_TYPES = {
-    "aeolian" : sepitch.scale.Scale.aeolian,
-    "blues" : sepitch.scale.Scale.blues,
-    "chromatic" : sepitch.scale.Scale.chromatic,
-    "diatonic" : sepitch.scale.Scale.diatonic,
-    "dorian" : sepitch.scale.Scale.dorian,
-    "harmonic_minor" : sepitch.scale.Scale.harmonic_minor,
-    "ionian" : sepitch.scale.Scale.ionian,
-    "locrian" : sepitch.scale.Scale.locrian,
-    "lydian" : sepitch.scale.Scale.lydian,
-    "major" : sepitch.scale.Scale.major,
-    "melodic_minor" : sepitch.scale.Scale.melodic_minor,
-    "mixolydian" : sepitch.scale.Scale.mixolydian,
-    "natural_minor" : sepitch.scale.Scale.natural_minor,
-    "octatonic" : sepitch.scale.Scale.octatonic,
-    "pentatonic" : sepitch.scale.Scale.pentatonic,
-    "pentatonic_minor" : sepitch.scale.Scale.pentatonic_minor,
-    "phrygian" : sepitch.scale.Scale.phrygian,
-    "whole_tone" : sepitch.scale.Scale.whole_tone
-}
-
-INSTRUMENTS = [
-    "trumpet",
-    "brass",
-    "piano",
-    "strings",
-    "oboe"
-]
-
-
-DEFAULT_STATE = {
-    "volume": {
-        "melody": 0.5,
-        "harmony": 0.5,
-        "background": 0.1
-    },
-    "instruments": {
-        "melody": "trumpet",
-        "harmony": "piano",
-        "background": "strings"
-    },
-    "bpm": {
-        "melody": 120,
-        "harmony": 60,
-        "background": 30
-    },
-    "melody_scale": "diatonic"
-}
-
+from interfaces import DEFAULT_STATE, SCALE_TYPES, INSTRUMENTS
 
 class InstrumentManager:
 
@@ -163,7 +100,7 @@ class Composer:
     def play(self):
         # self.start_fork("melody", self.fork_melody)
         self.start_fork("harmony", self.fork_harmony)
-        self.start_fork("background", self.fork_background)
+        # self.start_fork("background", self.fork_background)
         
     def start_fork(self, function_name, function):
         # If a fork is active or not alive, then start the new fork

@@ -1,30 +1,12 @@
-import time
-import atexit
-import asyncio
-import websockets
-from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
-from functools import partial
 import argparse
 import json
-import copy
-from datetime import datetime
 import os
 
 from pillar_hw_interface import Pillar
-from MappingInterface import MappingInterface
+from mapping_interface import generate_mapping_interface
 from sound_manager import SoundManager
 
 import csv
-
-
-# Constants for parameter names
-AMP = "amp"
-NOTE_PITCH = "note-pitch"
-SYNTH = "synth"
-BPM = "bpm"
-PAN = "pan"
-ENVELOPE = "envelope"
-PARAMS = [AMP, NOTE_PITCH, SYNTH, BPM, PAN, ENVELOPE]
 
 class Controller():
 
@@ -36,11 +18,9 @@ class Controller():
         self.num_pillars = len(config["pillars"])        
         self.pillar_config = config["pillars"][hostname]
         self.pillar_manager = Pillar(**self.pillar_config)
+        self.mapping_interface = generate_mapping_interface(self.pillar_config)
         self.sound_manager = SoundManager(hostname)
         self.loop_idx = 0
-
-        # self.running = True
-        # atexit.register(self.stop)
 
     def start(self, frequency):
         """Starts the main control loop
@@ -64,7 +44,7 @@ class Controller():
         print("current btn press:", current_btn_press)
 
         # Generate the lights and notes based on the current btn inputs
-        lights, params = self.pillar_manager.mapping.generate_tubes(current_btn_press)
+        lights, params = self.mapping_interface.generate_tubes(current_btn_press)
         print("lights:", lights)
         #print("params:", params)
 
