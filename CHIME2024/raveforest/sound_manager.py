@@ -33,7 +33,7 @@ class InstrumentManager:
         if self.instrument_names[function] is not None:
             # Remove Existing Instrument
             current_instruments = [i.name for i in self.session.instruments]
-            idx = list(current_instruments).index(self.instrument_name[function])
+            idx = list(current_instruments).index(self.instrument_names[function])
             self.session.pop_instrument(idx)
             
         self.instruments[function] = self.session.new_part(instrument_name)
