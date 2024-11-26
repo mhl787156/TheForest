@@ -20,12 +20,12 @@
             "tube_allocation": ["-p", "-t", "-a", "+p", "+t", "+a"],
             "map": "RotationMapper"
         },
-        "fon002": {
+        "fon003": {
             "id": 1,
-            "port": "/dev/ttyACM1",
+            "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "tube_allocation": ["-p", "-t", "-a", "+p", "+t", "+a"],
+            "tube_allocation": ["t", "i", "k+", "m", "s", "b"],
             "map": "RotationMapper"
         }
     },
