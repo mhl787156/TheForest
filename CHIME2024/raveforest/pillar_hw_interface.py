@@ -238,6 +238,7 @@ class Pillar():
         # Existing implementation...
         try:
             while not self.cap_queue.empty():
+                print("HELLLOOOOOO")
                 received_status = self.cap_queue.get_nowait()
                 print("Receiving", received_status)
                 if received_status != self.previous_received_status:
