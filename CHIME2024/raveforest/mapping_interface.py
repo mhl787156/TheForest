@@ -166,6 +166,7 @@ class RotationMapper(Pillar_Mapper_Base):
             # ["a", "n", "t", "b", "p", "e"] == ["amp", "note-pitch", "synth", "bpm", "pan", "envelope"]
             # ["i", "t", "k", "m", "s", "b"]
             if active:
+                print(f"Updating tube {tube_id}, {tube_allocation}")
                 delta = 1 
                 if 'i' in tube_allocation:
                     value = self.sound_state.change_instrument()
