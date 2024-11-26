@@ -31,7 +31,7 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 break
 
             response = serial_port.readline().decode().strip()
-
+            # print("RECEIVEDDDDD", response)
             if "CAP" in response:
                 status = response.split(",")[1:-1]
                 cap_queue.put([bool(int(i)) for i in status])

@@ -11,15 +11,11 @@ import csv
 class Controller():
 
     def __init__(self, hostname, config):
-        
-        if hostname not in config["pillars"]:
-            raise RuntimeError(f"This hostname {hostname} not present in configuration")
 
         self.num_pillars = len(config["pillars"])        
         self.pillar_config = config["pillars"][hostname]
         self.pillar_manager = Pillar(**self.pillar_config)
         self.mapping_interface = RotationMapper(self.pillar_config)
-        print(isinstance(self.mapping_interface, RotationMapper))  # Should return True
         self.sound_manager = SoundManager(hostname)
         self.loop_idx = 0
         self.running = True
@@ -64,6 +60,7 @@ class Controller():
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")
     parser.add_argument("--config", default="config/config.json", help="Path to the JSON config file.")
+    parser.add_argument("--serial_port", default=None, help="Overrides the serial in the configuration")
     parser.add_argument("--frequency", default=5, type=int, help="Frequency of the controller loop")
     parser.add_argument("--hostname", default=None, type=str, help="The hostname if different from the base computer")
 
@@ -78,7 +75,13 @@ if __name__=="__main__":
     # Read the JSON config file
     with open(args.config, 'r') as config_file:
         config = json.load(config_file)
-        
+
+    if hostname not in config["pillars"]:
+        raise RuntimeError(f"This hostname {hostname} not present in configuration")
+
+    if args.serial_port is not None:
+        print("Reconfigured serial port to: ", args.serial_port)
+        config["pillars"][hostname]["port"] = args.serial_port
 
     # Create a Controller instance and pass the parsed values
     print("Intiialise and run Controller")

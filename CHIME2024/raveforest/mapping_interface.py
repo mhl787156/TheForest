@@ -46,8 +46,11 @@ class SoundState(object):
         return self.to_json().items()
 
     def change_instrument(self):
+        # print("Changing Instrument")
         curr_instr = self.instruments[self.change_instrument_next_layer]
-        new_idx = (INSTRUMENTS.index(curr_instr) + 1) % len(INSTRUMENTS)
+        curr_idx = INSTRUMENTS.index(curr_instr) 
+        new_idx = (curr_idx + 1) % len(INSTRUMENTS)
+        # print(f"Instrument Index from {curr_idx} -> {new_idx}, {len(INSTRUMENTS)}")
         self.instruments[self.change_instrument_next_layer] = INSTRUMENTS[new_idx]
 
         if self.change_instrument_next_layer == "melody":

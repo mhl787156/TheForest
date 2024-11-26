@@ -6,6 +6,7 @@ import multiprocessing as mp
 from queue import Queue
 import random
 import numpy as np
+import copy
 
 from interfaces import DEFAULT_STATE, SCALE_TYPES, INSTRUMENTS
 
@@ -27,6 +28,7 @@ class InstrumentManager:
         }
 
     def update_instrument(self, instrument_name, function="melody"):
+        print("Sound Manager Update Instrument Called")
         if self.instrument_names[function] == instrument_name:
             return
         
@@ -35,9 +37,11 @@ class InstrumentManager:
             current_instruments = [i.name for i in self.session.instruments]
             idx = list(current_instruments).index(self.instrument_names[function])
             self.session.pop_instrument(idx)
+            # print(f"Previous Instrument Removed {self.instrument_names[function]}")
             
         self.instruments[function] = self.session.new_part(instrument_name)
         self.instrument_names[function] = instrument_name
+        # print(f"New Instrument Added {self.instrument_names[function]}")
 
     def melody_instrument(self):
         return self.instruments["melody"]
@@ -53,7 +57,7 @@ class Composer:
     def __init__(self, session, initial_state):
         self.session = session
 
-        self.state = initial_state
+        self.state = copy.deepcopy(initial_state)
 
         self.mp_manager = mp.Manager()
 
@@ -80,22 +84,23 @@ class Composer:
 
     def update(self, setting_name, value):
 
-        print("Sound State Updating", setting_name, value)
+        # print("Sound State Updating", setting_name, self.state[setting_name],  value)
         if self.state[setting_name] != value:
             # Interaction
             if self.shared_state["chord_levels"].value < 4:
                 self.shared_state["chord_levels"].value += 1
 
-        self.state[setting_name] = value
-        if setting_name == "volume":
-            self.state["volume"] = value
-        if setting_name == "instruments":
-            self.update_instruments(value)
-        if setting_name == "key":
-            self.update_key(value)
-        if setting_name == "bpm":
-            self.session.bpm = value
-
+            # The copy is important here
+            self.state[setting_name] = copy.deepcopy(value)
+            if setting_name == "volume":
+                self.state["volume"] = value
+            if setting_name == "instruments":
+                self.update_instruments(value)
+            if setting_name == "key":
+                self.update_key(value)
+            if setting_name == "bpm":
+                self.session.bpm = value
+            
     def update_instruments(self, instruments):
         for k,v in instruments.items():
             self.instrument_manager.update_instrument(v, function=k)
