@@ -99,7 +99,7 @@ DEFAULT_STATE = {
     },
     "key": 60,
     "bpm": 120,
-    "melody_scale": "diatonic",
+    "melody_scale": "pentatonic",
     "melody_number": 0,
     "baseline_style": "long"
 }
