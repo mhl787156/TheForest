@@ -12,13 +12,6 @@ import os
 
 # from MappingInterface import  MappingInterface
 
-path = os.getcwd()
-config_path = os.path.abspath(os.path.join(path, os.pardir, "EvoMusArt2024/config/config.json")) #'/home/admin-amcs/Desktop/FUTURES FEST/TheForest/Futures2023/config/config.json'
-
-# Read the JSON config file
-with open(config_path, 'r') as config_file:
-    config = json.load(config_file)
-
 def clamp(val, b=0, c=255):
     return max(b, min(val, c))
 
