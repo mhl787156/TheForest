@@ -8,7 +8,7 @@ import random
 import numpy as np
 import copy
 
-from interfaces import DEFAULT_STATE, SCALE_TYPES, INSTRUMENTS
+from interfaces import *
 
 class InstrumentManager:
 
@@ -90,8 +90,9 @@ class Composer:
             if self.shared_state["chord_levels"].value < 4:
                 self.shared_state["chord_levels"].value += 1
 
+            value = copy.deepcopy(value)
             # The copy is important here
-            self.state[setting_name] = copy.deepcopy(value)
+            self.state[setting_name] = value
             if setting_name == "volume":
                 self.state["volume"] = value
             if setting_name == "instruments":
@@ -100,6 +101,10 @@ class Composer:
                 self.update_key(value)
             if setting_name == "bpm":
                 self.session.bpm = value
+            
+            # Play any sounds
+            # self.session.fork(self.fork_melody, args=(self.shared_state,))
+            self.start_fork("melody", self.fork_melody)
             
     def update_instruments(self, instruments):
         for k,v in instruments.items():
@@ -121,7 +126,7 @@ class Composer:
         return seprocess.generators.non_repeating_shuffle(list(notes))
 
     def play(self):
-        self.start_fork("melody", self.fork_melody)
+        # self.start_fork("melody", self.fork_melody)
         self.start_fork("harmony", self.fork_harmony)
         self.start_fork("background", self.fork_background)
         
@@ -130,43 +135,17 @@ class Composer:
         if self.active_forks[function_name] is None or not self.active_forks[function_name].alive:
             self.active_forks[function_name] = self.session.fork(function, args=(self.shared_state,))
     
-    def fork_melody(self, shared_state):
-                # Random: 
-        # 1. If playing a note
-        play_note_thresh = 0.03
-        # 2. Number of notes (heavily weigted to 1,2,3)
-        geom_p = 0.00001
-        # 3. The duration of each of those notes
-        # duration_weightings = [1, 1, 1, 50, 200, 150, 100, 50, 2, 2]
-        duration_values = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
-        duration_weightings = [0, 3, 3, 1, 0, 0, 0]
-        # 4. Generate initial note from scale in a random octave weighted between 3-6
-        # octave_weightings = {0:}
-        # 5. The weighted notes themselves OR weighted intervals between them (4th/5ths etc)
-        # note_weightings = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-
-        if random.random() >= play_note_thresh:
-            return
-        
-        number_of_notes  = random.choices([1, 2, 3, 4, 5], weights=[300, 100, 50, 50, 30], k=1)[0]
-
-        if number_of_notes == 0:
-            return
-
-        durations = random.choices(duration_values,
-            weights=duration_weightings, k=number_of_notes)
-        durations = [d for d in durations]
-        
+    def fork_melody(self, shared_state):        
         # Generate initial note
         scale = SCALE_TYPES[self.state["melody_scale"]](self.shared_state["key"].value)
-        note_numbers = random.choices(list(scale) + [None], k=number_of_notes)
-        # print(list(scale))
-        note_octaves = np.clip(np.round(np.random.normal(4, 1.5, number_of_notes)).astype(int), 0, 7)
-
+        melody_num = self.state["melody_number"]
+        melody = MELODIES[melody_num]
+        
         volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
-        for n, d in zip(note_numbers, durations):
-            instrument.play_note(n, volume, d, blocking=True)
+        for n, d in melody:
+            note = scale.degree_to_pitch(n)
+            instrument.play_note(note, volume, d, blocking=True)
 
     def fork_harmony(self, shared_state):
         # current_clock().tempo = self.state["bpm"]["harmony"]
@@ -184,7 +163,7 @@ class Composer:
             if offset >= len(scale):
                 new_offset = offset % len(scale)
                 number_up = offset // len(scale)
-                print(offset, new_offset, number_up)
+                # print(offset, new_offset, number_up)
                 note = scale[new_offset] + number_up * 12
             else:
                 note = scale[offset]

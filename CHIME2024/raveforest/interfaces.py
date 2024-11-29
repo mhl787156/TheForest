@@ -74,9 +74,9 @@ INSTRUMENTS = [
 ]
 
 MELODIES = [
-    "melody1",
-    "melody2",
-    "melody3"
+    [(0, 0.25), (1, 0.25), (2, 0.25), (3, 0.25), (4, 0.25)], # Ascending Scale
+    [(4, 0.25), (3, 0.25), (2, 0.25), (1, 0.25), (0, 0.25)], # Ascending Scale
+    [(0, 0.25), (2, 0.25), (4, 0.25)], # Ascending Scale
 ]
 
 BASELINE_STYLE = [

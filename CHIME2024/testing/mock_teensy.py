@@ -88,9 +88,9 @@ while running:
     pygame.display.flip()
 
     # Periodically send states to simulate Arduino loop behavior
-    if time.time() - last_send_time > 1:  # Send every second
-        send_button_states()
-        last_send_time = time.time()
+    # if time.time() - last_send_time > 1:  # Send every second
+    #     send_button_states()
+    #     last_send_time = time.time()
 
 # Clean up
 arduino_sim.close()

@@ -188,6 +188,46 @@ class RotationMapper(Pillar_Mapper_Base):
 
                 self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(random.random())[:3]))
 
+# Implementation of Pillar Mapper Base to use
+class EventRotationMapper(Pillar_Mapper_Base):
+    def __init__(self, pillar_cfg):
+        super().__init__(pillar_cfg)
+
+        self.tube_allocation = pillar_cfg["tube_allocation"]
+
+        # Create a colormap from red to blue scaled between 0 and 255
+        self.cmap = plt.get_cmap('coolwarm')
+        # self.hsv_values = rgb_to_hsv(self.colormap[:, :3])
+
+    # This should be implemented in child classes
+    def interaction_update_sound_light(self, old_state, new_state):
+        # This function takes the tube_id and the current tube states (sound and light)
+        # It changes the amplitude, synth and note and color for this pillar
+        # Internally changes self.sound_state and self.light_state
+        # print("In ROtation Mapper")
+        for tube_id, (old_active, active, tube_allocation) in enumerate(zip(old_state, new_state, self.tube_allocation)):
+            # ["i", "t", "k", "m", "s", "b"]
+            # Only change on a switch
+            if not old_active and active:
+                delta = 1 
+                if 'i' in tube_allocation:
+                    value = self.sound_state.change_instrument()
+                elif 't' in tube_allocation:
+                    value = self.sound_state.change_tempo(delta=5)
+                elif 'k+' in tube_allocation:
+                    value = self.sound_state.change_key(delta=5)
+                elif 'k-' in tube_allocation:
+                    value = self.sound_state.change_key(delta=-4)
+                elif 'm' in tube_allocation:
+                    value = self.sound_state.change_melody()
+                elif 's' in tube_allocation:
+                    value = self.sound_state.change_scale()
+                elif 'b' in tube_allocation:
+                    value = self.sound_state.change_baseline()
+
+                self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(random.random())[:3]))
+
+
 
 def generate_mapping_interface(cfg_pillar) -> Pillar_Mapper_Base:
     """Generator Function which you can call which reads the config
