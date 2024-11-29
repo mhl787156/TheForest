@@ -90,7 +90,7 @@ SCALE_TYPES = {
 
 for s_name, scale in SCALE_TYPES.items():
     s = scale(60, cycle=True)
-    notes = [s.degree_to_pitch(i) for i in range(5)]
+    notes = [s.degree_to_pitch(i) for i in range(-5, 5)]
     print(f"{s_name}, num_notes: {len(notes)}, notes: {notes}")
     for p in notes:
         trumpet.play_note(p, 0.5, 0.5)

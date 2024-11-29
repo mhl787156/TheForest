@@ -17,7 +17,7 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "tube_allocation": ["t", "i", "k+", "m", "s", "b"],
+            "tube_allocation": ["b", "i", "k+", "m", "s", "t"],
             "map": "RotationMapper"
         },
         "fon003": {
@@ -25,7 +25,7 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "tube_allocation": ["t", "i", "k+", "m", "s", "b"],
+            "tube_allocation": ["b", "i", "k+", "m", "s", "t"],
             "map": "RotationMapper"
         }
     },

@@ -144,7 +144,10 @@ class Composer:
         volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
         for n, d in melody:
-            note = scale.degree_to_pitch(n)
+            if n is None:
+                note = None
+            else:
+                note = scale.degree_to_pitch(n)
             instrument.play_note(note, volume, d, blocking=True)
 
     def fork_harmony(self, shared_state):
@@ -182,6 +185,7 @@ class Composer:
         envelope = expe.envelope.Envelope.from_levels_and_durations(
             [0.1, volume, 1.0], [0.5, 3.0]
         )
+        envelope = expe.envelope.Envelope.adsr(0.5, volume, 1.0, 0.2, 0.15, 0.5)
         instrument.play_chord(chord, envelope, 4.0, blocking=True)
 
         if chord_levels > 0:
@@ -199,7 +203,7 @@ class Composer:
             # print("background", note)
             if self.state["baseline_style"] == "long":
                 instrument.play_note(note, volume, 4.0*4, blocking=True)
-            elif self.state["baseline_style"] == "pulse":
+            elif self.state["baseline_style"] == "pulsing":
                 instrument.play_note(note, volume, 4.0*4, "tremolo", blocking=True)
             else:
                 for _ in range(4):
