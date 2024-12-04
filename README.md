@@ -1,26 +1,17 @@
-# The Forest
+# Collaborative Audio-Visual Emergence (CA::VE)
 
-Project for the Forest of nature festival 2023
+This repository contains the code and systems for each of the CA::VE projects
 
+See our website [https://ca-ve.studio](https://ca-ve.studio)
 
-## Installation and Setup 
+This currently includes the following projects:
 
-### Requirements
+- Futures 2023 (Forest V1)
+- Festival of Nature 2023 (Forest V2)
+- Evomusart 2024 (Forest V3)
+- Festival of Nature 2024 (Forest V3)
+- CHIME 2024 (Forest V3s)
 
-This setup requires the `sonic-pi` raspberry pi installation. 
+There also exists an experimentation folder
 
-### Download
-
-You should first git clone this onto the associated raspberry pi. 
-
-```
-git clone https://github.com/mhl787156/TheForest
-```
-
-## Futures 2023
-
-Lets see! 
-
-## Festival of Nature 2023
-
-For a writeup see this link: https://mickeyhl.li/post/theforest_1_fon/ 
+Please see the individual folders for more information.
