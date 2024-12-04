@@ -212,8 +212,10 @@ class EventRotationMapper(Pillar_Mapper_Base):
                 delta = 1 
                 if 'i' in tube_allocation:
                     value = self.sound_state.change_instrument()
-                elif 't' in tube_allocation:
-                    value = self.sound_state.change_tempo(delta=5)
+                elif 't+' in tube_allocation:
+                    value = self.sound_state.change_tempo(delta=10)
+                elif 't-' in tube_allocation:
+                    value = self.sound_state.change_tempo(delta=-10)
                 elif 'k+' in tube_allocation:
                     value = self.sound_state.change_key(delta=5)
                 elif 'k-' in tube_allocation:

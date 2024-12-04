@@ -112,9 +112,9 @@ BASELINE_STYLE = [
 
 DEFAULT_STATE = {
     "volume": {
-        "melody": 0.6,
+        "melody": 1.0,
         "harmony": 0.5,
-        "background": 0.1
+        "background": 0.3
     },
     "instruments": {
         "melody": "trumpet",
@@ -122,7 +122,7 @@ DEFAULT_STATE = {
         "background": "strings"
     },
     "key": 60,
-    "bpm": 120,
+    "bpm": 100,
     "melody_scale": "pentatonic",
     "melody_number": 0,
     "baseline_style": "long",

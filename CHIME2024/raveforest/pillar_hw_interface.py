@@ -24,12 +24,13 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 break
 
             response = serial_port.readline().decode().strip()
-            # print("RECEIVEDDDDD", response)
+            print("RECEIVEDDDDD", response)
             if "CAP" in response:
-                status = response.split(",")[1:-1]
+                status = response.split(",")[1:]
+                print("RECEIVED STATUS", status)
                 cap_queue.put([bool(int(i)) for i in status])
             elif "LED" in response:
-                status = response.split(",")[1:-1]
+                status = response.split(",")[1:]
                 light_queue.put([int(i) for i in status])
 
         except Exception as e:
@@ -72,7 +73,7 @@ class Pillar():
         self.num_tubes = 7
 
         self.num_touch_sensors = 6
-        self.touch_status = [0 for _ in range(self.num_touch_sensors)]
+        self.touch_status = [False for _ in range(self.num_touch_sensors)]
         self.previous_received_status = []
 
         self.light_status = [(0, 0, 0) for _ in range(self.num_tubes)]

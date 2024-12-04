@@ -17,7 +17,7 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "tube_allocation": ["b", "i", "k+", "m", "s", "t"],
+            "tube_allocation": ["b", "i", "k+", "m", "s", "t+"],
             "map": "RotationMapper"
         },
         "fon003": {
@@ -25,11 +25,27 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "tube_allocation": ["b", "i", "k+", "m", "s", "t"],
+            "tube_allocation": ["b", "i", "k+", "m", "s", "t+"],
+            "map": "RotationMapper"
+        },
+        "fon004": {
+            "id": 1,
+            "port": "/dev/ttyACM0",
+            "pan": 0,
+            "num_tubes": 6,
+            "tube_allocation": ["b", "i", "k+", "m", "s", "t+"],
+            "map": "RotationMapper"
+        },
+        "fon002": {
+            "id": 1,
+            "port": "/dev/ttyACM0",
+            "pan": 0,
+            "num_tubes": 6,
+            "tube_allocation": ["b", "i", "k+", "m", "s", "t+"],
             "map": "RotationMapper"
         }
     },
-    "bpm": 120,
+    "bpm": 60,
     "sonic-pi-ip": "127.0.0.1",
     "sonic-pi-config-file": "/Users/Mickey/.sonic-pi/log/spider.log"
 }

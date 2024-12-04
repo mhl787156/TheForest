@@ -100,7 +100,8 @@ class Composer:
             if setting_name == "key":
                 self.update_key(value)
             if setting_name == "bpm":
-                self.session.bpm = value
+                # self.session.bpm = value
+                self.session.set_tempo_target(value, 0.2)
             
             # Play any sounds
             # self.session.fork(self.fork_melody, args=(self.shared_state,))
