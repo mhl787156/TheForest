@@ -99,7 +99,7 @@ class Controller():
         
         data = {
             "btn_press": current_btn_press,
-            "sound_state": sound_state.to_json,
+            "sound_state": sound_state.to_json(),
             "light_state": list(light_state)
         }
         self.data_queue.put(data)
