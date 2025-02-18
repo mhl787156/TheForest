@@ -131,7 +131,7 @@ class LightState(object):
 
 class Pillar_Mapper_Base(object):
 
-    def __init__(self, pillar_cfg):
+    def __init__(self, cfg, pillar_cfg):
         """Base Class for any mapping function for a single pillar
 
         Args:
@@ -140,7 +140,7 @@ class Pillar_Mapper_Base(object):
 
         self.num_tubes = pillar_cfg["num_tubes"]
 
-        self.sound_state: SoundState = SoundState(DEFAULT_STATE)
+        self.sound_state: SoundState = SoundState(cfg["default_state"])
         self.light_state: LightState = LightState(self.num_tubes, random_init=True)
         self.state_array = [False for _ in range(self.num_tubes)]
 
@@ -161,8 +161,8 @@ class Pillar_Mapper_Base(object):
         print("In Pillar Mapper Base")
 
 class FixedMapper(Pillar_Mapper_Base):
-    def __init__(self, pillar_cfg):
-        super().__init__(pillar_cfg)
+    def __init__(self, cfg, pillar_cfg):
+        super().__init__(cfg, pillar_cfg)
         
         self.num_tubes = pillar_cfg["num_tubes"]
         self.notes = pillar_cfg["notes"]
@@ -187,8 +187,8 @@ class FixedMapper(Pillar_Mapper_Base):
 
 # Implementation of Pillar Mapper Base to use
 class RotationMapper(Pillar_Mapper_Base):
-    def __init__(self, pillar_cfg):
-        super().__init__(pillar_cfg)
+    def __init__(self, cfg, pillar_cfg):
+        super().__init__(cfg, pillar_cfg)
 
         self.tube_allocation = pillar_cfg["tube_allocation"]
 
@@ -227,8 +227,8 @@ class RotationMapper(Pillar_Mapper_Base):
 
 # Implementation of Pillar Mapper Base to use
 class EventRotationMapper(Pillar_Mapper_Base):
-    def __init__(self, pillar_cfg):
-        super().__init__(pillar_cfg)
+    def __init__(self, cfg, pillar_cfg):
+        super().__init__(cfg, pillar_cfg)
 
         self.tube_allocation = pillar_cfg["tube_allocation"]
 
@@ -268,7 +268,7 @@ class EventRotationMapper(Pillar_Mapper_Base):
 
 
 
-def generate_mapping_interface(cfg_pillar) -> Pillar_Mapper_Base:
+def generate_mapping_interface(cfg, cfg_pillar) -> Pillar_Mapper_Base:
     """Generator Function which you can call which reads the config
     And assigns the correct mapping class based on the configuration file "map"
 
@@ -281,5 +281,5 @@ def generate_mapping_interface(cfg_pillar) -> Pillar_Mapper_Base:
     """
     # Map the name of the mapping method to the Class
     targetClass = getattr(sys.modules[__name__], cfg_pillar['map'])
-    return targetClass(cfg_pillar)
+    return targetClass(cfg, cfg_pillar)
 
