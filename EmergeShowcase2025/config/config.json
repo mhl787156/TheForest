@@ -48,5 +48,24 @@
     },
     "bpm": 60,
     "sonic-pi-ip": "127.0.0.1",
-    "sonic-pi-config-file": "/Users/Mickey/.sonic-pi/log/spider.log"
+    "sonic-pi-config-file": "/Users/Mickey/.sonic-pi/log/spider.log",
+    "default_state": {
+        "volume": {
+            "melody": 1.0,
+            "harmony": 0.5,
+            "background": 0.3
+        },
+        "instruments": {
+            "melody": "xylophone",
+            "harmony": "flute",
+            "background": "strings"
+        },
+        "key": 60,
+        "bpm": 100,
+        "melody_scale": "pentatonic",
+        "melody_number": 0,
+        "baseline_style": "long",
+        "chord_levels": 0,
+        "reaction_notes": []
+    }
 }

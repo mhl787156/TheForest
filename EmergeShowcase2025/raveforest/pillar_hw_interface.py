@@ -234,7 +234,7 @@ class Pillar():
             while not self.cap_queue.empty():
                 # print("HELLLOOOOOO")
                 received_status = self.cap_queue.get_nowait()
-                print("Receiving", received_status)
+                # print("Receiving", received_status)
                 if received_status != self.previous_received_status:
                     self.set_touch_status(received_status)
                     # Assuming a function to handle end of touch event
