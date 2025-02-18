@@ -62,7 +62,11 @@ class Controller():
             "sound_state": sound_state.to_json,
             "light_state": list(light_state)
         }
-        requests.post(url=self.config["tonnetz_server_api_endpoint"], data=data)
+        try:
+            requests.post(url=self.config["tonnetz_server_api_endpoint"], data=data)
+        except requests.exceptions.ConnectionError:
+            # print(f"API ENDPOINT AT {self.config['tonnetz_server_api_endpoint']} not found")
+            pass
 
         self.loop_idx += 1
 
