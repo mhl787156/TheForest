@@ -43,8 +43,8 @@ class Controller():
 
         # Generate the lights and notes based on the current btn inputs
         sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
-        print("lights:", light_state)
-        print("sounds:", sound_state)
+        # print("lights:", light_state)
+        # print("sounds:", sound_state)
 
         # print(f"Sending Lights {self.pillar_manager.id}: {light_state}")
         self.pillar_manager.send_all_light_change(light_state)
