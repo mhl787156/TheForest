@@ -141,6 +141,7 @@ DEFAULT_STATE = {
     "melody_scale": "pentatonic",
     "melody_number": 0,
     "baseline_style": "long",
-    "chord_levels": 0
+    "chord_levels": 0,
+    "reaction_notes": []
 }
 

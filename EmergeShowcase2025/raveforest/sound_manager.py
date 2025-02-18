@@ -131,8 +131,9 @@ class Composer:
 
     def play(self):
         # self.start_fork("melody", self.fork_melody)
-        self.start_fork("harmony", self.fork_harmony)
+        # self.start_fork("harmony", self.fork_harmony)
         self.start_fork("background", self.fork_background)
+        pass
         
     def start_fork(self, function_name, function):
         # If a fork is active or not alive, then start the new fork
