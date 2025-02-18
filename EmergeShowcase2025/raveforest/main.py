@@ -6,12 +6,14 @@ from pillar_hw_interface import Pillar
 from mapping_interface import RotationMapper, EventRotationMapper, generate_mapping_interface
 from sound_manager import SoundManager
 
+import requests
+
 import csv
 
 class Controller():
 
     def __init__(self, hostname, config):
-
+        self.config = config
         self.num_pillars = len(config["pillars"])        
         self.pillar_config = config["pillars"][hostname]
         self.pillar_manager = Pillar(**self.pillar_config)
@@ -54,6 +56,13 @@ class Controller():
             self.sound_manager.update_pillar_setting(param_name, value) 
 
         self.sound_manager.tick(time_delta=1/30.0)
+        
+        data = {
+            "btn_press": current_btn_press,
+            "sound_state": sound_state.to_json,
+            "light_state": list(light_state)
+        }
+        requests.post(url=self.config["tonnetz_server_api_endpoint"], data=data)
 
         self.loop_idx += 1
 
