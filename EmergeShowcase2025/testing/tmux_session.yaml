@@ -1,0 +1,17 @@
+<%
+# Input parameters
+port1     = @settings["port1"]
+port2     = @settings["port2"]
+
+%>
+attach: false
+name: arduino_test_env
+pre_window: source ../python-env/bin/activate; tmux set mouse on
+root: ./
+startup_window: mocks
+windows:
+  - mocks:
+      layout: tiled
+      panes:
+        - socat -d -d pty,raw,echo=0 pty,raw,echo=0
+  
