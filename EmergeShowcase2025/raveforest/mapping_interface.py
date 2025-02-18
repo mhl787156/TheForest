@@ -174,8 +174,10 @@ class FixedMapper(Pillar_Mapper_Base):
     # This should be implemented in child classes
     def interaction_update_sound_light(self, old_state, new_state):
         
+        # Clears the reaction note for the Composer 
         self.sound_state.clear_reaction_notes()
 
+        # If we now detect as active, we add a reaction note and change the light state as specified
         for tube_id, (old_active, active) in enumerate(zip(old_state, new_state)):
             if not old_active and active:
                 note = self.notes[tube_id]
