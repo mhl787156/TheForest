@@ -3,7 +3,7 @@ import json
 import socket
 
 from pillar_hw_interface import Pillar
-from mapping_interface import RotationMapper, EventRotationMapper
+from mapping_interface import RotationMapper, EventRotationMapper, generate_mapping_interface
 from sound_manager import SoundManager
 
 import csv
@@ -15,7 +15,7 @@ class Controller():
         self.num_pillars = len(config["pillars"])        
         self.pillar_config = config["pillars"][hostname]
         self.pillar_manager = Pillar(**self.pillar_config)
-        self.mapping_interface = EventRotationMapper(self.pillar_config)
+        self.mapping_interface = generate_mapping_interface(self.pillar_config)
         self.sound_manager = SoundManager(hostname)
         self.loop_idx = 0
         self.running = True
