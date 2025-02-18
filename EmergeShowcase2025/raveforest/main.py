@@ -1,6 +1,9 @@
 import argparse
 import json
 import socket
+import threading
+import queue
+import time
 
 from pillar_hw_interface import Pillar
 from mapping_interface import RotationMapper, EventRotationMapper, generate_mapping_interface
@@ -9,6 +12,39 @@ from sound_manager import SoundManager
 import requests
 
 import csv
+
+class APISender(threading.Thread):
+    def __init__(self, endpoint, data_queue, interval=0.2):
+        """
+        A thread that sends data packets to an API at a specified interval.
+
+        :param endpoint: The API endpoint URL.
+        :param data_queue: A queue for receiving data from the main loop.
+        :param interval: Time between requests in seconds (5Hz = 0.2s).
+        """
+        super().__init__()
+        self.endpoint = endpoint
+        self.data_queue = data_queue
+        self.interval = interval
+        self.running = True
+
+    def run(self):
+        while self.running:
+            try:
+                # Get the latest data, or wait for it (timeout to prevent hanging on stop)
+                data = self.data_queue.get(timeout=1)  
+                response = requests.post(self.endpoint, json=data, timeout=2)
+                # print(f"Sent data: {data}, Response: {response.status_code}")
+            except queue.Empty:
+                # If no data is available, continue waiting
+                pass
+            except requests.RequestException as e:
+                print(f"Request failed: {e}")
+
+            time.sleep(self.interval)
+
+    def stop(self):
+        self.running = False
 
 class Controller():
 
@@ -21,6 +57,10 @@ class Controller():
         self.sound_manager = SoundManager(hostname)
         self.loop_idx = 0
         self.running = True
+
+        self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
+        sender = APISender(config["tonnetz_server_api_endpoint"], self.data_queue)
+        sender.start()
 
     def start(self, frequency):
         """Starts the main control loop
@@ -62,11 +102,7 @@ class Controller():
             "sound_state": sound_state.to_json,
             "light_state": list(light_state)
         }
-        try:
-            requests.post(url=self.config["tonnetz_server_api_endpoint"], data=data)
-        except requests.exceptions.ConnectionError:
-            # print(f"API ENDPOINT AT {self.config['tonnetz_server_api_endpoint']} not found")
-            pass
+        self.data_queue.put(data)
 
         self.loop_idx += 1
 
