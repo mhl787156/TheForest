@@ -132,7 +132,7 @@ DEFAULT_STATE = {
         "background": 0.3
     },
     "instruments": {
-        "melody": "trumpet",
+        "melody": "strings",
         "harmony": "flute",
         "background": "strings"
     },

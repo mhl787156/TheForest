@@ -143,7 +143,7 @@ class Composer:
     def fork_melody_single_note(self, note):
         volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
-        instrument.play_note(note, volume, 0.5, blocking=True)
+        instrument.play_note(note, volume, 1.0, blocking=True)
 
     def fork_melody(self, shared_state):        
         # Generate initial note
