@@ -49,7 +49,6 @@ int tube6[3] = { 0, 200, 0 };
 #define star_brightness 150
 #define MAX_STARS 1       // Max number of active stars per tube
 #define STAR_ON_TIME 200  // Time a star stays ON (milliseconds)
-#define STAR_OFF_TIME 1000  // Time delay until star turns on again
 int star_id[6] = { 0 };
 
 // Cap sensors
@@ -194,8 +193,7 @@ void flickerStars(int tube) {
         starStates[tube][i] = false; 
         leds[tube][starPositions[tube][i]] = CRGB::Black;  
       }
-
-    } else if (now - starTimers[tube][i] > STAR_OFF_TIME) {
+    } else {
       // Randomly turn stars on
       if (random(0, 100) < 5) {  // Small chance per frame to create a new star
         starPositions[tube][i] = random(0, MAX_LEDS); 
