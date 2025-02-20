@@ -46,9 +46,9 @@ int tube5[3] = { 0, 200, 0 };
 int tube6[3] = { 0, 200, 0 };
 
 // Star effects
-#define star_brightness 150
+#define star_brightness 50
 #define MAX_STARS 1       // Max number of active stars per tube
-#define STAR_ON_TIME 200  // Time a star stays ON (milliseconds)
+#define STAR_ON_TIME 500  // Time a star stays ON (milliseconds)
 int star_id[6] = { 0 };
 
 // Cap sensors
