@@ -90,7 +90,7 @@ class Controller():
         self.pillar_manager.read_from_serial()
 
         current_btn_press = self.pillar_manager.get_all_touch_status()
-        # print("current btn press:", current_btn_press)
+        button_is_pressed = any(current_btn_press)
         
         # Periodically request LED status from the Teensy
         current_time = time.time()
@@ -98,42 +98,62 @@ class Controller():
             self.pillar_manager.request_led_status()
             self.last_led_request_time = current_time
         
-        # Check if LED status has changed
+        # Get current LED status from the Teensy
         current_led_status = self.pillar_manager.get_all_light_status()
-        if current_led_status != self.previous_led_status:
+        led_status_changed = (current_led_status != self.previous_led_status)
+        
+        # Case 1: LED status has changed from the Teensy
+        if led_status_changed:
             print("LED status changed:", current_led_status)
             # Adjust pitch by +3 when LED status changes
             sound_state, _ = self.mapping_interface.update_pillar(current_btn_press)
             sound_state.adjust_pitch(3)  # Adjust pitch by +3 semitones
+            
+            # Update the previous LED status
             self.previous_led_status = current_led_status
             
-            # Send the modified sound state to the Teensy
-            message = f"ALLLED,{','.join([str(h) + ',' + str(b) + ',0' for h, b, _ in current_led_status])};"
-            print(f"Sending updated LEDs back with pitch change: {message}")
+            # Update sound parameters based on the LED status change
+            for param_name, value in sound_state.items():
+                self.sound_manager.update_pillar_setting(param_name, value)
             
-            # Update the pillar manager with the new light state
-            self.pillar_manager.send_all_light_change([(h, b) for h, b, _ in current_led_status])
-
-        # Generate the lights and notes based on the current btn inputs
-        sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
-        # print("lights:", light_state)
-        # print("sounds:", sound_state)
-
-        # print(f"Sending Lights {self.pillar_manager.id}: {light_state}")
-        # self.pillar_manager.send_all_light_change(light_state)
-
-        # print("Setting params", sound_state)
-        for param_name, value in sound_state.items():
-            self.sound_manager.update_pillar_setting(param_name, value) 
-
-        self.sound_manager.tick(time_delta=1/30.0)
+            # Process sound changes
+            self.sound_manager.tick(time_delta=1/30.0)
+            
+            # Package data for logging
+            data = {
+                "btn_press": current_btn_press,
+                "sound_state": sound_state.to_json(),
+                "light_state": list([(h, b) for h, b, _ in current_led_status])
+            }
+            self.data_queue.put(data)
+            
+        # Case 2: Button is pressed but LED status hasn't changed yet
+        elif button_is_pressed:
+            # Generate sound and light states based on button press
+            sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
+            
+            # Send light changes to the Teensy based on button press
+            self.pillar_manager.send_all_light_change(light_state)
+            
+            # Update sound parameters
+            for param_name, value in sound_state.items():
+                self.sound_manager.update_pillar_setting(param_name, value)
+            
+            # Process sound changes
+            self.sound_manager.tick(time_delta=1/30.0)
+            
+            # Package data for logging
+            data = {
+                "btn_press": current_btn_press,
+                "sound_state": sound_state.to_json(),
+                "light_state": list(light_state)
+            }
+            self.data_queue.put(data)
         
-        data = {
-            "btn_press": current_btn_press,
-            "sound_state": sound_state.to_json(),
-            "light_state": list(light_state)
-        }
-        self.data_queue.put(data)
+        # Case 3: No button press and no LED status change - do nothing
+        else:
+            # Completely passive - no changes to lights or sound
+            pass
 
         self.loop_idx += 1
 
