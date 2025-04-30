@@ -280,7 +280,100 @@ class EventRotationMapper(Pillar_Mapper_Base):
 
                 self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(random.random())[:3]))
 
+class LightSoundMapper(Pillar_Mapper_Base):
+    def __init__(self, cfg, pillar_cfg):
+        super().__init__(cfg, pillar_cfg)
+        
+        self.num_tubes = pillar_cfg["num_tubes"]
+        self.notes = pillar_cfg["notes"]
+        self.octave = pillar_cfg["octave"]
+        
+        # Create bidirectional mappings
+        self.fixed_hue_map = ifc.FIXED_NOTE_HUE_MAP  # Note to hue mapping
+        # Create reverse mapping from hue ranges to notes
+        self.hue_to_note_map = self._create_hue_to_note_map()
+        
+        # Keep track of light-driven note changes
+        self.light_driven_notes = [None] * self.num_tubes
+    
+    def _create_hue_to_note_map(self):
+        """Create a mapping from hue values (0-255) to semitones (0-11)"""
+        # Create 12 equal-sized bins for the hue values
+        bin_size = 256 // 12
+        hue_to_note = {}
+        
+        for note in range(12):
+            # Calculate the hue range for this note
+            min_hue = note * bin_size
+            max_hue = (note + 1) * bin_size - 1
+            if note == 11:  # Make sure the last bin includes 255
+                max_hue = 255
+                
+            # Map each hue in this range to the note
+            for hue in range(min_hue, max_hue + 1):
+                hue_to_note[hue] = note
+                
+        return hue_to_note
+    
+    def hue_to_semitone(self, hue):
+        """Convert a hue value (0-255) to a semitone (0-11)"""
+        # Handle edge cases
+        if hue < 0:
+            hue = 0
+        if hue > 255:
+            hue = 255
+            
+        # Use the pre-calculated mapping
+        return self.hue_to_note_map.get(hue, 0)
+    
+    def update_from_light_status(self, light_status):
+        """
+        Update sound based on changes in light status
+        
+        Args:
+            light_status: List of (hue, brightness, effect) tuples for each tube
+        
+        Returns:
+            Updated SoundState object
+        """
+        # Clear previous reaction notes
+        self.sound_state.clear_reaction_notes()
+        
+        # Process each tube's light status
+        for tube_id, (hue, brightness, _) in enumerate(light_status):
+            # Skip tubes with no brightness
+            if brightness < 20:
+                continue
+                
+            # Convert hue to semitone
+            semitone = self.hue_to_semitone(hue)
+            
+            # Calculate full note with octave
+            note_to_play = semitone + self.octave * 12
+            
+            # Add to reaction notes if different from previous
+            if note_to_play != self.light_driven_notes[tube_id]:
+                self.sound_state.append_reaction_notes(note_to_play)
+                self.light_driven_notes[tube_id] = note_to_play
+                print(f"Tube {tube_id}: Hue {hue} → Semitone {semitone} → Note {note_to_play}")
+        
+        return self.sound_state
+    
+    def interaction_update_sound_light(self, old_state, new_state):
+        """Handle button press interactions"""
+        # Clears the reaction note for the Composer 
+        self.sound_state.clear_reaction_notes()
 
+        # If we now detect as active, we add a reaction note and change the light state
+        for tube_id, (old_active, active) in enumerate(zip(old_state, new_state)):
+            if not old_active and active:
+                note = self.notes[tube_id]
+                note_to_play = note + self.octave * 12
+                self.sound_state.append_reaction_notes(note_to_play)
+                self.light_state[tube_id] = (self.fixed_hue_map[note], 255, 255)
+                
+                # Update light-driven notes to avoid duplicate triggering
+                self.light_driven_notes[tube_id] = note_to_play
 
 def generate_mapping_interface(cfg, cfg_pillar) -> Pillar_Mapper_Base:
     """Generator Function which you can call which reads the config

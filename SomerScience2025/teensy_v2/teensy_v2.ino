@@ -124,7 +124,10 @@ void light_tube_number(int tnum, int hue, int brightness) {
 void sendledstatus() {
   for (int i = 0; i < 6; i++) {
     led_status[i][0] = tube[i][0];
-    Serial.println("LED," + String(i) + "," + String(led_status[i][0]) + "," + String(led_status[i][1]));
+    // Properly format the LED status message with comma separators and consistent format
+    String message = "LED," + String(i) + "," + String(led_status[i][0]) + "," + String(led_status[i][1]);
+    Serial.println(message);
+    delay(10); // Small delay to prevent serial buffer issues
   }
 }
 

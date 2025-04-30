@@ -19,28 +19,55 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
     print(f"Serial Read Thread Started With {serial_port}")
     while True:
         try:
-
             if kill_event.is_set():
                 break
 
-            response = serial_port.readline().decode().strip()
-            # print("RECEIVEDDDDD", response)
-            if "CAP" in response:
-                status = response.split(",")[1:]
-                # print("RECEIVED STATUS", status)
-                cap_queue.put([bool(int(i)) for i in status])
-            elif "LED" in response:
-                # Format: LED,tube_id,hue,brightness
-                parts = response.split(",")
-                if len(parts) >= 4:
-                    tube_id = int(parts[1])
-                    hue = int(parts[2])
-                    brightness = int(parts[3])
-                    light_queue.put((tube_id, hue, brightness))
+            # Read response and clean it up
+            raw_response = serial_port.readline()
+            if not raw_response:
+                continue  # Skip empty responses
+                
+            # Clean up the response by removing control characters and whitespace
+            response = raw_response.decode('utf-8', errors='ignore').strip()
+            if not response:
+                continue  # Skip empty responses after cleaning
+                
+            # Log the raw response for debugging
+            # print(f"Raw response: {repr(raw_response)}, Cleaned: {repr(response)}")
             
+            if "CAP" in response:
+                parts = response.split(",")
+                if len(parts) > 1:  # Make sure there are actual values after "CAP"
+                    status = parts[1:]
+                    try:
+                        cap_queue.put([bool(int(i)) for i in status])
+                    except ValueError as e:
+                        print(f"Error parsing CAP data: {e}, data: {status}")
+            elif "LED" in response:
+                parts = response.split(",")
+                if len(parts) >= 3:  # Make sure there are enough parts (LED,id,hue,brightness)
+                    try:
+                        # Extract the tube_id and values, handling possible format issues
+                        tube_id_str = parts[1].strip()
+                        if tube_id_str.startswith("LED"):  # Handle cases like "LED12" where LED is stuck to the ID
+                            tube_id_str = tube_id_str[3:]
+                            
+                        tube_id = int(tube_id_str)
+                        hue = int(parts[2].strip())
+                        
+                        # Handle brightness if available
+                        brightness = 255  # Default brightness
+                        if len(parts) >= 4:
+                            brightness = int(parts[3].strip())
+                            
+                        light_queue.put((tube_id, hue, brightness))
+                        print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
+                    except ValueError as e:
+                        print(f"Error parsing LED data: {e}, response: {response}")
+                else:
+                    print(f"Malformed LED data received: {response}")
 
         except Exception as e:
-            pass
             print(f"Error reading data: {e}")
 
     print("Serial Read Thread Killed")
@@ -248,9 +275,25 @@ class Pillar():
         # Handle LED status data
         try:
             while not self.light_queue.empty():
-                tube_id, hue, brightness = self.light_queue.get_nowait()
-                if tube_id < len(self.light_status):
-                    self.light_status[tube_id] = (hue, brightness, 0)
+                try:
+                    data = self.light_queue.get_nowait()
+                    # Handle both tuple format (tube_id, hue, brightness) and list format
+                    if isinstance(data, tuple) and len(data) >= 3:
+                        tube_id, hue, brightness = data
+                    elif isinstance(data, list) and len(data) >= 3:
+                        tube_id, hue, brightness = data[0], data[1], data[2]
+                    else:
+                        print(f"Unexpected LED data format: {data}")
+                        continue
+                    
+                    # Validate tube_id is within range
+                    if 0 <= tube_id < len(self.light_status):
+                        self.light_status[tube_id] = (hue, brightness, 0)
+                        print(f"Updated light status for tube {tube_id}: ({hue}, {brightness}, 0)")
+                    else:
+                        print(f"Tube ID {tube_id} out of range (0-{len(self.light_status)-1})")
+                except Exception as e:
+                    print(f"Error processing LED status: {e}")
         except queue.Empty:
             pass
 
@@ -267,6 +310,8 @@ class Pillar():
         
     # Add a method to request LED status from the Teensy
     def request_led_status(self):
+        """Send a command to the Teensy to request current LED status for all tubes."""
         message = "GETLED;\n\r"
+        print(f"Requesting LED status from Teensy: {message.strip()}")
         self.write_queue.put(message)
         

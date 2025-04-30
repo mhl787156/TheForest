@@ -6,7 +6,7 @@ import queue
 import time
 
 from pillar_hw_interface import Pillar
-from mapping_interface import RotationMapper, EventRotationMapper, generate_mapping_interface
+from mapping_interface import RotationMapper, EventRotationMapper, LightSoundMapper, generate_mapping_interface
 from sound_manager import SoundManager
 
 import requests
@@ -90,7 +90,6 @@ class Controller():
         self.pillar_manager.read_from_serial()
 
         current_btn_press = self.pillar_manager.get_all_touch_status()
-        button_is_pressed = any(current_btn_press)
         
         # Periodically request LED status from the Teensy
         current_time = time.time()
@@ -102,12 +101,12 @@ class Controller():
         current_led_status = self.pillar_manager.get_all_light_status()
         led_status_changed = (current_led_status != self.previous_led_status)
         
-        # Case 1: LED status has changed from the Teensy
+        # LED status has changed from the Teensy
         if led_status_changed:
             print("LED status changed:", current_led_status)
-            # Adjust pitch by +3 when LED status changes
-            sound_state, _ = self.mapping_interface.update_pillar(current_btn_press)
-            sound_state.adjust_pitch(3)  # Adjust pitch by +3 semitones
+            
+            # Use LightSoundMapper to convert light values to sound
+            sound_state = self.mapping_interface.update_from_light_status(current_led_status)
             
             # Update the previous LED status
             self.previous_led_status = current_led_status
@@ -127,30 +126,8 @@ class Controller():
             }
             self.data_queue.put(data)
             
-        # Case 2: Button is pressed but LED status hasn't changed yet
-        elif button_is_pressed:
-            # Generate sound and light states based on button press
-            sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
-            
-            # Send light changes to the Teensy based on button press
-            self.pillar_manager.send_all_light_change(light_state)
-            
-            # Update sound parameters
-            for param_name, value in sound_state.items():
-                self.sound_manager.update_pillar_setting(param_name, value)
-            
-            # Process sound changes
-            self.sound_manager.tick(time_delta=1/30.0)
-            
-            # Package data for logging
-            data = {
-                "btn_press": current_btn_press,
-                "sound_state": sound_state.to_json(),
-                "light_state": list(light_state)
-            }
-            self.data_queue.put(data)
         
-        # Case 3: No button press and no LED status change - do nothing
+        # No button press and no LED status change - do nothing
         else:
             # Completely passive - no changes to lights or sound
             pass
