@@ -82,6 +82,20 @@ class SoundState(object):
         self.key = self.key_center + ((self.key - self.key_center + delta) % 12)
         return self.key
 
+    def adjust_pitch(self, amount=3):
+        """
+        Adjust the pitch by a specified amount (default +3 semitones)
+        This will be called when LED status is received
+        """
+        # Adjust by semitones
+        for i in range(len(self.reaction_notes)):
+            if self.reaction_notes[i] > 0:  # Make sure we have a valid note
+                self.reaction_notes[i] += amount
+        
+        # Also adjust the base key
+        self.key = self.key + amount
+        return self.key
+
     def change_melody(self):
         self.melody_number = (self.melody_number + 1) % len(MELODIES)
         return self.melody_number

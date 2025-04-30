@@ -167,6 +167,9 @@ void parseledfromserial() {
         tube[5][0] = hue6;
         tube[5][1] = brightness6;
         tube[5][2] = effect6;
+      } else if (strcmp(receivedMessage, "GETLED") == 0) {
+        // Send the current LED status back to the Python code
+        sendledstatus();
       }
     } else if (inChar != '\r' && messagePos < serial_max_char - 1) {
       receivedMessage[messagePos++] = inChar;

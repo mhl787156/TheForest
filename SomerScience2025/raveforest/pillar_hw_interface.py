@@ -30,8 +30,14 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 # print("RECEIVED STATUS", status)
                 cap_queue.put([bool(int(i)) for i in status])
             elif "LED" in response:
-                status = response.split(",")[1:]
-                light_queue.put([int(i) for i in status])
+                # Format: LED,tube_id,hue,brightness
+                parts = response.split(",")
+                if len(parts) >= 4:
+                    tube_id = int(parts[1])
+                    hue = int(parts[2])
+                    brightness = int(parts[3])
+                    light_queue.put((tube_id, hue, brightness))
+            
 
         except Exception as e:
             pass
@@ -79,7 +85,7 @@ class Pillar():
         self.light_status = [(0, 0, 0) for _ in range(self.num_tubes)]
 
         self.cap_queue = queue.Queue()
-        self.light_queue = queue.Queue()
+        self.light_queue = queue.Queue()  # Using light_queue for all LED status
         self.write_queue = queue.Queue()
 
 
@@ -228,20 +234,24 @@ class Pillar():
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
 
     def read_from_serial(self):
-        # Existing implementation...
-        # print("Reading from serial")
+        # Handle touch sensor data
         try:
             while not self.cap_queue.empty():
-                # print("HELLLOOOOOO")
                 received_status = self.cap_queue.get_nowait()
-                # print("Receiving", received_status)
                 if received_status != self.previous_received_status:
                     self.set_touch_status(received_status)
-                    # Assuming a function to handle end of touch event
                     self.handle_end_of_touch(received_status)
                 self.previous_received_status = received_status
         except queue.Empty:
-            # print("Queue Empty")
+            pass
+        
+        # Handle LED status data
+        try:
+            while not self.light_queue.empty():
+                tube_id, hue, brightness = self.light_queue.get_nowait()
+                if tube_id < len(self.light_status):
+                    self.light_status[tube_id] = (hue, brightness, 0)
+        except queue.Empty:
             pass
 
     def handle_end_of_touch(self, received_status):
@@ -254,4 +264,9 @@ class Pillar():
         reset_message = json.dumps({"type": "touch_reset", "pillar_id": self.id})
         # Placeholder for actual WebSocket sending logic
         # send_to_all_clients(reset_message)  # You need to implement this based on your WebSocket setup
+        
+    # Add a method to request LED status from the Teensy
+    def request_led_status(self):
+        message = "GETLED;\n\r"
+        self.write_queue.put(message)
         

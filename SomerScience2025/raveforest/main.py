@@ -57,10 +57,19 @@ class Controller():
         self.sound_manager = SoundManager(hostname)
         self.loop_idx = 0
         self.running = True
+        
+        # Track the last time we requested LED status
+        self.last_led_request_time = 0
+        self.led_request_interval = 2.0  # Request LED status every 2 seconds
+        
+        # Flag to track if we've processed LED status this loop
+        self.led_status_processed = False
+        
+        # Store previous LED status to detect changes
+        self.previous_led_status = [(0, 0, 0) for _ in range(self.pillar_manager.num_tubes)]
 
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
-        # sender = APISender(config["tonnetz_server_api_endpoint"], self.data_queue)
-        # sender.start()
+
 
     def start(self, frequency):
         """Starts the main control loop
@@ -77,11 +86,33 @@ class Controller():
         self.running = False
 
     def loop(self):
-
+        # Read from serial to update touch status and LED status
         self.pillar_manager.read_from_serial()
 
         current_btn_press = self.pillar_manager.get_all_touch_status()
         # print("current btn press:", current_btn_press)
+        
+        # Periodically request LED status from the Teensy
+        current_time = time.time()
+        if current_time - self.last_led_request_time >= self.led_request_interval:
+            self.pillar_manager.request_led_status()
+            self.last_led_request_time = current_time
+        
+        # Check if LED status has changed
+        current_led_status = self.pillar_manager.get_all_light_status()
+        if current_led_status != self.previous_led_status:
+            print("LED status changed:", current_led_status)
+            # Adjust pitch by +3 when LED status changes
+            sound_state, _ = self.mapping_interface.update_pillar(current_btn_press)
+            sound_state.adjust_pitch(3)  # Adjust pitch by +3 semitones
+            self.previous_led_status = current_led_status
+            
+            # Send the modified sound state to the Teensy
+            message = f"ALLLED,{','.join([str(h) + ',' + str(b) + ',0' for h, b, _ in current_led_status])};"
+            print(f"Sending updated LEDs back with pitch change: {message}")
+            
+            # Update the pillar manager with the new light state
+            self.pillar_manager.send_all_light_change([(h, b) for h, b, _ in current_led_status])
 
         # Generate the lights and notes based on the current btn inputs
         sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
@@ -119,6 +150,7 @@ if __name__=="__main__":
     # Get Hostname
     hostname = args.hostname if args.hostname is not None else socket.gethostname()
     print("HOSTNAME is ", hostname)
+        
 
     # Read the JSON config file
     with open(args.config, 'r') as config_file:
