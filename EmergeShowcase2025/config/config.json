@@ -19,7 +19,7 @@
             "pan": 0,
             "num_tubes": 6,
             "map": "FixedMapper",
-            "notes": [0, 2, 4, 6, 8, 10],
+            "notes": [0, 0, 0, 0, 0, 0],
             "octave": 4
         },
         "fon003": {
@@ -28,7 +28,7 @@
             "pan": 0,
             "num_tubes": 6,
             "map": "FixedMapper",
-            "notes": [0, 2, 4, 6, 8, 10],
+            "notes": [3, 3, 3, 3, 3, 3],
             "octave": 4
         },
         "fon004": {
@@ -37,7 +37,7 @@
             "pan": 0,
             "num_tubes": 6,
             "map": "FixedMapper",
-            "notes": [0, 2, 3, 7, 9, 11],
+            "notes": [7, 7, 7, 7, 7, 7],
             "octave": 5
         },
         "fon002": {
@@ -46,7 +46,7 @@
             "pan": 0,
             "num_tubes": 6,
             "map": "FixedMapper",
-            "notes": [0, 2, 4, 6, 8, 10],
+            "notes": [0, 0, 0, 0, 0, 0],
             "octave": 4
         }
     },
@@ -64,7 +64,7 @@
             "harmony": "flute",
             "background": "strings"
         },
-        "key": 60,
+        "key": 48,
         "bpm": 100,
         "melody_scale": "pentatonic",
         "melody_number": 0,
