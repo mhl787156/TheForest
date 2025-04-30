@@ -89,7 +89,7 @@ class Controller():
         # print("sounds:", sound_state)
 
         # print(f"Sending Lights {self.pillar_manager.id}: {light_state}")
-        self.pillar_manager.send_all_light_change(light_state)
+        # self.pillar_manager.send_all_light_change(light_state)
 
         # print("Setting params", sound_state)
         for param_name, value in sound_state.items():
