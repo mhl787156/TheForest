@@ -54,7 +54,7 @@
     "sonic-pi-config-file": "/Users/Mickey/.sonic-pi/log/spider.log",
     "default_state": {
         "volume": {
-            "melody": 0.0,
+            "melody": 0.9,
             "harmony": 0.5,
             "background": 0.5
         },

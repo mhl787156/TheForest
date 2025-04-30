@@ -130,7 +130,7 @@ class Composer:
         return seprocess.generators.non_repeating_shuffle(list(notes))
 
     def play(self):
-        self.start_fork("melody", self.fork_melody)
+        # self.start_fork("melody", self.fork_melody)
         self.start_fork("harmony", self.fork_harmony)
         self.start_fork("background", self.fork_background)
         pass
