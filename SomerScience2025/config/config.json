@@ -1,0 +1,75 @@
+{
+    "notes_to_color": 1,
+    "notes": [50, 63, 70, 100, 86, 90, 60],
+    "colors": [
+        [0, 250],
+        [70,  250],
+        [30,  250],
+        [150, 250],
+        [220, 250],
+        [80,  250],
+        [180, 250]
+    ],
+    "tonnetz_server_api_endpoint": "http://tzserver.local/forest.php",
+    "mapping_id": 2,
+    "pillars": {
+        "fon006": {
+            "id": 0,
+            "port": "/dev/ttyACM0",
+            "pan": 0,
+            "num_tubes": 6,
+            "map": "FixedMapper",
+            "notes": [0, 2, 4, 6, 8, 10],
+            "octave": 4
+        },
+        "fon003": {
+            "id": 1,
+            "port": "/dev/ttyACM0",
+            "pan": 0,
+            "num_tubes": 6,
+            "map": "FixedMapper",
+            "notes": [0, 2, 4, 6, 8, 10],
+            "octave": 4
+        },
+        "fon004": {
+            "id": 1,
+            "port": "/dev/ttyACM0",
+            "pan": 0,
+            "num_tubes": 6,
+            "map": "FixedMapper",
+            "notes": [0, 2, 3, 7, 9, 11],
+            "octave": 5
+        },
+        "fon002": {
+            "id": 1,
+            "port": "/dev/ttyACM0",
+            "pan": 0,
+            "num_tubes": 6,
+            "map": "FixedMapper",
+            "notes": [0, 2, 4, 6, 8, 10],
+            "octave": 4
+        }
+    },
+    "bpm": 60,
+    "sonic-pi-ip": "127.0.0.1",
+    "sonic-pi-config-file": "/Users/Mickey/.sonic-pi/log/spider.log",
+    "default_state": {
+        "volume": {
+            "melody": 1.0,
+            "harmony": 0.5,
+            "background": 0.3
+        },
+        "instruments": {
+            "melody": "xylophone",
+            "harmony": "flute",
+            "background": "strings"
+        },
+        "key": 60,
+        "bpm": 100,
+        "melody_scale": "pentatonic",
+        "melody_number": 0,
+        "baseline_style": "long",
+        "chord_levels": 0,
+        "reaction_notes": []
+    }
+}
