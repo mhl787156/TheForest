@@ -44,28 +44,77 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                     except ValueError as e:
                         print(f"Error parsing CAP data: {e}, data: {status}")
             elif "LED" in response:
-                parts = response.split(",")
-                if len(parts) >= 3:  # Make sure there are enough parts (LED,id,hue,brightness)
-                    try:
-                        # Extract the tube_id and values, handling possible format issues
-                        tube_id_str = parts[1].strip()
-                        if tube_id_str.startswith("LED"):  # Handle cases like "LED12" where LED is stuck to the ID
-                            tube_id_str = tube_id_str[3:]
-                            
-                        tube_id = int(tube_id_str)
-                        hue = int(parts[2].strip())
+                # More robust LED data parsing
+                try:
+                    # Clean the response - sometimes we get partial or corrupted data
+                    # First check if the response is properly formed
+                    led_parts = []
+                    
+                    # Split and clean each part
+                    parts = response.split(",")
+                    
+                    # Find the part containing "LED"
+                    led_index = -1
+                    for i, part in enumerate(parts):
+                        if "LED" in part:
+                            led_index = i
+                            break
+                    
+                    # If we found LED, process from that point
+                    if led_index >= 0:
+                        # Extract parts starting from the LED indicator
+                        led_parts = parts[led_index:]
                         
-                        # Handle brightness if available
-                        brightness = 255  # Default brightness
-                        if len(parts) >= 4:
-                            brightness = int(parts[3].strip())
-                            
-                        light_queue.put((tube_id, hue, brightness))
-                        print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
-                    except ValueError as e:
-                        print(f"Error parsing LED data: {e}, response: {response}")
-                else:
-                    print(f"Malformed LED data received: {response}")
+                        # Clean up the LED part - sometimes it's attached to the ID
+                        if led_parts[0].startswith("LED") and len(led_parts[0]) > 3:
+                            # Extract any numeric ID after "LED"
+                            tube_id_str = led_parts[0][3:].strip()
+                            # If valid ID, use it
+                            if tube_id_str.isdigit():
+                                tube_id = int(tube_id_str)
+                                # Look for hue value in next part
+                                if len(led_parts) > 1 and led_parts[1].strip().isdigit():
+                                    hue = int(led_parts[1].strip())
+                                    # Get brightness if available
+                                    brightness = 255  # Default
+                                    if len(led_parts) > 2 and led_parts[2].strip().isdigit():
+                                        brightness = int(led_parts[2].strip())
+                                    light_queue.put((tube_id, hue, brightness))
+                                    print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
+                            else:
+                                # Just "LED" with no ID, look for tube_id in next part
+                                if len(led_parts) > 1:
+                                    # Clean and check if next part is numeric
+                                    next_part = led_parts[1].strip()
+                                    if next_part.isdigit():
+                                        tube_id = int(next_part)
+                                        # Look for hue in the following part
+                                        if len(led_parts) > 2 and led_parts[2].strip().isdigit():
+                                            hue = int(led_parts[2].strip())
+                                            # Get brightness if available
+                                            brightness = 255  # Default
+                                            if len(led_parts) > 3 and led_parts[3].strip().isdigit():
+                                                brightness = int(led_parts[3].strip())
+                                            light_queue.put((tube_id, hue, brightness))
+                                            print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
+                        else:
+                            # Regular case: "LED" is a separate part
+                            if len(led_parts) > 1 and led_parts[1].strip().isdigit():
+                                tube_id = int(led_parts[1].strip())
+                                if len(led_parts) > 2 and led_parts[2].strip().isdigit():
+                                    hue = int(led_parts[2].strip())
+                                    # Get brightness if available
+                                    brightness = 255  # Default
+                                    if len(led_parts) > 3 and led_parts[3].strip().isdigit():
+                                        brightness = int(led_parts[3].strip())
+                                    light_queue.put((tube_id, hue, brightness))
+                                    print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
+                    else:
+                        print(f"Could not find LED indicator in response: {response}")
+                except ValueError as e:
+                    print(f"Error parsing LED data: {e}, response: {response}")
+                except Exception as e:
+                    print(f"Unexpected error parsing LED data: {e}, response: {response}")
 
         except Exception as e:
             print(f"Error reading data: {e}")
