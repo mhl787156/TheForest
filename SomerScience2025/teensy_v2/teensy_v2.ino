@@ -46,10 +46,11 @@ int tube5[3] = { 0, 200, 0 };
 int tube6[3] = { 0, 200, 0 };
 
 // Star effects
-#define star_brightness 150
-#define MAX_STARS 1       // Max number of active stars per tube
-#define STAR_ON_TIME 200  // Time a star stays ON (milliseconds)
+#define star_brightness 240
+#define MAX_STARS 3       // Max number of active stars per tube
+#define STAR_ON_TIME 500  // Time a star stays ON (milliseconds)
 int star_id[6] = { 0 };
+#define STAR_SIZE 3 
 
 // Cap sensors
 const int cap_pins[6] = { 1, 3, 5, 17, 19, 21 };  //17 nbot 16
@@ -179,32 +180,42 @@ void clear_buffer() {
   }
 }
 
-void flickerStars(int tube) {
-  static int starPositions[6][MAX_STARS] = { 0 };         // Store star positions
-  static unsigned long starTimers[6][MAX_STARS] = { 0 };  // Store when they turned on
-  static bool starStates[6][MAX_STARS] = { false };       // Track ON/OFF state for stars
+void flickerStars(int t) {
+  static int starPositions[6][MAX_STARS] = { 0 };
+  static unsigned long starTimers[6][MAX_STARS] = { 0 };
+  static bool starStates[6][MAX_STARS] = { false };
 
   unsigned long now = millis();
 
   for (int i = 0; i < MAX_STARS; i++) {
-    if (starStates[tube][i]) {
-
-      if (now - starTimers[tube][i] > STAR_ON_TIME) {
-        starStates[tube][i] = false; 
-        leds[tube][starPositions[tube][i]] = CRGB::Black;  
+    if (starStates[t][i]) {
+      if (now - starTimers[t][i] > STAR_ON_TIME) {
+        starStates[t][i] = false;
+        // Turn off all LEDs in this star's range
+        for (int j = 0; j < STAR_SIZE; j++) {
+          int pos = starPositions[t][i] + j;
+          if (pos < MAX_LEDS) {
+            leds[t][pos] = CRGB::Black;
+          }
+        }
       }
     } else {
-      // Randomly turn stars on
-      if (random(0, 100) < 5) {  // Small chance per frame to create a new star
-        starPositions[tube][i] = random(0, MAX_LEDS); 
-        starStates[tube][i] = true; 
-        starTimers[tube][i] = now; 
+      if (random(0, 100) < 5) {
+        int startPos = random(0, MAX_LEDS - STAR_SIZE + 1);  // Avoid overflow
+        starPositions[t][i] = startPos;
+        starStates[t][i] = true;
+        starTimers[t][i] = now;
       }
     }
 
-    // Apply star effect
-    if (starStates[tube][i]) {
-      leds[tube][starPositions[tube][i]] = CHSV(40, 50, star_brightness);
+    // Apply star effect if active
+    if (starStates[t][i]) {
+      for (int j = 0; j < STAR_SIZE; j++) {
+        int pos = starPositions[t][i] + j;
+        if (pos < MAX_LEDS) {
+          leds[t][pos] = CHSV(tube[i][0], 250, star_brightness);
+        }
+      }
     }
   }
 }
@@ -306,6 +317,7 @@ void loop() {
         capDecay_LED[i] = max(capDecay_LED[i] - 1, 0);
       } else {
         capDecay_LED[i] = 3;  // Reset decay counter when touch is detected
+        
       }
 
       if (capStatus[i] || capDecay_LED[i] > 0) {
@@ -328,6 +340,7 @@ void loop() {
           for (int j = 0; j < MAX_LEDS; j++) {
             leds[i][j] = CRGB::Black;
           }
+          tube[i][0] += 10 % 255;
         }
         flickerStars(i);
       }
