@@ -35,7 +35,7 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "map": "SoundLightMapper",
+            "map": "LightSoundMapper",
             "notes": [0, 2, 3, 7, 9, 11],
             "octave": 5
         },

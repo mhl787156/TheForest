@@ -188,21 +188,39 @@ class Composer:
     
     def fork_melody_single_note(self, note, note_id=None):
         volume = self.state["volume"]["melody"]
+        
+        # Make sure the melody instrument exists and is initialized
+        if self.instrument_manager.melody_instrument() is None:
+            print("[DEBUG] Initializing melody instrument because it doesn't exist")
+            self.instrument_manager.update_instrument(self.state["instruments"]["melody"], function="melody")
+            
         instrument = self.instrument_manager.melody_instrument()
         
         # Only play the note if it's still in active_reaction_notes
         if note_id is None or note_id in self.active_reaction_notes:
-            print(f"[DEBUG] Playing single note: {note} with volume {volume}")
-            # Use a shorter duration and non-blocking to prevent sustained notes
-            instrument.play_note(note, volume, 0.75, blocking=False)
+            # Print more visible message to confirm note is being played
+            print(f"[DEBUG] ▶️ PLAYING NOTE: {note} with volume {volume} on {instrument.name}")
             
-            # If we have a note_id, remove it from active notes after playing
-            if note_id and note_id in self.active_reaction_notes:
-                # Wait a short time then remove the note
-                wait(0.8, units="time")
-                if note_id in self.active_reaction_notes:
-                    del self.active_reaction_notes[note_id]
-                    print(f"[DEBUG] Note {note} completed normally")
+            # Test with different envelope to make sure we hear it
+            try:
+                # Use a longer duration with non-blocking to make the note more audible
+                # Add articulation to make it more pronounced
+                instrument.play_note(note, volume, 1.0, "marcato", blocking=False)
+                
+                # If we have a note_id, remove it from active notes after playing
+                if note_id and note_id in self.active_reaction_notes:
+                    # Wait a short time then remove the note
+                    wait(1.1, units="time")
+                    if note_id in self.active_reaction_notes:
+                        del self.active_reaction_notes[note_id]
+                        print(f"[DEBUG] Note {note} completed normally")
+            except Exception as e:
+                print(f"[ERROR] Failed to play note {note}: {e}")
+                # Try again with simpler parameters
+                try:
+                    instrument.play_note(note, volume, 1.0, blocking=True)
+                except Exception as e2:
+                    print(f"[ERROR] Failed again: {e2}")
 
     def fork_melody(self, shared_state):        
         # Generate initial note
@@ -284,9 +302,18 @@ class SoundManager:
         self.pillar_id = pillar_id
 
         self.session = Session()
+        # Turn off synchronization to prevent clock delay warnings
+        current_clock().synchronization_policy = "no synchronization"
+        
         self.state = initial_state if initial_state is not None else DEFAULT_STATE
 
         self.composer = Composer(self.session, self.state)
+        
+        # Explicitly initialize all instruments to make sure they exist
+        print("[DEBUG] Explicitly initializing all instruments")
+        for layer in ["melody", "harmony", "background"]:
+            instrument_name = self.state["instruments"][layer]
+            self.composer.instrument_manager.update_instrument(instrument_name, function=layer)
         
         # Track the last time reaction notes were cleared
         self.last_clear_time = time.time()

@@ -127,6 +127,11 @@ class Controller():
             for param_name, value in sound_state.items():
                 self.sound_manager.update_pillar_setting(param_name, value)
             
+            # Add extra debug for reaction_notes
+            if hasattr(sound_state, "reaction_notes") and sound_state.reaction_notes:
+                print(f"[DEBUG] Found reaction notes: {sound_state.reaction_notes}")
+                self.sound_manager.update_pillar_setting("reaction_notes", sound_state.reaction_notes)
+            
             # Process sound changes
             self.sound_manager.tick(time_delta=1/30.0)
             
