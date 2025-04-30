@@ -32,7 +32,7 @@
         },
         "fon004": {
             "id": 1,
-            "port": "/dev/ttyACM0",
+            "port": "/dev/ttyACM1",
             "pan": 0,
             "num_tubes": 6,
             "map": "FixedMapper",
