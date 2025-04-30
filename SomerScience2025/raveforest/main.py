@@ -119,7 +119,6 @@ if __name__=="__main__":
     # Get Hostname
     hostname = args.hostname if args.hostname is not None else socket.gethostname()
     print("HOSTNAME is ", hostname)
-        
 
     # Read the JSON config file
     with open(args.config, 'r') as config_file:

@@ -123,6 +123,7 @@ void light_tube_number(int tnum, int hue, int brightness) {
 
 void sendledstatus() {
   for (int i = 0; i < 6; i++) {
+    led_status[i][0] = tube[i][0]
     Serial.println("LED," + String(i) + "," + String(led_status[i][0]) + "," + String(led_status[i][1]));
   }
 }
