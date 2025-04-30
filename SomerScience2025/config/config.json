@@ -55,8 +55,8 @@
     "default_state": {
         "volume": {
             "melody": 1.0,
-            "harmony": 0.5,
-            "background": 0.3
+            "harmony": 0.9,
+            "background": 0.5
         },
         "instruments": {
             "melody": "xylophone",
