@@ -2,6 +2,7 @@ import random
 import sys
 from typing import Tuple
 import numpy as np
+import time
 
 from interfaces import DEFAULT_STATE, SCALE_TYPES, INSTRUMENTS, MELODIES, SCALES_TYPES_LIST, BASELINE_STYLE
 import interfaces as ifc
@@ -295,6 +296,13 @@ class LightSoundMapper(Pillar_Mapper_Base):
         
         # Keep track of light-driven note changes
         self.light_driven_notes = [None] * self.num_tubes
+        
+        # Track timestamps for debugging
+        self.last_update_time = time.time()
+        
+        print(f"[DEBUG] LightSoundMapper initialized with {self.num_tubes} tubes")
+        print(f"[DEBUG] Notes config: {self.notes}, Octave: {self.octave}")
+        print(f"[DEBUG] Hue-to-note map created with {len(set(self.hue_to_note_map.values()))} unique semitones")
     
     def _create_hue_to_note_map(self):
         """Create a mapping from hue values (0-255) to semitones (0-11)"""
@@ -312,6 +320,9 @@ class LightSoundMapper(Pillar_Mapper_Base):
             # Map each hue in this range to the note
             for hue in range(min_hue, max_hue + 1):
                 hue_to_note[hue] = note
+        
+        print(f"[DEBUG] Hue-to-note mapping created: bin_size={bin_size}")
+        print(f"[DEBUG] Example mappings: hue 0 -> {hue_to_note[0]}, hue 127 -> {hue_to_note[127]}, hue 255 -> {hue_to_note[255]}")
                 
         return hue_to_note
     
@@ -324,7 +335,9 @@ class LightSoundMapper(Pillar_Mapper_Base):
             hue = 255
             
         # Use the pre-calculated mapping
-        return self.hue_to_note_map.get(hue, 0)
+        semitone = self.hue_to_note_map.get(hue, 0)
+        print(f"[DEBUG] Converting hue {hue} to semitone {semitone}")
+        return semitone
     
     def update_from_light_status(self, light_status):
         """
@@ -336,8 +349,16 @@ class LightSoundMapper(Pillar_Mapper_Base):
         Returns:
             Updated SoundState object
         """
+        current_time = time.time()
+        time_since_last = current_time - self.last_update_time
+        print(f"[DEBUG] update_from_light_status called, {time_since_last:.2f}s since last update")
+        self.last_update_time = current_time
+        
         # Clear previous reaction notes
         self.sound_state.clear_reaction_notes()
+        
+        # Track which tubes have active lights
+        active_tubes = 0
         
         # Process each tube's light status
         for tube_id, (hue, brightness, _) in enumerate(light_status):
@@ -345,6 +366,8 @@ class LightSoundMapper(Pillar_Mapper_Base):
             if brightness < 20:
                 continue
                 
+            active_tubes += 1
+            
             # Convert hue to semitone
             semitone = self.hue_to_semitone(hue)
             
@@ -355,8 +378,9 @@ class LightSoundMapper(Pillar_Mapper_Base):
             if note_to_play != self.light_driven_notes[tube_id]:
                 self.sound_state.append_reaction_notes(note_to_play)
                 self.light_driven_notes[tube_id] = note_to_play
-                print(f"Tube {tube_id}: Hue {hue} → Semitone {semitone} → Note {note_to_play}")
+                print(f"[DEBUG] Tube {tube_id}: Hue {hue} → Semitone {semitone} → Note {note_to_play}")
         
+        print(f"[DEBUG] {active_tubes} tubes active, {len(self.sound_state.reaction_notes)} new reaction notes")
         return self.sound_state
     
     def interaction_update_sound_light(self, old_state, new_state):
@@ -374,6 +398,7 @@ class LightSoundMapper(Pillar_Mapper_Base):
                 
                 # Update light-driven notes to avoid duplicate triggering
                 self.light_driven_notes[tube_id] = note_to_play
+                print(f"[DEBUG] Button press on tube {tube_id} → Playing note {note_to_play}")
 
 def generate_mapping_interface(cfg, cfg_pillar) -> Pillar_Mapper_Base:
     """Generator Function which you can call which reads the config

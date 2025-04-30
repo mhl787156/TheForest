@@ -62,13 +62,17 @@ class Controller():
         self.last_led_request_time = 0
         self.led_request_interval = 2.0  # Request LED status every 2 seconds
         
-        # Flag to track if we've processed LED status this loop
-        self.led_status_processed = False
+        # Track the last time we processed LED status regardless of changes
+        self.last_led_process_time = 0
+        self.led_process_interval = 1.0  # Process LED status every 1 second
         
         # Store previous LED status to detect changes
         self.previous_led_status = [(0, 0, 0) for _ in range(self.pillar_manager.num_tubes)]
 
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
+        
+        print(f"[DEBUG] Controller initialized for hostname: {hostname}")
+        print(f"[DEBUG] Using mapping: {self.pillar_config['map']}")
 
 
     def start(self, frequency):
@@ -86,30 +90,38 @@ class Controller():
         self.running = False
 
     def loop(self):
+        current_time = time.time()
+        
         # Read from serial to update touch status and LED status
         self.pillar_manager.read_from_serial()
 
         current_btn_press = self.pillar_manager.get_all_touch_status()
         
         # Periodically request LED status from the Teensy
-        current_time = time.time()
         if current_time - self.last_led_request_time >= self.led_request_interval:
+            print("[DEBUG] Requesting LED status from Teensy")
             self.pillar_manager.request_led_status()
             self.last_led_request_time = current_time
         
         # Get current LED status from the Teensy
         current_led_status = self.pillar_manager.get_all_light_status()
+        
+        # Detect if LED status has changed
         led_status_changed = (current_led_status != self.previous_led_status)
         
-        # LED status has changed from the Teensy
-        if led_status_changed:
-            print("LED status changed:", current_led_status)
+        # Either process when LED status changes OR at regular intervals
+        if led_status_changed or (current_time - self.last_led_process_time >= self.led_process_interval):
+            if led_status_changed:
+                print("[DEBUG] LED status changed:", current_led_status)
+            else:
+                print("[DEBUG] Regular LED status processing:", current_led_status)
             
             # Use LightSoundMapper to convert light values to sound
             sound_state = self.mapping_interface.update_from_light_status(current_led_status)
             
-            # Update the previous LED status
+            # Update the previous LED status and processing time
             self.previous_led_status = current_led_status
+            self.last_led_process_time = current_time
             
             # Update sound parameters based on the LED status change
             for param_name, value in sound_state.items():
@@ -125,12 +137,12 @@ class Controller():
                 "light_state": list([(h, b) for h, b, _ in current_led_status])
             }
             self.data_queue.put(data)
-            
-        
-        # No button press and no LED status change - do nothing
         else:
-            # Completely passive - no changes to lights or sound
-            pass
+            # Still process sound system regularly even if no changes
+            self.sound_manager.tick(time_delta=1/30.0)
+            
+            if self.loop_idx % 30 == 0:  # Only print occasionally to avoid log spam
+                print(f"Regular tick with no LED changes (loop {self.loop_idx})")
 
         self.loop_idx += 1
 
