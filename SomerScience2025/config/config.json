@@ -55,7 +55,7 @@
     "default_state": {
         "volume": {
             "melody": 0.9,
-            "harmony": 0.5,
+            "harmony": 0,
             "background": 0.5
         },
         "instruments": {

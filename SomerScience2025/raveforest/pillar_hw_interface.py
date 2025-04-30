@@ -33,86 +33,58 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 continue  # Skip empty responses after cleaning
                 
             # Log the raw response for debugging
-            # print(f"Raw response: {repr(raw_response)}, Cleaned: {repr(response)}")
+            print(f"Raw response: {repr(raw_response)}, Cleaned: {repr(response)}")
             
+            # Handle CAP data
             if "CAP" in response:
-                parts = response.split(",")
-                if len(parts) > 1:  # Make sure there are actual values after "CAP"
-                    status = parts[1:]
-                    try:
-                        cap_queue.put([bool(int(i)) for i in status])
-                    except ValueError as e:
-                        print(f"Error parsing CAP data: {e}, data: {status}")
-            elif "LED" in response:
-                # More robust LED data parsing
                 try:
-                    # Clean the response - sometimes we get partial or corrupted data
-                    # First check if the response is properly formed
-                    led_parts = []
-                    
-                    # Split and clean each part
+                    # Extract parts after "CAP"
+                    cap_data = []
                     parts = response.split(",")
                     
-                    # Find the part containing "LED"
-                    led_index = -1
+                    # Find which part has CAP
+                    cap_index = -1
                     for i, part in enumerate(parts):
-                        if "LED" in part:
-                            led_index = i
+                        if "CAP" in part:
+                            cap_index = i
                             break
                     
-                    # If we found LED, process from that point
-                    if led_index >= 0:
-                        # Extract parts starting from the LED indicator
-                        led_parts = parts[led_index:]
+                    if cap_index >= 0:
+                        # Get parts after CAP
+                        for i in range(cap_index + 1, len(parts)):
+                            # Clean the part
+                            part = parts[i].strip()
+                            # Remove any \r or other non-numeric characters
+                            part = ''.join(c for c in part if c.isdigit())
+                            if part:  # Only add non-empty parts
+                                cap_data.append(part)
                         
-                        # Clean up the LED part - sometimes it's attached to the ID
-                        if led_parts[0].startswith("LED") and len(led_parts[0]) > 3:
-                            # Extract any numeric ID after "LED"
-                            tube_id_str = led_parts[0][3:].strip()
-                            # If valid ID, use it
-                            if tube_id_str.isdigit():
-                                tube_id = int(tube_id_str)
-                                # Look for hue value in next part
-                                if len(led_parts) > 1 and led_parts[1].strip().isdigit():
-                                    hue = int(led_parts[1].strip())
-                                    # Get brightness if available
-                                    brightness = 255  # Default
-                                    if len(led_parts) > 2 and led_parts[2].strip().isdigit():
-                                        brightness = int(led_parts[2].strip())
-                                    light_queue.put((tube_id, hue, brightness))
-                                    print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
-                            else:
-                                # Just "LED" with no ID, look for tube_id in next part
-                                if len(led_parts) > 1:
-                                    # Clean and check if next part is numeric
-                                    next_part = led_parts[1].strip()
-                                    if next_part.isdigit():
-                                        tube_id = int(next_part)
-                                        # Look for hue in the following part
-                                        if len(led_parts) > 2 and led_parts[2].strip().isdigit():
-                                            hue = int(led_parts[2].strip())
-                                            # Get brightness if available
-                                            brightness = 255  # Default
-                                            if len(led_parts) > 3 and led_parts[3].strip().isdigit():
-                                                brightness = int(led_parts[3].strip())
-                                            light_queue.put((tube_id, hue, brightness))
-                                            print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
-                        else:
-                            # Regular case: "LED" is a separate part
-                            if len(led_parts) > 1 and led_parts[1].strip().isdigit():
-                                tube_id = int(led_parts[1].strip())
-                                if len(led_parts) > 2 and led_parts[2].strip().isdigit():
-                                    hue = int(led_parts[2].strip())
-                                    # Get brightness if available
-                                    brightness = 255  # Default
-                                    if len(led_parts) > 3 and led_parts[3].strip().isdigit():
-                                        brightness = int(led_parts[3].strip())
-                                    light_queue.put((tube_id, hue, brightness))
-                                    print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
+                        # If we have valid data, put it in the queue
+                        if cap_data:
+                            try:
+                                cap_queue.put([bool(int(i)) for i in cap_data])
+                                print(f"Processed CAP data: {cap_data}")
+                            except ValueError as e:
+                                print(f"Error converting CAP data: {e}, data: {cap_data}")
                     else:
-                        print(f"Could not find LED indicator in response: {response}")
-                except ValueError as e:
-                    print(f"Error parsing LED data: {e}, response: {response}")
+                        print(f"Could not find CAP indicator in usable position: {response}")
+                except Exception as e:
+                    print(f"Error processing CAP data: {e}, response: {response}")
+            
+            # Handle LED data
+            elif "LED" in response or "LD" in response:
+                # More robust LED data parsing
+                try:
+                    # First check if we have several LED commands in one response
+                    if response.count("LD") > 1 or (response.count("LED") > 0 and response.count("LD") > 0):
+                        # Split by \r which often separates commands
+                        commands = response.replace('\r', '\n').split('\n')
+                        for cmd in commands:
+                            if "LED" in cmd or "LD" in cmd:
+                                process_led_command(cmd, light_queue)
+                    else:
+                        # Process as a single LED command
+                        process_led_command(response, light_queue)
                 except Exception as e:
                     print(f"Unexpected error parsing LED data: {e}, response: {response}")
 
@@ -121,6 +93,61 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
 
     print("Serial Read Thread Killed")
 
+def process_led_command(cmd, light_queue):
+    """Helper function to process a single LED command"""
+    cmd = cmd.strip()
+    if not cmd:
+        return
+        
+    print(f"Processing LED command: {cmd}")
+    
+    # Extract the tube ID and values
+    tube_id = None
+    hue = None
+    brightness = 255  # Default brightness
+    
+    # Check for common formats
+    if "LED" in cmd:
+        # Format: LED,id,hue,brightness or LED{id},hue,brightness
+        led_parts = cmd.split(',')
+        
+        # Extract tube ID
+        if "LED" in led_parts[0]:
+            # Handle case where LED and ID are together (e.g., "LED12")
+            id_part = led_parts[0].replace("LED", "").strip()
+            if id_part and id_part.isdigit():
+                tube_id = int(id_part)
+            elif len(led_parts) > 1 and led_parts[1].strip().isdigit():
+                tube_id = int(led_parts[1].strip())
+                led_parts = led_parts[1:]  # Shift parts
+        else:
+            # Normal case where LED is separate
+            if len(led_parts) > 1 and led_parts[1].strip().isdigit():
+                tube_id = int(led_parts[1].strip())
+        
+        # Extract hue and brightness
+        for i in range(1, len(led_parts)):
+            part = led_parts[i].strip()
+            if part.isdigit():
+                if hue is None:
+                    hue = int(part)
+                elif brightness == 255:  # Default not yet overridden
+                    brightness = int(part)
+                    
+    elif "LD" in cmd:
+        # Format: LD{id}{hue}
+        # Extract numeric parts after LD
+        numeric_part = ''.join(c for c in cmd.replace("LD", "") if c.isdigit())
+        if len(numeric_part) >= 2:  # Need at least tube ID and hue
+            tube_id = int(numeric_part[0])
+            hue = int(numeric_part[1:])
+    
+    # If we have a valid tube ID and hue, queue it
+    if tube_id is not None and hue is not None:
+        light_queue.put((tube_id, hue, brightness))
+        print(f"Queued LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
+    else:
+        print(f"Could not extract valid LED data from: {cmd}")
 
 def write_serial_data(serial_port, write_queue):
     print(f"Serial Write Thread Started With {serial_port}")
@@ -314,37 +341,58 @@ class Pillar():
         try:
             while not self.cap_queue.empty():
                 received_status = self.cap_queue.get_nowait()
+                
+                # Ensure received_status has the correct length
+                if len(received_status) != self.num_touch_sensors:
+                    print(f"Warning: Received touch status has {len(received_status)} sensors, expected {self.num_touch_sensors}")
+                    # Pad with False if too short
+                    if len(received_status) < self.num_touch_sensors:
+                        received_status.extend([False] * (self.num_touch_sensors - len(received_status)))
+                    # Truncate if too long
+                    if len(received_status) > self.num_touch_sensors:
+                        received_status = received_status[:self.num_touch_sensors]
+                
+                print(f"Processing touch status: {received_status}")
                 if received_status != self.previous_received_status:
                     self.set_touch_status(received_status)
+                    # Assuming a function to handle end of touch event
                     self.handle_end_of_touch(received_status)
                 self.previous_received_status = received_status
         except queue.Empty:
             pass
-        
+
         # Handle LED status data
         try:
             while not self.light_queue.empty():
-                try:
-                    data = self.light_queue.get_nowait()
-                    # Handle both tuple format (tube_id, hue, brightness) and list format
-                    if isinstance(data, tuple) and len(data) >= 3:
-                        tube_id, hue, brightness = data
-                    elif isinstance(data, list) and len(data) >= 3:
-                        tube_id, hue, brightness = data[0], data[1], data[2]
+                led_data = self.light_queue.get_nowait()
+                
+                # Check data format and convert if needed
+                if isinstance(led_data, tuple) and len(led_data) == 3:
+                    # Format from the new processing: (tube_id, hue, brightness)
+                    tube_id, hue, brightness = led_data
+                elif isinstance(led_data, list):
+                    # Legacy format, possibly [tube_id, hue, brightness]
+                    if len(led_data) >= 2:
+                        tube_id = led_data[0]
+                        hue = led_data[1]
+                        brightness = led_data[2] if len(led_data) > 2 else 255
                     else:
-                        print(f"Unexpected LED data format: {data}")
+                        print(f"Warning: Invalid LED data format: {led_data}")
                         continue
-                    
-                    # Validate tube_id is within range
-                    if 0 <= tube_id < len(self.light_status):
-                        self.light_status[tube_id] = (hue, brightness, 0)
-                        print(f"Updated light status for tube {tube_id}: ({hue}, {brightness}, 0)")
-                    else:
-                        print(f"Tube ID {tube_id} out of range (0-{len(self.light_status)-1})")
-                except Exception as e:
-                    print(f"Error processing LED status: {e}")
+                else:
+                    print(f"Warning: Unrecognized LED data format: {led_data}")
+                    continue
+                
+                # Validate tube_id is in range
+                if 0 <= tube_id < self.num_tubes:
+                    self.light_status[tube_id] = (hue, brightness, 0)  # Store as (hue, brightness, 0)
+                    print(f"Updated light status for tube {tube_id}: hue={hue}, brightness={brightness}")
+                else:
+                    print(f"Warning: LED tube_id {tube_id} out of range (0-{self.num_tubes-1})")
         except queue.Empty:
             pass
+        except Exception as e:
+            print(f"Error processing light queue: {e}")
 
     def handle_end_of_touch(self, received_status):
         if all(status == 0 for status in received_status):  # All touch sensors are inactive
