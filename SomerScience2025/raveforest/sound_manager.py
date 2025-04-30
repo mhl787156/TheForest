@@ -245,7 +245,7 @@ class SoundManager:
         """Updates the settings dictionary for a specific pillar."""
         self.composer.update(setting_name, value)
 
-    def tick(self, time_delta=1/30.0):
+    def tick(self, time_delta=1/60.0):
         self.composer.play()
         wait(time_delta, units="time")
 
