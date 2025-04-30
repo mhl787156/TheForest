@@ -60,7 +60,7 @@ class Controller():
         
         # Track the last time we requested LED status
         self.last_led_request_time = 0
-        self.led_request_interval = 2.0  # Request LED status every 2 seconds
+        self.led_request_interval = 5.0  # Increase to 5 seconds - less frequent requests
         
         # Track the last time we processed LED status regardless of changes
         self.last_led_process_time = 0
@@ -71,6 +71,18 @@ class Controller():
 
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
         
+        # Add API sender if endpoint is configured
+        if "tonnetz_server_api_endpoint" in config and config["tonnetz_server_api_endpoint"]:
+            self.api_sender = APISender(config["tonnetz_server_api_endpoint"], self.data_queue)
+            self.api_sender.start()
+            print(f"[DEBUG] API sender started with endpoint: {config['tonnetz_server_api_endpoint']}")
+        else:
+            print("[DEBUG] No API endpoint configured, skipping API sender")
+            
+        # Add rate limiting for loop processing
+        self.min_loop_interval = 0.1  # Minimum time between loop iterations (10Hz max)
+        self.last_loop_time = 0
+            
         print(f"[DEBUG] Controller initialized for hostname: {hostname}")
         print(f"[DEBUG] Using mapping: {self.pillar_config['map']}")
 
@@ -81,75 +93,126 @@ class Controller():
         Args:
             frequency (_type_): _description_
         """
-        index = 0
-
-        while self.running:
-            self.loop()
+        print(f"[DEBUG] Starting controller loop with target frequency: {frequency} Hz")
+        self.running = True
+        
+        try:
+            while self.running:
+                # Add rate limiting
+                current_time = time.time()
+                elapsed = current_time - self.last_loop_time
+                
+                if elapsed < self.min_loop_interval:
+                    # Sleep to maintain the desired loop rate
+                    time.sleep(self.min_loop_interval - elapsed)
+                
+                self.last_loop_time = time.time()
+                self.loop()
+        except KeyboardInterrupt:
+            print("[DEBUG] Keyboard interrupt detected, stopping controller")
+            self.stop()
+        except Exception as e:
+            print(f"[ERROR] Exception in controller main loop: {e}")
+            self.stop()
+            raise
 
     def stop(self):
         self.running = False
+        # Stop API sender if it exists
+        if hasattr(self, 'api_sender'):
+            self.api_sender.stop()
+            print("[DEBUG] API sender stopped")
 
     def loop(self):
         current_time = time.time()
         
-        # Read from serial to update touch status and LED status
-        self.pillar_manager.read_from_serial()
-
-        current_btn_press = self.pillar_manager.get_all_touch_status()
-        
-        # Periodically request LED status from the Teensy
-        if current_time - self.last_led_request_time >= self.led_request_interval:
-            print("[DEBUG] Requesting LED status from Teensy")
-            self.pillar_manager.request_led_status()
-            self.last_led_request_time = current_time
-        
-        # Get current LED status from the Teensy
-        current_led_status = self.pillar_manager.get_all_light_status()
-        
-        # Detect if LED status has changed
-        led_status_changed = (current_led_status != self.previous_led_status)
-        
-        # Either process when LED status changes OR at regular intervals
-        if led_status_changed or (current_time - self.last_led_process_time >= self.led_process_interval):
-            if led_status_changed:
-                print("[DEBUG] LED status changed:", current_led_status)
+        try:
+            # Read from serial to update touch status and LED status
+            self.pillar_manager.read_from_serial()
+    
+            current_btn_press = self.pillar_manager.get_all_touch_status()
+            
+            # Periodically request LED status from the Teensy (less frequently)
+            if current_time - self.last_led_request_time >= self.led_request_interval:
+                print(f"[DEBUG] Requesting LED status from Teensy (interval: {self.led_request_interval}s)")
+                self.pillar_manager.request_led_status()
+                self.last_led_request_time = current_time
+            
+            # Get current LED status from the Teensy
+            current_led_status = self.pillar_manager.get_all_light_status()
+            
+            # Detect if LED status has changed
+            led_status_changed = False
+            for i, (curr, prev) in enumerate(zip(current_led_status, self.previous_led_status)):
+                if curr != prev:
+                    led_status_changed = True
+                    print(f"[DEBUG] LED status changed for tube {i}: {prev} -> {curr}")
+                    break
+            
+            # Only log every 30 iterations unless there's a change
+            should_log = led_status_changed or (self.loop_idx % 30 == 0)
+            
+            # Either process when LED status changes OR at regular intervals
+            if led_status_changed or (current_time - self.last_led_process_time >= self.led_process_interval):
+                if should_log:
+                    if led_status_changed:
+                        print("[DEBUG] Processing LED status - status changed")
+                    else:
+                        print("[DEBUG] Processing LED status - regular interval")
+                
+                try:
+                    # Generate the sound and light state based on button presses
+                    sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
+                    
+                    # Only update light state if we have a mapper that doesn't rely on LEDs for sound
+                    # Otherwise we're in a feedback loop
+                    if not isinstance(self.mapping_interface, LightSoundMapper):
+                        # Send light changes to the Teensy
+                        self.pillar_manager.send_all_light_change(light_state)
+                        
+                    # Add extra debug for sound state
+                    if should_log:
+                        print(f"[DEBUG] Sound state: {sound_state}")
+                
+                    # Update sound parameters
+                    for param_name, value in sound_state.items():
+                        self.sound_manager.update_pillar_setting(param_name, value)
+                    
+                    # Process sound changes
+                    self.sound_manager.tick(time_delta=1/30.0)
+                    
+                    # Update the previous LED status
+                    self.previous_led_status = current_led_status
+                    self.last_led_process_time = current_time
+                    
+                    # Package data for logging
+                    try:
+                        data = {
+                            "btn_press": current_btn_press,
+                            "sound_state": sound_state.to_json(),
+                            "light_state": list([(h, b) for h, b, _ in current_led_status])
+                        }
+                        self.data_queue.put(data)
+                    except Exception as e:
+                        print(f"[ERROR] Error packaging data for API: {e}")
+                        
+                except Exception as e:
+                    print(f"[ERROR] Error processing LED status: {e}")
+                    # Still try to tick the sound manager
+                    self.sound_manager.tick(time_delta=1/30.0)
             else:
-                print("[DEBUG] Regular LED status processing:", current_led_status)
+                # Still process sound system regularly even if no changes
+                self.sound_manager.tick(time_delta=1/30.0)
+                
+                if should_log:
+                    print(f"[DEBUG] Regular tick with no LED changes (loop {self.loop_idx})")
+    
+            self.loop_idx += 1
             
-            # Use LightSoundMapper to convert light values to sound
-            sound_state = self.mapping_interface.update_from_light_status(current_led_status)
-            
-            # Update the previous LED status and processing time
-            self.previous_led_status = current_led_status
-            self.last_led_process_time = current_time
-            
-            # Update sound parameters based on the LED status change
-            for param_name, value in sound_state.items():
-                self.sound_manager.update_pillar_setting(param_name, value)
-            
-            # Add extra debug for reaction_notes
-            if hasattr(sound_state, "reaction_notes") and sound_state.reaction_notes:
-                print(f"[DEBUG] Found reaction notes: {sound_state.reaction_notes}")
-                self.sound_manager.update_pillar_setting("reaction_notes", sound_state.reaction_notes)
-            
-            # Process sound changes
-            self.sound_manager.tick(time_delta=1/30.0)
-            
-            # Package data for logging
-            data = {
-                "btn_press": current_btn_press,
-                "sound_state": sound_state.to_json(),
-                "light_state": list([(h, b) for h, b, _ in current_led_status])
-            }
-            self.data_queue.put(data)
-        else:
-            # Still process sound system regularly even if no changes
-            self.sound_manager.tick(time_delta=1/30.0)
-            
-            if self.loop_idx % 30 == 0:  # Only print occasionally to avoid log spam
-                print(f"Regular tick with no LED changes (loop {self.loop_idx})")
-
-        self.loop_idx += 1
+        except Exception as e:
+            print(f"[ERROR] Exception in controller loop: {e}")
+            # Keep the loop going despite errors
+            time.sleep(0.1)
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")

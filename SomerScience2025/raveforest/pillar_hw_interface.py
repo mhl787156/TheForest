@@ -17,137 +17,160 @@ def clamp(val, b=0, c=255):
 
 def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
     print(f"Serial Read Thread Started With {serial_port}")
+    
+    # Buffer to collect fragments for message reassembly
+    buffer = ""
+    last_process_time = 0
+    process_interval = 0.25  # Only process every 250ms to reduce load
+    
+    # Keep track of last time we received different message types to deduplicate
+    last_cap_time = 0
+    last_led_times = {}  # Dictionary to track LED updates by tube_id
+    dedup_interval = 0.5  # Deduplicate messages within this time window (500ms)
+    
     while True:
         try:
             if kill_event.is_set():
                 break
 
-            # Read response and clean it up
-            raw_response = serial_port.readline()
-            if not raw_response:
-                continue  # Skip empty responses
+            # Read response and add to buffer
+            try:
+                raw_response = serial_port.readline()
+                if not raw_response:
+                    time.sleep(0.05)  # Short sleep to reduce CPU usage when no data
+                    continue
                 
-            # Clean up the response by removing control characters and whitespace
-            response = raw_response.decode('utf-8', errors='ignore').strip()
-            if not response:
-                continue  # Skip empty responses after cleaning
+                # Add to buffer, handling decoding errors gracefully
+                response_str = raw_response.decode('utf-8', errors='ignore').strip()
+                if response_str:
+                    buffer += response_str + "\n"  # Add a newline for separation
+            except Exception as e:
+                print(f"Error reading from serial: {e}")
+                time.sleep(0.1)  # Longer sleep on error
+                continue
+            
+            # Only process the buffer at a controlled interval to prevent overwhelming the system
+            current_time = time.time()
+            if current_time - last_process_time < process_interval:
+                continue
                 
-            # Log the raw response for debugging
-            print(f"Raw response: {repr(raw_response)}, Cleaned: {repr(response)}")
+            last_process_time = current_time
+                
+            # Skip if buffer is empty
+            if not buffer:
+                continue
+                
+            # Debug the entire buffer (limit to first 200 chars to avoid spamming)
+            buffer_excerpt = buffer[:200] + ("..." if len(buffer) > 200 else "")
+            print(f"Processing buffer ({len(buffer)} chars): {repr(buffer_excerpt)}")
             
-            # Handle CAP data
-            if "CAP" in response:
+            # Process complete CAP messages
+            cap_data = None
+            if "CAP" in buffer:
                 try:
-                    # Extract parts after "CAP"
-                    cap_data = []
-                    parts = response.split(",")
-                    
-                    # Find which part has CAP
-                    cap_index = -1
-                    for i, part in enumerate(parts):
-                        if "CAP" in part:
-                            cap_index = i
-                            break
-                    
-                    if cap_index >= 0:
-                        # Get parts after CAP
-                        for i in range(cap_index + 1, len(parts)):
-                            # Clean the part
-                            part = parts[i].strip()
-                            # Remove any \r or other non-numeric characters
-                            part = ''.join(c for c in part if c.isdigit())
-                            if part:  # Only add non-empty parts
-                                cap_data.append(part)
-                        
-                        # If we have valid data, put it in the queue
-                        if cap_data:
-                            try:
-                                cap_queue.put([bool(int(i)) for i in cap_data])
-                                print(f"Processed CAP data: {cap_data}")
-                            except ValueError as e:
-                                print(f"Error converting CAP data: {e}, data: {cap_data}")
-                    else:
-                        print(f"Could not find CAP indicator in usable position: {response}")
+                    # Look for complete CAP message
+                    for line in buffer.split('\n'):
+                        if "CAP" in line and "," in line:
+                            parts = line.split("CAP")[1].split(",")
+                            values = []
+                            for part in parts:
+                                # Filter out non-numeric characters
+                                digits = ''.join(c for c in part if c.isdigit())
+                                if digits:
+                                    values.append(int(digits))
+                            
+                            # Ensure we have some values
+                            if values:
+                                cap_data = [bool(v) for v in values]
+                                print(f"Extracted CAP data: {cap_data}")
+                                
+                                # Only queue if it's been a while since last update
+                                if current_time - last_cap_time > dedup_interval:
+                                    cap_queue.put(cap_data)
+                                    last_cap_time = current_time
+                                else:
+                                    print(f"Skipping duplicate CAP data (within {dedup_interval}s)")
                 except Exception as e:
-                    print(f"Error processing CAP data: {e}, response: {response}")
+                    print(f"Error processing CAP data: {e}")
             
-            # Handle LED data
-            elif "LED" in response or "LD" in response:
-                # More robust LED data parsing
+            # Process LED messages - first collect potential LED messages
+            led_messages = []
+            for line in buffer.split('\n'):
+                if "LED" in line or "LD" in line:
+                    led_messages.append(line)
+            
+            # Process LED messages
+            for msg in led_messages:
                 try:
-                    # First check if we have several LED commands in one response
-                    if response.count("LD") > 1 or (response.count("LED") > 0 and response.count("LD") > 0):
-                        # Split by \r which often separates commands
-                        commands = response.replace('\r', '\n').split('\n')
-                        for cmd in commands:
-                            if "LED" in cmd or "LD" in cmd:
-                                process_led_command(cmd, light_queue)
-                    else:
-                        # Process as a single LED command
-                        process_led_command(response, light_queue)
+                    # Extract tube_id, hue, brightness
+                    tube_id = None
+                    hue = None
+                    brightness = None
+                    
+                    # Handle LED,id,hue,brightness format
+                    if "LED" in msg and "," in msg:
+                        parts = msg.split(",")
+                        # Find which part has LED
+                        for i, part in enumerate(parts):
+                            if "LED" in part:
+                                # Extract tube ID from the part with LED or next part
+                                id_part = part.replace("LED", "").strip()
+                                if id_part and id_part.isdigit():
+                                    tube_id = int(id_part)
+                                elif i + 1 < len(parts) and parts[i+1].strip().isdigit():
+                                    tube_id = int(parts[i+1].strip())
+                                
+                                # Extract hue and brightness from subsequent parts
+                                numeric_parts = []
+                                for j in range(i+1, len(parts)):
+                                    clean_part = ''.join(c for c in parts[j] if c.isdigit())
+                                    if clean_part:
+                                        numeric_parts.append(int(clean_part))
+                                
+                                if len(numeric_parts) >= 1:
+                                    # If tube_id is None, use first numeric part as tube_id
+                                    if tube_id is None and numeric_parts:
+                                        tube_id = numeric_parts[0]
+                                        numeric_parts = numeric_parts[1:]
+                                    
+                                    # Assign hue and brightness
+                                    if numeric_parts:
+                                        hue = numeric_parts[0]
+                                        if len(numeric_parts) > 1:
+                                            brightness = numeric_parts[1]
+                                        else:
+                                            brightness = 255  # Default brightness
+                                break
+                    
+                    # Handle LD{id}{hue} format
+                    elif "LD" in msg:
+                        # Extract digits after LD
+                        digits = ''.join(c for c in msg.replace("LD", "") if c.isdigit())
+                        if len(digits) >= 2:
+                            tube_id = int(digits[0])
+                            hue = int(digits[1:])
+                            brightness = 255  # Default brightness
+                    
+                    # Queue valid LED data with deduplication
+                    if tube_id is not None and hue is not None:
+                        tube_key = f"tube_{tube_id}"
+                        if tube_key not in last_led_times or current_time - last_led_times[tube_key] > dedup_interval:
+                            light_queue.put((tube_id, hue, brightness or 255))
+                            last_led_times[tube_key] = current_time
+                            print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness or 255}")
+                        else:
+                            print(f"Skipping duplicate LED update for tube {tube_id} (within {dedup_interval}s)")
                 except Exception as e:
-                    print(f"Unexpected error parsing LED data: {e}, response: {response}")
-
+                    print(f"Error processing LED message '{msg}': {e}")
+            
+            # Clear buffer after processing
+            buffer = ""
+            
         except Exception as e:
-            print(f"Error reading data: {e}")
+            print(f"Error in read_serial_data: {e}")
+            time.sleep(0.1)  # Sleep on error to avoid spinning
 
     print("Serial Read Thread Killed")
-
-def process_led_command(cmd, light_queue):
-    """Helper function to process a single LED command"""
-    cmd = cmd.strip()
-    if not cmd:
-        return
-        
-    print(f"Processing LED command: {cmd}")
-    
-    # Extract the tube ID and values
-    tube_id = None
-    hue = None
-    brightness = 255  # Default brightness
-    
-    # Check for common formats
-    if "LED" in cmd:
-        # Format: LED,id,hue,brightness or LED{id},hue,brightness
-        led_parts = cmd.split(',')
-        
-        # Extract tube ID
-        if "LED" in led_parts[0]:
-            # Handle case where LED and ID are together (e.g., "LED12")
-            id_part = led_parts[0].replace("LED", "").strip()
-            if id_part and id_part.isdigit():
-                tube_id = int(id_part)
-            elif len(led_parts) > 1 and led_parts[1].strip().isdigit():
-                tube_id = int(led_parts[1].strip())
-                led_parts = led_parts[1:]  # Shift parts
-        else:
-            # Normal case where LED is separate
-            if len(led_parts) > 1 and led_parts[1].strip().isdigit():
-                tube_id = int(led_parts[1].strip())
-        
-        # Extract hue and brightness
-        for i in range(1, len(led_parts)):
-            part = led_parts[i].strip()
-            if part.isdigit():
-                if hue is None:
-                    hue = int(part)
-                elif brightness == 255:  # Default not yet overridden
-                    brightness = int(part)
-                    
-    elif "LD" in cmd:
-        # Format: LD{id}{hue}
-        # Extract numeric parts after LD
-        numeric_part = ''.join(c for c in cmd.replace("LD", "") if c.isdigit())
-        if len(numeric_part) >= 2:  # Need at least tube ID and hue
-            tube_id = int(numeric_part[0])
-            hue = int(numeric_part[1:])
-    
-    # If we have a valid tube ID and hue, queue it
-    if tube_id is not None and hue is not None:
-        light_queue.put((tube_id, hue, brightness))
-        print(f"Queued LED data: tube={tube_id}, hue={hue}, brightness={brightness}")
-    else:
-        print(f"Could not extract valid LED data from: {cmd}")
 
 def write_serial_data(serial_port, write_queue):
     print(f"Serial Write Thread Started With {serial_port}")
@@ -408,7 +431,14 @@ class Pillar():
     # Add a method to request LED status from the Teensy
     def request_led_status(self):
         """Send a command to the Teensy to request current LED status for all tubes."""
-        message = "GETLED;\n\r"
-        print(f"Requesting LED status from Teensy: {message.strip()}")
-        self.write_queue.put(message)
+        try:
+            message = "GETLED;\n\r"
+            print(f"[DEBUG] Requesting LED status from Teensy: {message.strip()}")
+            self.write_queue.put(message)
+            # Short sleep to avoid overwhelming the serial buffer
+            time.sleep(0.1)
+            return True
+        except Exception as e:
+            print(f"[ERROR] Failed to request LED status: {e}")
+            return False
         
