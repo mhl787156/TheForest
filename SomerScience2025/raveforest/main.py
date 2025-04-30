@@ -59,8 +59,8 @@ class Controller():
         self.running = True
 
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
-        sender = APISender(config["tonnetz_server_api_endpoint"], self.data_queue)
-        sender.start()
+        # sender = APISender(config["tonnetz_server_api_endpoint"], self.data_queue)
+        # sender.start()
 
     def start(self, frequency):
         """Starts the main control loop
