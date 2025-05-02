@@ -18,52 +18,55 @@ def clamp(val, b=0, c=255):
 def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
     print(f"Serial Read Thread Started With {serial_port}")
     
-    buffer = ""
+    # Increase serial timeout and buffer size
+    serial_port.timeout = 0.1
     
     while True:
         if kill_event.is_set():
             break
 
         try:
-            # Read response
+            # Clear any partial data
+            serial_port.flushInput()
+            
+            # Read complete line with timeout
             raw_response = serial_port.readline()
             if not raw_response:
                 time.sleep(0.05)
                 continue
             
-            # Decode the response
+            # Decode and validate
             response_str = raw_response.decode('utf-8', errors='ignore').strip()
             if not response_str:
                 continue
             
-            print(f"Received: {response_str}")
-            
-            # Process CAP message (touch status)
-            if response_str.startswith("CAP"):
+            # Improved validation - only process messages with correct format
+            if response_str.startswith("CAP,") and response_str.count(',') >= 6:
                 parts = response_str.split(",")
-                if len(parts) >= 7:  # "CAP" + 6 values
-                    # Convert all values after "CAP" to booleans
-                    touch_values = [bool(int(parts[i])) for i in range(1, 7)]
-                    cap_queue.put(touch_values)
-                    print(f"Processed CAP data: {touch_values}")
-            
-            # Process LED message (new format: LED,hue1,hue2,hue3,hue4,hue5,hue6)
-            elif response_str.startswith("LED"):
+                # Only process if we have the right number of parts
+                if len(parts) >= 7:
+                    try:
+                        touch_values = [bool(int(parts[i])) for i in range(1, 7)]
+                        cap_queue.put(touch_values)
+                    except (ValueError, IndexError) as e:
+                        print(f"Error parsing CAP data: {e}")
+                
+            elif response_str.startswith("LED,") and response_str.count(',') >= 6:
                 parts = response_str.split(",")
-                if len(parts) >= 7:  # "LED" + 6 hue values
-                    # Process all tubes at once
-                    for i in range(6):
-                        try:
+                # Only process if we have the right number of parts
+                if len(parts) >= 7:
+                    try:
+                        # Process all tubes at once
+                        for i in range(6):
                             hue = int(parts[i+1])
-                            # Use default brightness since it's not included anymore
-                            brightness = 255
-                            # Put the data in the queue
-                            light_queue.put((i, hue, brightness))
-                        except (ValueError, IndexError) as e:
-                            print(f"Error processing LED value for tube {i}: {e}")
-                    
-                    print(f"Processed LED data: {[int(parts[i+1]) for i in range(6)]}")
-        
+                            light_queue.put((i, hue, 255))
+                    except (ValueError, IndexError) as e:
+                        print(f"Error processing LED data: {e}")
+            
+            # Reduce debug printing - only print valid messages
+            if response_str.startswith("CAP,") or response_str.startswith("LED,"):
+                print(f"Valid data received: {response_str[:20]}...")
+                
         except Exception as e:
             print(f"Error in read_serial_data: {e}")
             time.sleep(0.1)
@@ -118,6 +121,9 @@ class Pillar():
         self.ser = None
         self.serial_status = dict(connected=False, port=port, baud_rate=baud_rate)
         self.ser = self.restart_serial(port, baud_rate)
+
+        self.ser.flushInput()  # Clear any leftover data
+        self.ser.flushOutput()
 
         atexit.register(self.cleanup)
 
@@ -287,26 +293,13 @@ class Pillar():
             while not self.light_queue.empty():
                 led_data = self.light_queue.get_nowait()
                 
-                # Check data format and convert if needed
-                if isinstance(led_data, tuple) and len(led_data) == 3:
-                    # Format from the new processing: (tube_id, hue, brightness)
-                    tube_id, hue, brightness = led_data
-                elif isinstance(led_data, list):
-                    # Legacy format, possibly [tube_id, hue, brightness]
-                    if len(led_data) >= 2:
-                        tube_id = led_data[0]
-                        hue = led_data[1]
-                        brightness = led_data[2] if len(led_data) > 2 else 255
-                    else:
-                        print(f"Warning: Invalid LED data format: {led_data}")
-                        continue
-                else:
-                    print(f"Warning: Unrecognized LED data format: {led_data}")
-                    continue
+                # Format from the queue should be (tube_id, hue, brightness)
+                tube_id, hue, brightness = led_data
                 
                 # Validate tube_id is in range
                 if 0 <= tube_id < self.num_tubes:
-                    self.light_status[tube_id] = (hue, brightness, 0)  # Store as (hue, brightness, 0)
+                    # Store as (hue, brightness, effect) - THIS IS THE IMPORTANT FORMAT
+                    self.light_status[tube_id] = (hue, brightness, 0)
                     print(f"Updated light status for tube {tube_id}: hue={hue}, brightness={brightness}")
                 else:
                     print(f"Warning: LED tube_id {tube_id} out of range (0-{self.num_tubes-1})")

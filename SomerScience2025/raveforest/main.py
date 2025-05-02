@@ -64,7 +64,7 @@ class Controller():
         
         # Track the last time we processed LED status regardless of changes
         self.last_led_process_time = 0
-        self.led_process_interval = 1.0  # Process LED status every 1 second
+        self.led_process_interval = 2.0  # Reduce LED processing frequency
         
         # Store previous LED status to detect changes
         self.previous_led_status = [(0, 0, 0) for _ in range(self.pillar_manager.num_tubes)]
@@ -72,9 +72,12 @@ class Controller():
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
             
         # Add rate limiting for loop processing
-        self.min_loop_interval = 0.1  # Minimum time between loop iterations (10Hz max)
+        self.min_loop_interval = 0.2  # Reduce update frequency to 5Hz max
         self.last_loop_time = 0
             
+        # Avoid excessive debug printing
+        self.debug_print = False  # Add a flag to control debug printing
+
         print(f"Controller initialized for hostname: {hostname}")
         print(f"Using mapping: {self.pillar_config['map']}")
 
@@ -116,6 +119,9 @@ class Controller():
             print("API sender stopped")
 
     def loop(self):
+        # Reduce print statements - only print occasionally
+        should_print = (self.loop_idx % 10 == 0)  # Only print every 10th iteration
+        
         current_time = time.time()
         
         try:
@@ -125,8 +131,11 @@ class Controller():
             # Get current touch and LED status
             current_touch_status = self.pillar_manager.get_all_touch_status()
             current_led_status = self.pillar_manager.get_all_light_status()
-            print(f"!!!!!!!!!!Current touch status: {current_touch_status}")
-            #print(f"!!!!!!!!!!Current LED status: {current_led_status}")
+            
+            # Only print when needed
+            if should_print:
+                print(f"Touch status: {current_touch_status}")
+            
             # Get previous touch status (or initialize if first run)
             previous_touch_status = getattr(self, 'previous_touch_status', [False] * self.pillar_manager.num_tubes)
             
