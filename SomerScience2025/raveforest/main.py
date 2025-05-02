@@ -121,14 +121,12 @@ class Controller():
         try:
             # Read from serial to update touch status and LED status
             self.pillar_manager.read_from_serial()
-    
-            # Get current touch status
-            current_touch_status = self.pillar_manager.get_all_touch_status()
-            print(f"Current touch status: {current_touch_status}")
 
+            # Get current touch and LED status
+            current_touch_status = self.pillar_manager.get_all_touch_status()
             current_led_status = self.pillar_manager.get_all_light_status()
-            print(f"Current LED status: {current_led_status}")
-            
+            print(f"!!!!!!!!!!Current touch status: {current_touch_status}")
+            print(f"!!!!!!!!!!Current LED status: {current_led_status}")
             # Get previous touch status (or initialize if first run)
             previous_touch_status = getattr(self, 'previous_touch_status', [False] * self.pillar_manager.num_tubes)
             
@@ -141,11 +139,8 @@ class Controller():
             # Store current touch status for next iteration
             self.previous_touch_status = current_touch_status
             
-            # For LightSoundMapper, directly trigger notes based on LED colors when tubes are touched
+            # For LightSoundMapper, trigger notes based on LED colors when tubes are touched
             if isinstance(self.mapping_interface, LightSoundMapper) and newly_touched_tubes:
-                # Get current LED status
-                current_led_status = self.pillar_manager.get_all_light_status()
-                
                 # Prepare reaction notes based on LED colors of touched tubes
                 reaction_notes = []
                 for tube_id in newly_touched_tubes:
@@ -164,100 +159,44 @@ class Controller():
                         
                         # Add the note to reaction notes
                         reaction_notes.append(note_to_play)
-                        print(f"[DEBUG] Touch-triggered note {note_to_play} from tube {tube_id} (hue={hue})")
+                        print(f"Touch-triggered note {note_to_play} from tube {tube_id} (hue={hue})")
                 
                 # Play the reaction notes
                 if reaction_notes:
                     self.sound_manager.update_pillar_setting("reaction_notes", reaction_notes)
             
-            # Periodically request LED status from the Teensy (less frequently)
+            # Periodically request LED status from the Teensy
             if current_time - self.last_led_request_time >= self.led_request_interval:
-                print(f"Requesting LED status from Teensy (interval: {self.led_request_interval}s)")
                 self.pillar_manager.request_led_status()
                 self.last_led_request_time = current_time
             
-            # Get current LED status from the Teensy
-            current_led_status = self.pillar_manager.get_all_light_status()
+            # Process LED status changes or periodic updates
+            led_status_changed = any(curr != prev for curr, prev in zip(current_led_status, self.previous_led_status))
+            should_process = led_status_changed or (current_time - self.last_led_process_time >= self.led_process_interval)
             
-            # Detect if LED status has changed
-            led_status_changed = False
-            for i, (curr, prev) in enumerate(zip(current_led_status, self.previous_led_status)):
-                if curr != prev:
-                    led_status_changed = True
-                    print(f"LED status changed for tube {i}: {prev} -> {curr}")
-                    break
+            if should_process:
+                # Generate the sound and light state based on button presses
+                sound_state, light_state = self.mapping_interface.update_pillar(current_touch_status)
+                
+                # Only update light state if we're not using LightSoundMapper
+                if not isinstance(self.mapping_interface, LightSoundMapper):
+                    self.pillar_manager.send_all_light_change(light_state)
+                    
+                # Update sound parameters
+                for param_name, value in sound_state.items():
+                    self.sound_manager.update_pillar_setting(param_name, value)
+                
+                # Update tracking variables
+                self.previous_led_status = current_led_status
+                self.last_led_process_time = current_time
             
-            # Only log every 30 iterations unless there's a change
-            should_log = led_status_changed or (self.loop_idx % 30 == 0)
+            # Always process sound system
+            self.sound_manager.tick(time_delta=1/30.0)
             
-            # Either process when LED status changes OR at regular intervals
-            if led_status_changed or (current_time - self.last_led_process_time >= self.led_process_interval):
-                if should_log:
-                    if led_status_changed:
-                        print("Processing LED status - status changed")
-                    else:
-                        print("Processing LED status - regular interval")
-                
-                try:
-                    # Generate the sound and light state based on button presses
-                    sound_state, light_state = self.mapping_interface.update_pillar(current_touch_status)
-                    
-                    # Only update light state if we have a mapper that doesn't rely on LEDs for sound
-                    # Otherwise we're in a feedback loop
-                    if not isinstance(self.mapping_interface, LightSoundMapper):
-                        # Send light changes to the Teensy
-                        self.pillar_manager.send_all_light_change(light_state)
-                        
-                    # Add extra debug for sound state
-                    if should_log:
-                        print(f"Sound state: {sound_state}")
-                
-                    # Update sound parameters
-                    for param_name, value in sound_state.items():
-                        self.sound_manager.update_pillar_setting(param_name, value)
-                    
-                    # Process sound changes
-                    self.sound_manager.tick(time_delta=1/30.0)
-                    
-                    # Update the previous LED status
-                    self.previous_led_status = current_led_status
-                    self.last_led_process_time = current_time
-                    
-                    # Package data for logging
-                    try:
-                        data = {
-                            "btn_press": current_touch_status,
-                            "sound_state": sound_state.to_json(),
-                            "light_state": list([(h, b) for h, b, _ in current_led_status])
-                        }
-                        self.data_queue.put(data)
-                    except Exception as e:
-                        print(f"[ERROR] Error packaging data for API: {e}")
-                        
-                except Exception as e:
-                    print(f"[ERROR] Error processing LED status: {e}")
-                    # Still try to tick the sound manager
-                    self.sound_manager.tick(time_delta=1/30.0)
-            else:
-                # Still process sound system regularly even if no changes
-                self.sound_manager.tick(time_delta=1/30.0)
-                
-                if should_log:
-                    print(f"Regular tick with no LED changes (loop {self.loop_idx})")
-    
             self.loop_idx += 1
-            
-            # Add this at the top of your loop() method
-            def debug_serial_communication(self):
-                # Log incoming data
-                print("\n=== COMMUNICATION DEBUG ===")
-                print(f"Touch status: {self.pillar_manager.get_all_touch_status()}")
-                print(f"LED status: {self.pillar_manager.get_all_light_status()}")
-                print("==========================\n")
             
         except Exception as e:
             print(f"[ERROR] Exception in controller loop: {e}")
-            # Keep the loop going despite errors
             time.sleep(0.1)
 
 if __name__=="__main__":
