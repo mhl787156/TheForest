@@ -10,6 +10,7 @@
         [80,  250],
         [180, 250]
     ],
+    "tonnetz_server_api_endpoint": "http://tzserver.local/forest.php",
     "mapping_id": 2,
     "pillars": {
         "fon006": {

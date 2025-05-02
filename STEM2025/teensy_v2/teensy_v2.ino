@@ -28,12 +28,11 @@ unsigned long startMillis1 = 0;
 unsigned long startMillis2 = 0;
 unsigned long currentMillis;
 const unsigned long period0 = 200;  // Polling for colour changes from python
-const unsigned long period1 = 100;   // Checking touch sensor status
+const unsigned long period1 = 50;   // Checking touch sensor status
 const unsigned long period2 = 50;   // Updating lights based on touch sensor status (effect speed)
 
 // Serial
 const unsigned int serial_max_char = 150;
-int msg_count = 0;
 
 // LEDs
 CRGB leds[6][MAX_LEDS];
@@ -47,11 +46,10 @@ int tube5[3] = { 0, 200, 0 };
 int tube6[3] = { 0, 200, 0 };
 
 // Star effects
-#define star_brightness 250
-#define MAX_STARS 6      // Max number of active stars per tube
+#define star_brightness 50
+#define MAX_STARS 1       // Max number of active stars per tube
 #define STAR_ON_TIME 500  // Time a star stays ON (milliseconds)
 int star_id[6] = { 0 };
-#define STAR_SIZE 2
 
 // Cap sensors
 const int cap_pins[6] = { 1, 3, 5, 17, 19, 21 };  //17 nbot 16
@@ -123,12 +121,9 @@ void light_tube_number(int tnum, int hue, int brightness) {
 }
 
 void sendledstatus() {
-  String msg = "LED";
   for (int i = 0; i < 6; i++) {
-    led_status[i][0] = tube[i][0];
-    msg += "," + String(tube[i][0]);
+    Serial.println("LED," + String(i) + "," + String(led_status[i][0]) + "," + String(led_status[i][1]));
   }
-  Serial.println(msg);
 }
 
 void parseledfromserial() {
@@ -184,45 +179,36 @@ void clear_buffer() {
   }
 }
 
-void flickerStars(int t) {
-  static int starPositions[6][MAX_STARS] = { 0 };
-  static unsigned long starTimers[6][MAX_STARS] = { 0 };
-  static bool starStates[6][MAX_STARS] = { false };
+void flickerStars(int tube) {
+  static int starPositions[6][MAX_STARS] = { 0 };         // Store star positions
+  static unsigned long starTimers[6][MAX_STARS] = { 0 };  // Store when they turned on
+  static bool starStates[6][MAX_STARS] = { false };       // Track ON/OFF state for stars
 
   unsigned long now = millis();
 
   for (int i = 0; i < MAX_STARS; i++) {
-    if (starStates[t][i]) {
-      if (now - starTimers[t][i] > STAR_ON_TIME) {
-        starStates[t][i] = false;
-        // Turn off all LEDs in this star's range
-        for (int j = 0; j < STAR_SIZE; j++) {
-          int pos = starPositions[t][i] + j;
-          if (pos < MAX_LEDS) {
-            leds[t][pos] = CRGB::Black;
-          }
-        }
+    if (starStates[tube][i]) {
+
+      if (now - starTimers[tube][i] > STAR_ON_TIME) {
+        starStates[tube][i] = false; 
+        leds[tube][starPositions[tube][i]] = CRGB::Black;  
       }
     } else {
-      if (random(0, 100) < 5) {
-        int startPos = random(0, MAX_LEDS - STAR_SIZE + 1);  // Avoid overflow
-        starPositions[t][i] = startPos;
-        starStates[t][i] = true;
-        starTimers[t][i] = now;
+      // Randomly turn stars on
+      if (random(0, 100) < 5) {  // Small chance per frame to create a new star
+        starPositions[tube][i] = random(0, MAX_LEDS); 
+        starStates[tube][i] = true; 
+        starTimers[tube][i] = now; 
       }
     }
 
-    // Apply star effect if active
-    if (starStates[t][i]) {
-      for (int j = 0; j < STAR_SIZE; j++) {
-        int pos = starPositions[t][i] + j;
-        if (pos < MAX_LEDS) {
-          leds[t][pos] = CHSV(tube[i][0], 250, star_brightness);
-        }
-      }
+    // Apply star effect
+    if (starStates[tube][i]) {
+      leds[tube][starPositions[tube][i]] = CHSV(40, 50, star_brightness);
     }
   }
 }
+
 
 // ------- Sensing code
 
@@ -293,23 +279,17 @@ void setup() {
 void loop() {
   currentMillis = millis();
 
+
   // Read serial data to update tube colors and effects
-  // if (currentMillis - startMillis0 >= period0) {
-  //   startMillis0 = currentMillis;
-  //   parseledfromserial();
-  // }
+  if (currentMillis - startMillis0 >= period0) {
+    startMillis0 = currentMillis;
+    parseledfromserial();
+  }
 
   // Read capacitive sensors
   if (currentMillis - startMillis1 >= period1) {
     startMillis1 = currentMillis;
-    if (msg_count == 0) {
-        readallcaps();
-        msg_count = 1;
-        }
-    else {
-        sendledstatus();
-        msg_count = 0;
-    }
+    readallcaps();
   }
 
   // Loop through each tube and update LEDs
@@ -326,7 +306,6 @@ void loop() {
         capDecay_LED[i] = max(capDecay_LED[i] - 1, 0);
       } else {
         capDecay_LED[i] = 3;  // Reset decay counter when touch is detected
-        
       }
 
       if (capStatus[i] || capDecay_LED[i] > 0) {
@@ -349,10 +328,6 @@ void loop() {
           for (int j = 0; j < MAX_LEDS; j++) {
             leds[i][j] = CRGB::Black;
           }
-          tube[i][0] += 10;
-          if (tube[i][0] > 255) {
-              tube[i][0] = 0;
-          } 
         }
         flickerStars(i);
       }

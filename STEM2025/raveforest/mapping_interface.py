@@ -4,6 +4,7 @@ from typing import Tuple
 import numpy as np
 
 from interfaces import DEFAULT_STATE, SCALE_TYPES, INSTRUMENTS, MELODIES, SCALES_TYPES_LIST, BASELINE_STYLE
+import interfaces as ifc
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import rgb_to_hsv
@@ -28,6 +29,8 @@ class SoundState(object):
         self.tempo_min = 30
         self.key_center = 60
 
+        self.reaction_notes = []
+
     def __repr__(self):
         return f"{self.to_json()}"
 
@@ -40,6 +43,7 @@ class SoundState(object):
             "melody_scale": self.melody_scale,
             "melody_number": self.melody_number,
             "baseline_style": self.baseline_style,
+            "reaction_notes" : self.reaction_notes,
         }
     
     def items(self):
@@ -91,6 +95,15 @@ class SoundState(object):
         new_idx = (BASELINE_STYLE.index(self.baseline_style) + 1) % len(BASELINE_STYLE)
         self.baseline_style = BASELINE_STYLE[new_idx]        
         return self.baseline_style
+    
+    def clear_reaction_notes(self):
+        self.reaction_notes.clear()
+        return self.reaction_notes
+
+    def append_reaction_notes(self, note):
+        self.reaction_notes.append(note)
+        return self.reaction_notes
+
 
 class LightState(object):
     def __init__(self, num_tubes, random_init=True, lights=None):
@@ -118,7 +131,7 @@ class LightState(object):
 
 class Pillar_Mapper_Base(object):
 
-    def __init__(self, pillar_cfg):
+    def __init__(self, cfg, pillar_cfg):
         """Base Class for any mapping function for a single pillar
 
         Args:
@@ -127,7 +140,7 @@ class Pillar_Mapper_Base(object):
 
         self.num_tubes = pillar_cfg["num_tubes"]
 
-        self.sound_state: SoundState = SoundState(DEFAULT_STATE)
+        self.sound_state: SoundState = SoundState(cfg["default_state"])
         self.light_state: LightState = LightState(self.num_tubes, random_init=True)
         self.state_array = [False for _ in range(self.num_tubes)]
 
@@ -147,10 +160,35 @@ class Pillar_Mapper_Base(object):
         # Internally changes self.sound_state and self.light_state
         print("In Pillar Mapper Base")
 
+class FixedMapper(Pillar_Mapper_Base):
+    def __init__(self, cfg, pillar_cfg):
+        super().__init__(cfg, pillar_cfg)
+        
+        self.num_tubes = pillar_cfg["num_tubes"]
+        self.notes = pillar_cfg["notes"]
+        self.octave = pillar_cfg["octave"]
+
+        # Create a fixed color map from midi note (0-11) to hue (0-255)
+        self.fixed_hue_map = ifc.FIXED_NOTE_HUE_MAP
+
+    # This should be implemented in child classes
+    def interaction_update_sound_light(self, old_state, new_state):
+        
+        # Clears the reaction note for the Composer 
+        self.sound_state.clear_reaction_notes()
+
+        # If we now detect as active, we add a reaction note and change the light state as specified
+        for tube_id, (old_active, active) in enumerate(zip(old_state, new_state)):
+            if not old_active and active:
+                note = self.notes[tube_id]
+                note_to_play = note + self.octave * 12
+                self.sound_state.append_reaction_notes(note_to_play)
+                self.light_state[tube_id] = (self.fixed_hue_map[note], 255, 255)
+
 # Implementation of Pillar Mapper Base to use
 class RotationMapper(Pillar_Mapper_Base):
-    def __init__(self, pillar_cfg):
-        super().__init__(pillar_cfg)
+    def __init__(self, cfg, pillar_cfg):
+        super().__init__(cfg, pillar_cfg)
 
         self.tube_allocation = pillar_cfg["tube_allocation"]
 
@@ -189,8 +227,8 @@ class RotationMapper(Pillar_Mapper_Base):
 
 # Implementation of Pillar Mapper Base to use
 class EventRotationMapper(Pillar_Mapper_Base):
-    def __init__(self, pillar_cfg):
-        super().__init__(pillar_cfg)
+    def __init__(self, cfg, pillar_cfg):
+        super().__init__(cfg, pillar_cfg)
 
         self.tube_allocation = pillar_cfg["tube_allocation"]
 
@@ -230,7 +268,7 @@ class EventRotationMapper(Pillar_Mapper_Base):
 
 
 
-def generate_mapping_interface(cfg_pillar) -> Pillar_Mapper_Base:
+def generate_mapping_interface(cfg, cfg_pillar) -> Pillar_Mapper_Base:
     """Generator Function which you can call which reads the config
     And assigns the correct mapping class based on the configuration file "map"
 
@@ -243,5 +281,5 @@ def generate_mapping_interface(cfg_pillar) -> Pillar_Mapper_Base:
     """
     # Map the name of the mapping method to the Class
     targetClass = getattr(sys.modules[__name__], cfg_pillar['map'])
-    return targetClass(cfg_pillar)
+    return targetClass(cfg, cfg_pillar)
 
