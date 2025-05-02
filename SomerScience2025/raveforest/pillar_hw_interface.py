@@ -18,60 +18,58 @@ def clamp(val, b=0, c=255):
 def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
     print(f"Serial Read Thread Started With {serial_port}")
     
-    # Increase serial timeout and buffer size
+    # Increase serial timeout for better reliability
     serial_port.timeout = 0.1
     
     while True:
         if kill_event.is_set():
             break
-
+            
         try:
-            # Clear any partial data
+            # Clear input buffer to avoid old/corrupted data
             serial_port.flushInput()
             
-            # Read complete line with timeout
+            # Read response
             raw_response = serial_port.readline()
             if not raw_response:
                 time.sleep(0.05)
                 continue
-            
-            # Decode and validate
+                
+            # Decode the response with error handling
             response_str = raw_response.decode('utf-8', errors='ignore').strip()
             if not response_str:
                 continue
-            
-            # Improved validation - only process messages with correct format
-            if response_str.startswith("CAP,") and response_str.count(',') >= 6:
+                
+            # Only process valid message formats
+            if response_str.startswith("CAP,") and len(response_str) >= 10:
                 parts = response_str.split(",")
-                # Only process if we have the right number of parts
-                if len(parts) >= 7:
+                
+                if len(parts) >= 7:  # "CAP" + 6 values
                     try:
                         touch_values = [bool(int(parts[i])) for i in range(1, 7)]
                         cap_queue.put(touch_values)
+                        print(f"\n[TOUCH] 👆 CAP event detected: {touch_values}")
                     except (ValueError, IndexError) as e:
-                        print(f"Error parsing CAP data: {e}")
-                
-            elif response_str.startswith("LED,") and response_str.count(',') >= 6:
+                        print(f"[ERROR] ⚠️ Failed to process CAP data: {e}")
+                        
+            elif response_str.startswith("LED,") and len(response_str) >= 10:
                 parts = response_str.split(",")
-                # Only process if we have the right number of parts
-                if len(parts) >= 7:
+                
+                if len(parts) >= 7:  # "LED" + 6 values
                     try:
                         # Process all tubes at once
                         for i in range(6):
                             hue = int(parts[i+1])
                             light_queue.put((i, hue, 255))
+                        print(f"Valid LED data received: {response_str[:20]}...")
                     except (ValueError, IndexError) as e:
                         print(f"Error processing LED data: {e}")
-            
-            # Reduce debug printing - only print valid messages
-            if response_str.startswith("CAP,") or response_str.startswith("LED,"):
-                print(f"Valid data received: {response_str[:20]}...")
-                
+                        
         except Exception as e:
             print(f"Error in read_serial_data: {e}")
-            time.sleep(0.1)
-
-    print("Serial Read Thread Killed")
+            time.sleep(0.1)  # Pause on error to avoid tight loop
+            
+    print(f"Serial Read Thread Exiting")
 
 def write_serial_data(serial_port, write_queue):
     print(f"Serial Write Thread Started With {serial_port}")

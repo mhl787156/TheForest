@@ -244,12 +244,11 @@ class Composer:
             instrument.play_note(note, volume, d, blocking=True)
 
     def fork_harmony(self, shared_state):
-        # Skip completely if harmony_enabled is False
+        # Skip completely if harmony_enabled is False or volume is 0
         if hasattr(self, 'harmony_enabled') and not self.harmony_enabled:
             print("[DEBUG] Harmony playback skipped - disabled")
             return
         
-        # Also check volume directly as a backup
         if hasattr(self, 'harmony_volume') and self.harmony_volume == 0:
             print("[DEBUG] Harmony playback skipped - volume is 0")
             return
@@ -388,65 +387,49 @@ class SoundManager:
         """Initializes the sound manager"""
         print(f"Initializing SoundManager for pillar: {pillar_id}")
         self.pillar_id = pillar_id
-
-        # Load configuration
-        print("[SOUND] Loading configuration...")
-        try:
-            # Create a default state dictionary (temporary fix until proper State class is available)
-            default_state = {
-                "volume": {
-                    "melody": 0.9, 
-                    "harmony": 0.0,  # Explicitly set to 0
-                    "background": 0.5
-                },
-                "instruments": {
-                    "melody": "xylophone",
-                    "harmony": "flute",
-                    "background": "strings"
-                },
-                "key": 60,
-                "bpm": 100,
-                "melody_scale": "pentatonic",
-                "melody_number": 0,
-                "baseline_style": "long",
-                "chord_levels": 0,
-                "reaction_notes": []
-            }
-            
-            # Store state for later reference
-            self.state = default_state
-        except Exception as e:
-            print(f"[ERROR] Failed to load configuration: {e}")
-            # Provide a basic fallback state
-            default_state = {"volume": {"melody": 0.9, "harmony": 0, "background": 0.5}}
-            self.state = default_state
-
+        
+        # Load configuration with proper defaults
+        default_state = {
+            "volume": {"melody": 0.9, "harmony": 0.0, "background": 0.5},
+            "instruments": {"melody": "xylophone", "harmony": "flute", "background": "strings"},
+            "key": 60,
+            "bpm": 100,
+            "melody_scale": "pentatonic",
+            "melody_number": 0,
+            "baseline_style": "long",
+            "chord_levels": 0,
+            "reaction_notes": []
+        }
+        self.state = default_state
+        
         # Initialize SCAMP session
         try:
+            from scamp import Session
             self.session = Session()
             self.session.tempo = 60
-            print(f"[SOUND] SCAMP session initialized successfully")
+            print(f"[SOUND] SCAMP session initialized")
         except Exception as e:
             print(f"[ERROR] Failed to initialize SCAMP session: {e}")
-
+        
         # Setup sound composer with proper state
-        print("[SOUND] Creating sound composer...")
-        self.composer = Composer(self.session, default_state)
-        
-        # Explicitly set volume properties on the composer
-        self.composer.melody_volume = default_state["volume"]["melody"]
-        self.composer.harmony_volume = default_state["volume"]["harmony"]
-        self.composer.background_volume = default_state["volume"]["background"]
-        self.composer.harmony_enabled = (default_state["volume"]["harmony"] > 0)
-        
-        print(f"[SOUND] Volumes set - melody: {self.composer.melody_volume}, harmony: {self.composer.harmony_volume} (enabled: {self.composer.harmony_enabled})")
+        try:
+            print("[SOUND] Creating sound composer...")
+            from scamp import wait
+            self.composer = Composer(self.session, default_state)
+            
+            # Explicitly set volume properties
+            self.composer.melody_volume = default_state["volume"]["melody"]
+            self.composer.harmony_volume = default_state["volume"]["harmony"]
+            self.composer.background_volume = default_state["volume"]["background"]
+            self.composer.harmony_enabled = False  # Explicitly disable harmony
+            
+            print(f"[SOUND] Volumes set - melody: {self.composer.melody_volume}, harmony: {self.composer.harmony_volume}")
+        except Exception as e:
+            print(f"[ERROR] Failed to create sound composer: {e}")
         
         # Manage reaction notes clearing
         self.last_clear_time = time.time()
         self.clear_interval = 5.0  # Clear reaction notes every 5 seconds
-        
-        # Run diagnostic check
-        self.run_diagnostics()
         
         print(f"SoundManager initialization complete for pillar: {pillar_id}")
     
@@ -513,24 +496,21 @@ class SoundManager:
         """Directly play notes for testing"""
         try:
             if hasattr(self, 'session') and notes:
-                # Use the actual melody instrument
-                instrument = self.composer.instrument_manager.melody_instrument()
-                if instrument is None:
-                    print("[DIRECT] Melody instrument not found, using piano")
-                    instrument = self.session.new_part("piano")
+                print(f"[DIRECT] Playing {len(notes)} notes directly")
                 
-                print(f"[DIRECT] Playing {len(notes)} notes on {instrument.name}")
+                # Use piano for reliable testing
+                piano = self.session.new_part("piano")
+                
                 for note in notes:
-                    print(f"[DIRECT] Playing note {note} with volume 0.9")
-                    # Use a louder volume and longer duration
-                    instrument.play_note(note, 0.9, 0.7, blocking=True)
-                    wait(0.2)
+                    print(f"[DIRECT] Playing note {note}")
+                    piano.play_note(note, 0.9, 0.5)
+                    from scamp import wait
+                    wait(0.1)
+                    
                 print("[DIRECT] Finished playing notes")
-                return True
         except Exception as e:
             print(f"[ERROR] Direct note playback failed: {e}")
-        return False
-    
+
     def tick(self, time_delta=1/30.0):
         """Process a time step in the sound system."""
         # Periodically clear reaction notes
@@ -553,6 +533,30 @@ class SoundManager:
             "harmony_enabled": getattr(self.composer, "harmony_enabled", None),
             "last_notes": getattr(self, "last_notes", [])
         }
+
+    def play_emergency_note(self, note=60):
+        """Emergency direct note playback that bypasses all systems"""
+        print(f"\n[EMERGENCY] 🔊 Attempting to play emergency note {note}")
+        try:
+            # Create a completely new session to avoid any issues
+            from scamp import Session
+            emergency_session = Session()
+            emergency_session.tempo = 60
+            
+            # Create a basic piano
+            piano = emergency_session.new_part("piano")
+            
+            # Play a loud, long note
+            print("[EMERGENCY] 🎹 Playing note...")
+            piano.play_note(note, 1.0, 2.0)
+            
+            from scamp import wait
+            wait(2.5)
+            print("[EMERGENCY] ✅ Emergency note completed\n")
+            return True
+        except Exception as e:
+            print(f"[EMERGENCY] ❌ Emergency playback failed: {e}")
+            return False
 
 if __name__=="__main__":
 

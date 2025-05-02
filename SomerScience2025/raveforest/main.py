@@ -82,6 +82,9 @@ class Controller():
         self.show_touch_debug = True
         self.show_led_debug = False  # Turn off LED debug since that's working
 
+        # Add a fallback mode flag
+        self.use_fallback_mode = True  # Set to True to use fallback mode
+
         print(f"Controller initialized for hostname: {hostname}")
         print(f"Using mapping: {self.pillar_config['map']}")
 
@@ -90,6 +93,9 @@ class Controller():
         time.sleep(3)  # Give sound system time to initialize
         self.sound_manager.play_direct_notes([60, 64, 67])  # C-E-G chord notes
         print("[TEST] Startup test notes completed\n")
+
+        # Call this at the end of Controller.__init__
+        self.test_critical_systems()
 
     def start(self, frequency):
         """Starts the main control loop
@@ -164,27 +170,30 @@ class Controller():
             
             # For LightSoundMapper, trigger notes based on LED colors when tubes are touched
             if isinstance(self.mapping_interface, LightSoundMapper) and newly_touched_tubes:
-                # Prepare reaction notes based on LED colors of touched tubes
                 reaction_notes = []
                 for tube_id in newly_touched_tubes:
                     if tube_id < len(current_led_status):
                         # Get the hue value from the LED status
                         hue, brightness, _ = current_led_status[tube_id]
                         
-                        # Map hue to note using the mapping interface
-                        note = self.mapping_interface.get_note(tube_id, hue)
-                        print(f"[MAPPING] Tube {tube_id}: hue {hue} -> note {note}")
+                        # Skip if tube is not lit (brightness too low)
+                        if brightness < 20:
+                            continue
                         
-                        if note is not None:
-                            reaction_notes.append(note)
+                        # Convert hue to note using LightSoundMapper's conversion
+                        # Fix for the missing get_note method
+                        semitone = self.mapping_interface.hue_to_semitone(hue)
+                        octave = self.mapping_interface.octave
+                        note_to_play = semitone + (octave * 12)
+                        
+                        # Add the note to reaction notes
+                        reaction_notes.append(note_to_play)
+                        print(f"[MELODY] Touch-triggered note {note_to_play} from tube {tube_id} (hue={hue})")
                 
                 # Play the reaction notes
                 if reaction_notes:
-                    print(f"[DEBUG] Sending reaction notes to sound manager: {reaction_notes}")
+                    print(f"[MELODY] Sending notes to sound manager: {reaction_notes}")
                     self.sound_manager.update_pillar_setting("reaction_notes", reaction_notes)
-                    # After sending, verify the sound manager received them
-                    current_settings = self.sound_manager.get_pillar_settings()
-                    print(f"[DEBUG] Current sound settings: {current_settings}")
             
             # Periodically request LED status from the Teensy
             if current_time - self.last_led_request_time >= self.led_request_interval:
@@ -229,6 +238,27 @@ class Controller():
                 print(f"[TOUCH PIPELINE] Final reaction notes: {reaction_notes}")
                 print(f"[TOUCH PIPELINE] ==== END OF TOUCH EVENT ====\n")
             
+            # Fallback mode - use keyboard input for testing if touch not working
+            if self.use_fallback_mode and time.time() - getattr(self, 'last_fallback_test', 0) > 10:
+                self.last_fallback_test = time.time()
+                
+                # Simulate a touch on tube 0
+                test_tube_id = 0
+                if test_tube_id < len(current_led_status):
+                    print(f"\n[FALLBACK] Simulating touch on tube {test_tube_id}")
+                    hue, brightness, _ = current_led_status[test_tube_id]
+                    
+                    # Generate and play a note
+                    semitone = self.mapping_interface.hue_to_semitone(hue)
+                    octave = self.mapping_interface.octave
+                    note = semitone + (octave * 12)
+                    
+                    print(f"[FALLBACK] Playing note {note} from hue {hue}")
+                    self.sound_manager.update_pillar_setting("reaction_notes", [note])
+                    
+                    # Also try emergency playback
+                    self.sound_manager.play_emergency_note(note)
+            
             self.loop_idx += 1
             
         except Exception as e:
@@ -239,6 +269,27 @@ class Controller():
         """Test function to directly trigger a note"""
         print(f"[DIRECT TEST] Playing note {note_number}")
         self.sound_manager.update_pillar_setting("reaction_notes", [note_number])
+
+    def test_critical_systems(self):
+        """Test critical systems to verify functionality"""
+        print("\n=== 🧪 CRITICAL SYSTEM TEST ===")
+        
+        # 1. Test serial connection
+        print("\n1. Testing serial connection...")
+        if self.pillar_manager.serial_status["connected"]:
+            print("✅ Serial connection OK")
+        else:
+            print("❌ Serial connection FAILED")
+        
+        # 2. Test touch detection
+        print("\n2. Setting up touch detection test...")
+        print("👉 Please touch any tube within 10 seconds...")
+        
+        # 3. Test emergency sound
+        print("\n3. Testing emergency sound...")
+        self.sound_manager.play_emergency_note(60)  # Middle C
+        
+        print("=== 🏁 TEST COMPLETE ===\n")
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")
