@@ -122,7 +122,49 @@ class Controller():
             # Read from serial to update touch status and LED status
             self.pillar_manager.read_from_serial()
     
-            current_btn_press = self.pillar_manager.get_all_touch_status()
+            # Get current touch status
+            current_touch_status = self.pillar_manager.get_all_touch_status()
+            
+            # Get previous touch status (or initialize if first run)
+            previous_touch_status = getattr(self, 'previous_touch_status', [False] * self.pillar_manager.num_tubes)
+            
+            # Detect newly touched tubes (0→1 transitions)
+            newly_touched_tubes = []
+            for i, (prev, curr) in enumerate(zip(previous_touch_status, current_touch_status)):
+                if not prev and curr:  # Rising edge detected
+                    newly_touched_tubes.append(i)
+            
+            # Store current touch status for next iteration
+            self.previous_touch_status = current_touch_status
+            
+            # For LightSoundMapper, directly trigger notes based on LED colors when tubes are touched
+            if isinstance(self.mapping_interface, LightSoundMapper) and newly_touched_tubes:
+                # Get current LED status
+                current_led_status = self.pillar_manager.get_all_light_status()
+                
+                # Prepare reaction notes based on LED colors of touched tubes
+                reaction_notes = []
+                for tube_id in newly_touched_tubes:
+                    if tube_id < len(current_led_status):
+                        # Get the hue value from the LED status
+                        hue, brightness, _ = current_led_status[tube_id]
+                        
+                        # Skip if tube is not lit (brightness too low)
+                        if brightness < 20:
+                            continue
+                        
+                        # Convert hue to note using LightSoundMapper's conversion
+                        semitone = self.mapping_interface.hue_to_semitone(hue)
+                        octave = self.mapping_interface.octave
+                        note_to_play = semitone + (octave * 12)
+                        
+                        # Add the note to reaction notes
+                        reaction_notes.append(note_to_play)
+                        print(f"[DEBUG] Touch-triggered note {note_to_play} from tube {tube_id} (hue={hue})")
+                
+                # Play the reaction notes
+                if reaction_notes:
+                    self.sound_manager.update_pillar_setting("reaction_notes", reaction_notes)
             
             # Periodically request LED status from the Teensy (less frequently)
             if current_time - self.last_led_request_time >= self.led_request_interval:
@@ -154,7 +196,7 @@ class Controller():
                 
                 try:
                     # Generate the sound and light state based on button presses
-                    sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
+                    sound_state, light_state = self.mapping_interface.update_pillar(current_touch_status)
                     
                     # Only update light state if we have a mapper that doesn't rely on LEDs for sound
                     # Otherwise we're in a feedback loop
@@ -180,7 +222,7 @@ class Controller():
                     # Package data for logging
                     try:
                         data = {
-                            "btn_press": current_btn_press,
+                            "btn_press": current_touch_status,
                             "sound_state": sound_state.to_json(),
                             "light_state": list([(h, b) for h, b, _ in current_led_status])
                         }

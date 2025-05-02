@@ -441,4 +441,64 @@ class Pillar():
         except Exception as e:
             print(f"[ERROR] Failed to request LED status: {e}")
             return False
+
+    def process_serial_data(self, line):
+        """Process data received from the serial port."""
+        try:
+            # Track when we last received data
+            self.last_received_time = time.time()
+            
+            # Process touch data
+            if line.startswith("CAP"):
+                parts = line.split(",")
+                if len(parts) > 1:
+                    touch_status = []
+                    for i in range(1, min(len(parts), self.num_tubes + 1)):
+                        try:
+                            status = int(parts[i].strip())
+                            touch_status.append(status == 1)
+                        except ValueError:
+                            touch_status.append(False)
+                    
+                    # Ensure we have data for all tubes (fill with False if missing)
+                    while len(touch_status) < self.num_tubes:
+                        touch_status.append(False)
+                    
+                    # Update touch status
+                    self.touch_status = touch_status
+                    print(f"Extracted CAP data: {touch_status}")
+                else:
+                    print(f"Warning: Received touch status has {len(parts)-1} sensors, expected {self.num_tubes}")
+            
+            # Process LED data - NEW FORMAT: LED,hue1,hue2,hue3,hue4,hue5,hue6
+            elif line.startswith("LED"):
+                parts = line.split(",")
+                
+                # Check if we have enough parts for all tubes
+                if len(parts) >= (self.num_tubes + 1):
+                    # Process all tubes at once from a single message
+                    for i in range(self.num_tubes):
+                        try:
+                            hue = int(parts[i+1].strip())
+                            # Use default brightness since it's not sent anymore
+                            brightness = 255
+                            effect = 0
+                            
+                            # Only update if different (to reduce console spam)
+                            current_time = time.time()
+                            if (self.light_status[i][0] != hue or 
+                                self.light_status[i][1] != brightness or
+                                current_time - self.last_led_update_time[i] > 0.5):
+                                
+                                print(f"Processed LED data: tube={i}, hue={hue}, brightness={brightness}")
+                                self.light_status[i] = (hue, brightness, effect)
+                                self.last_led_update_time[i] = current_time
+                            
+                        except (ValueError, IndexError) as e:
+                            print(f"Error processing LED data for tube {i}: {e}")
+                else:
+                    print(f"Warning: LED message has {len(parts)-1} values, expected {self.num_tubes}")
+        
+        except Exception as e:
+            print(f"Error processing serial data: {e}")
         
