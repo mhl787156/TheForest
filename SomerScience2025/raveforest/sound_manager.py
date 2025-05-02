@@ -9,6 +9,7 @@ import numpy as np
 import copy
 import time
 import threading
+import json
 
 from interfaces import *
 
@@ -188,6 +189,11 @@ class Composer:
     
     def fork_melody_single_note(self, note, note_id=None):
         volume = self.state["volume"]["melody"]
+        
+        # Skip if melody volume is 0
+        if volume == 0:
+            print(f"[DEBUG] Skipping note {note} - melody volume is 0")
+            return
         
         # Make sure the melody instrument exists and is initialized
         if self.instrument_manager.melody_instrument() is None:
@@ -376,125 +382,177 @@ class Composer:
 
 
 class SoundManager:
-    """Manages and schedules sound playback for pillars using the Sonic Pi server."""          
+    """Class to manage the sound output for a pillar"""
     
-    def __init__(self, pillar_id, initial_state=None):
+    def __init__(self, pillar_id=0):
+        """Initializes the sound manager"""
+        print(f"Initializing SoundManager for pillar: {pillar_id}")
         self.pillar_id = pillar_id
 
-        self.session = Session()
-        # Turn off synchronization to prevent clock delay warnings
-        current_clock().synchronization_policy = "no synchronization"
-        
-        self.state = initial_state if initial_state is not None else DEFAULT_STATE
+        # Load configuration
+        print("[SOUND] Loading configuration...")
+        try:
+            # Create a default state dictionary (temporary fix until proper State class is available)
+            default_state = {
+                "volume": {
+                    "melody": 0.9, 
+                    "harmony": 0.0,  # Explicitly set to 0
+                    "background": 0.5
+                },
+                "instruments": {
+                    "melody": "xylophone",
+                    "harmony": "flute",
+                    "background": "strings"
+                },
+                "key": 60,
+                "bpm": 100,
+                "melody_scale": "pentatonic",
+                "melody_number": 0,
+                "baseline_style": "long",
+                "chord_levels": 0,
+                "reaction_notes": []
+            }
+            
+            # Store state for later reference
+            self.state = default_state
+        except Exception as e:
+            print(f"[ERROR] Failed to load configuration: {e}")
+            # Provide a basic fallback state
+            default_state = {"volume": {"melody": 0.9, "harmony": 0, "background": 0.5}}
+            self.state = default_state
 
-        self.composer = Composer(self.session, self.state)
+        # Initialize SCAMP session
+        try:
+            self.session = Session()
+            self.session.tempo = 60
+            print(f"[SOUND] SCAMP session initialized successfully")
+        except Exception as e:
+            print(f"[ERROR] Failed to initialize SCAMP session: {e}")
+
+        # Setup sound composer with proper state
+        print("[SOUND] Creating sound composer...")
+        self.composer = Composer(self.session, default_state)
         
-        # Explicitly initialize all instruments to make sure they exist
-        print("[DEBUG] Explicitly initializing all instruments")
-        for layer in ["melody", "harmony", "background"]:
-            instrument_name = self.state["instruments"][layer]
-            self.composer.instrument_manager.update_instrument(instrument_name, function=layer)
+        # Explicitly set volume properties on the composer
+        self.composer.melody_volume = default_state["volume"]["melody"]
+        self.composer.harmony_volume = default_state["volume"]["harmony"]
+        self.composer.background_volume = default_state["volume"]["background"]
+        self.composer.harmony_enabled = (default_state["volume"]["harmony"] > 0)
         
-        # Track the last time reaction notes were cleared
+        print(f"[SOUND] Volumes set - melody: {self.composer.melody_volume}, harmony: {self.composer.harmony_volume} (enabled: {self.composer.harmony_enabled})")
+        
+        # Manage reaction notes clearing
         self.last_clear_time = time.time()
         self.clear_interval = 5.0  # Clear reaction notes every 5 seconds
         
-        # Force update volume settings to ensure they're applied
-        self.update_pillar_setting("volume", self.state.default_state["volume"])
-        print(f"[DEBUG] Initial volumes set from default state: {self.state.default_state['volume']}")
+        # Run diagnostic check
+        self.run_diagnostics()
         
-        # Test the sound engine with simple commands
-        print("[SOUND] Testing sound engine...")
-        try:
-            # Try to create a basic instrument and play a note
-            from scamp import Session, wait
-            test_session = Session()
-            piano = test_session.new_part("piano")
-            
-            # Play a simple middle C
-            print("[SOUND] Playing test note (middle C)")
-            piano.play_note(60, 0.8, 1.0)
-            wait(1)
-            print("[SOUND] Test completed successfully")
-        except Exception as e:
-            print(f"[SOUND ERROR] Sound engine test failed: {e}")
-        
-        # Call this in __init__ after loading config
-        self.diagnostics()
-        
-        print(f"[DEBUG] SoundManager initialized for pillar: {pillar_id}")
-
-    def __repr__(self):
-        """String representation of the pillar for debugging."""
-        return f"Pillar({self.pillar_id}) {self.state}"
+        print(f"SoundManager initialization complete for pillar: {pillar_id}")
     
-    def update_pillar_setting(self, param_name, value):
-        """Updates the settings dictionary for a specific pillar."""
-        print(f"[DEBUG] Updating sound parameter: {param_name} = {value}")
-        
-        # Special handling for reaction_notes (melody triggers)
-        if param_name == "reaction_notes" and value:
-            print(f"[MELODY] Attempting to play notes: {value}")
-            # Set a flag to verify notes were processed
-            self.last_notes_received = time.time()
-            self.last_notes = value
-        
-        self.composer.update(param_name, value)
-
-    def tick(self, time_delta=1/30.0):
-        # Check if we need to clear reaction notes
-        current_time = time.time()
-        if current_time - self.last_clear_time > self.clear_interval:
-            print("[DEBUG] Periodic reaction notes clearing")
-            self.composer.clear_active_notes()
-            self.last_clear_time = current_time
-            
-        self.composer.play()
-        wait(time_delta, units="time")
-
-    def get_pillar_settings(self):
-        """Return the current sound settings."""
-        # Getting the actual values from the composer or wherever they're stored
-        settings = {
-            "volume": {
-                "melody": getattr(self.composer, "melody_volume", "unknown"),
-                "harmony": getattr(self.composer, "harmony_volume", "unknown"),
-                "background": getattr(self.composer, "background_volume", "unknown")
-            },
-            "harmony_enabled": getattr(self.composer, "harmony_enabled", "unknown"),
-            # Add other relevant settings
-        }
-        return settings
-
-    def test_note(self):
-        """Test function to play a simple note."""
-        print("[TEST] Playing test note (middle C)")
-        try:
-            # Direct play using SCAMP
-            from scamp import Session, wait
-            
-            # Use a new session to avoid interfering with main one
-            test_session = Session()
-            test_session.tempo = 60
-            
-            piano = test_session.new_part("piano")
-            piano.play_note(60, 0.8, 1.0)  # Middle C, 80% volume, 1 second
-            wait(1)
-            print("[TEST] Test note completed")
-            return True
-        except Exception as e:
-            print(f"[TEST] Error playing test note: {e}")
-            return False
-
-    def diagnostics(self):
-        """Run diagnostic checks on the sound system"""
+    def run_diagnostics(self):
+        """Run sound system diagnostics"""
         print("\n=== SOUND SYSTEM DIAGNOSTICS ===")
         print(f"Melody volume: {getattr(self.composer, 'melody_volume', 'unknown')}")
         print(f"Harmony volume: {getattr(self.composer, 'harmony_volume', 'unknown')}")
         print(f"Background volume: {getattr(self.composer, 'background_volume', 'unknown')}")
-        print(f"Sound engine active: {self.composer.is_active()}")
-        print(f"Instrument settings: {getattr(self.composer, 'instruments', 'unknown')}")
+        print(f"Instrument settings: {getattr(self.composer, 'instruments', {})}")
+        
+        # Test sound output
+        self.test_sound()
         print("=================================\n")
+    
+    def test_sound(self):
+        """Test if sound output is working"""
+        print("[TEST] Playing test note...")
+        try:
+            if hasattr(self, 'session'):
+                piano = self.session.new_part("piano")
+                piano.play_note(60, 0.5, 0.5)  # Play middle C
+                wait(0.5)
+                print("[TEST] Test note completed")
+        except Exception as e:
+            print(f"[ERROR] Failed to play test note: {e}")
+    
+    def update_pillar_setting(self, param_name, value):
+        """Updates the settings dictionary for a specific pillar."""
+        print(f"[SOUND] Updating parameter: {param_name} = {value}")
+        
+        # Special handling for volume settings
+        if param_name == "volume":
+            # Store current values before updating
+            self.composer.update(param_name, value)
+            
+            # Explicitly handle harmony silencing when volume is 0
+            if "harmony" in value and value["harmony"] == 0:
+                print("[SOUND] Explicitly disabling harmony (volume=0)")
+                self.composer.harmony_enabled = False
+            else:
+                self.composer.harmony_enabled = True
+        
+        # Special handling for reaction notes
+        elif param_name == "reaction_notes" and value:
+            print(f"[SOUND] Playing reaction notes: {value}")
+            
+            # Ensure melody instrument is initialized and working
+            instrument_name = self.state["instruments"]["melody"]
+            if self.composer.instrument_manager.melody_instrument() is None:
+                print(f"[FIX] Reinitializing melody instrument '{instrument_name}'")
+                self.composer.instrument_manager.update_instrument(instrument_name, function="melody")
+            
+            # Test direct note generation for debugging
+            self.play_direct_notes(value)
+            # Pass to composer for normal processing
+            self.composer.update(param_name, value)
+        
+        # Default handling for other parameters
+        else:
+            self.composer.update(param_name, value)
+
+    def play_direct_notes(self, notes):
+        """Directly play notes for testing"""
+        try:
+            if hasattr(self, 'session') and notes:
+                # Use the actual melody instrument
+                instrument = self.composer.instrument_manager.melody_instrument()
+                if instrument is None:
+                    print("[DIRECT] Melody instrument not found, using piano")
+                    instrument = self.session.new_part("piano")
+                
+                print(f"[DIRECT] Playing {len(notes)} notes on {instrument.name}")
+                for note in notes:
+                    print(f"[DIRECT] Playing note {note} with volume 0.9")
+                    # Use a louder volume and longer duration
+                    instrument.play_note(note, 0.9, 0.7, blocking=True)
+                    wait(0.2)
+                print("[DIRECT] Finished playing notes")
+                return True
+        except Exception as e:
+            print(f"[ERROR] Direct note playback failed: {e}")
+        return False
+    
+    def tick(self, time_delta=1/30.0):
+        """Process a time step in the sound system."""
+        # Periodically clear reaction notes
+        current_time = time.time()
+        if current_time - self.last_clear_time > self.clear_interval:
+            print("[SOUND] Periodic reaction notes clearing")
+            self.update_pillar_setting("reaction_notes", [])
+            self.last_clear_time = current_time
+            
+        # Process sound generation
+        self.composer.play()
+        wait(time_delta, units="time")
+
+    def get_pillar_settings(self):
+        """Return current sound settings for diagnostics"""
+        return {
+            "melody_volume": getattr(self.composer, "melody_volume", None),
+            "harmony_volume": getattr(self.composer, "harmony_volume", None),
+            "background_volume": getattr(self.composer, "background_volume", None),
+            "harmony_enabled": getattr(self.composer, "harmony_enabled", None),
+            "last_notes": getattr(self, "last_notes", [])
+        }
 
 if __name__=="__main__":
 

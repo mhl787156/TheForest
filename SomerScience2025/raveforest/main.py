@@ -85,6 +85,11 @@ class Controller():
         print(f"Controller initialized for hostname: {hostname}")
         print(f"Using mapping: {self.pillar_config['map']}")
 
+        # Test sound with direct note playback
+        print("\n[TEST] Playing startup test notes to verify sound engine")
+        time.sleep(3)  # Give sound system time to initialize
+        self.sound_manager.play_direct_notes([60, 64, 67])  # C-E-G chord notes
+        print("[TEST] Startup test notes completed\n")
 
     def start(self, frequency):
         """Starts the main control loop
@@ -166,18 +171,12 @@ class Controller():
                         # Get the hue value from the LED status
                         hue, brightness, _ = current_led_status[tube_id]
                         
-                        # Skip if tube is not lit (brightness too low)
-                        if brightness < 20:
-                            continue
+                        # Map hue to note using the mapping interface
+                        note = self.mapping_interface.get_note(tube_id, hue)
+                        print(f"[MAPPING] Tube {tube_id}: hue {hue} -> note {note}")
                         
-                        # Convert hue to note using LightSoundMapper's conversion
-                        semitone = self.mapping_interface.hue_to_semitone(hue)
-                        octave = self.mapping_interface.octave
-                        note_to_play = semitone + (octave * 12)
-                        
-                        # Add the note to reaction notes
-                        reaction_notes.append(note_to_play)
-                        print(f"Touch-triggered note {note_to_play} from tube {tube_id} (hue={hue})")
+                        if note is not None:
+                            reaction_notes.append(note)
                 
                 # Play the reaction notes
                 if reaction_notes:
@@ -215,6 +214,20 @@ class Controller():
             
             # Always process sound system
             self.sound_manager.tick(time_delta=1/30.0)
+            
+            if newly_touched_tubes:
+                print(f"\n[TOUCH PIPELINE] ==== START OF TOUCH EVENT ====")
+                print(f"[TOUCH PIPELINE] Tubes touched: {newly_touched_tubes}")
+                
+                # Log LED status for diagnostics
+                for tube_id in newly_touched_tubes:
+                    if tube_id < len(current_led_status):
+                        hue, bright, _ = current_led_status[tube_id]
+                        print(f"[TOUCH PIPELINE] Tube {tube_id} LED status: hue={hue}, brightness={bright}")
+                
+                # At the end of reaction note processing
+                print(f"[TOUCH PIPELINE] Final reaction notes: {reaction_notes}")
+                print(f"[TOUCH PIPELINE] ==== END OF TOUCH EVENT ====\n")
             
             self.loop_idx += 1
             
