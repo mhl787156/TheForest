@@ -527,37 +527,24 @@ class SoundManager:
                 print(f"[DIRECT] Playing {len(notes)} notes directly with ADSR envelope")
                 
                 # Use the stored xylophone part
-                # xylophone = self.session.new_part("xylophone") # REMOVED
 
-                # Define the ADSR envelope
+                # Define a simpler ADSR envelope for testing
                 peak_level = 0.9
-                sustain_level_proportion = 0.5
+                sustain_level_proportion = 0.7 # Higher sustain
                 envelope = expe.Envelope.adsr(
-                    attack_time=0.01,
+                    attack_time=0.01,     # Quick attack
                     peak_level=peak_level, 
-                    decay_time=1.5, 
-                    sustain_level=peak_level * sustain_level_proportion, 
-                    release_time=0.1
+                    decay_time=0.1,       # Quick decay
+                    sustain_level=peak_level * sustain_level_proportion, # High sustain level
+                    release_time=0.2      # Quick release
                 )
-                note_duration = 2.0 # Total duration for the note including envelope phases
-
-                # Helper function for the echo (now takes instrument as argument) - REMOVED
-                # def play_echo(instrument, note_to_echo, volume_echo, duration_echo, delay_echo):
-                #     wait(delay_echo)
-                #     print(f"[ECHO] Playing echo for note {note_to_echo}")
-                #     instrument.play_note(note_to_echo, volume_echo, duration_echo, blocking=False)
+                note_duration = 1.0 # Shorter total duration for testing
 
                 for note in notes:
                     print(f"[DIRECT] Playing note {note} with envelope")
                     # Play note using the stored instrument and the envelope
                     self.direct_xylophone.play_note(note, envelope, note_duration, blocking=False)
 
-                    # Schedule the echo using fork, passing the stored instrument - REMOVED
-                    # echo_volume = main_volume * 0.5 # Echo is quieter
-                    # echo_duration = main_duration * 0.7 # Echo is shorter
-                    # echo_delay = 0.15 # Delay in seconds
-                    # self.session.fork(play_echo, args=[self.direct_xylophone, note, echo_volume, echo_duration, echo_delay])
-                                        
                 print("[DIRECT] Finished playing notes with ADSR")
         except Exception as e:
             print(f"[ERROR] Direct note playback failed: {e}")
