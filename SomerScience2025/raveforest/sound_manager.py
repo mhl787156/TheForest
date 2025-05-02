@@ -511,7 +511,7 @@ class SoundManager:
             self.composer.update(param_name, value)
 
     def play_direct_notes(self, notes):
-        """Directly play notes for testing, now with a simple echo effect."""
+        """Directly play notes using an ADSR envelope."""
         try:
             # Ensure the direct_xylophone exists
             if not hasattr(self, 'direct_xylophone') or self.direct_xylophone is None:
@@ -524,35 +524,41 @@ class SoundManager:
                     return # Cannot proceed without session
 
             if hasattr(self, 'session') and notes:
-                print(f"[DIRECT] Playing {len(notes)} notes directly with echo using stored instrument")
+                print(f"[DIRECT] Playing {len(notes)} notes directly with ADSR envelope")
                 
                 # Use the stored xylophone part
                 # xylophone = self.session.new_part("xylophone") # REMOVED
 
-                # Helper function for the echo (now takes instrument as argument)
-                def play_echo(instrument, note_to_echo, volume_echo, duration_echo, delay_echo):
-                    wait(delay_echo)
-                    print(f"[ECHO] Playing echo for note {note_to_echo}")
-                    instrument.play_note(note_to_echo, volume_echo, duration_echo, blocking=False)
+                # Define the ADSR envelope
+                peak_level = 0.9
+                sustain_level_proportion = 0.5
+                envelope = expe.Envelope.adsr(
+                    attack_time=0.01,
+                    peak_level=peak_level, 
+                    decay_time=1.5, 
+                    sustain_level=peak_level * sustain_level_proportion, 
+                    release_time=0.1
+                )
+                note_duration = 2.0 # Total duration for the note including envelope phases
+
+                # Helper function for the echo (now takes instrument as argument) - REMOVED
+                # def play_echo(instrument, note_to_echo, volume_echo, duration_echo, delay_echo):
+                #     wait(delay_echo)
+                #     print(f"[ECHO] Playing echo for note {note_to_echo}")
+                #     instrument.play_note(note_to_echo, volume_echo, duration_echo, blocking=False)
 
                 for note in notes:
-                    print(f"[DIRECT] Playing note {note}")
-                    # Main note using the stored instrument
-                    main_volume = 0.9
-                    main_duration = 1.5
-                    self.direct_xylophone.play_note(note, main_volume, main_duration, blocking=False)
+                    print(f"[DIRECT] Playing note {note} with envelope")
+                    # Play note using the stored instrument and the envelope
+                    self.direct_xylophone.play_note(note, envelope, note_duration, blocking=False)
 
-                    # Schedule the echo using fork, passing the stored instrument
-                    echo_volume = main_volume * 0.5 # Echo is quieter
-                    echo_duration = main_duration * 0.7 # Echo is shorter
-                    echo_delay = 0.15 # Delay in seconds
-                    self.session.fork(play_echo, args=[self.direct_xylophone, note, echo_volume, echo_duration, echo_delay])
-                    
-                    # Short wait before processing next note in the list (if any) - REMOVED
-                    # from scamp import wait
-                    # wait(0.05) # Reduced wait to allow echoes to overlap slightly
-                    
-                print("[DIRECT] Finished playing notes and scheduling echoes")
+                    # Schedule the echo using fork, passing the stored instrument - REMOVED
+                    # echo_volume = main_volume * 0.5 # Echo is quieter
+                    # echo_duration = main_duration * 0.7 # Echo is shorter
+                    # echo_delay = 0.15 # Delay in seconds
+                    # self.session.fork(play_echo, args=[self.direct_xylophone, note, echo_volume, echo_duration, echo_delay])
+                                        
+                print("[DIRECT] Finished playing notes with ADSR")
         except Exception as e:
             print(f"[ERROR] Direct note playback failed: {e}")
 
