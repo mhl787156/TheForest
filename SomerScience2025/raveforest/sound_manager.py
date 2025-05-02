@@ -199,7 +199,7 @@ class Composer:
         # Only play the note if it's still in active_reaction_notes
         if note_id is None or note_id in self.active_reaction_notes:
             # Print more visible message to confirm note is being played
-            print(f"[DEBUG] ▶️ PLAYING NOTE: {note} with volume {volume} on {instrument.name}")
+            print(f"[DEBUG] PLAYING NOTE: {note} with volume {volume} on {instrument.name}")
             
             # Test with different envelope to make sure we hear it
             try:
@@ -281,18 +281,88 @@ class Composer:
         instrument = self.instrument_manager.background_instrument()
         volume = self.state["volume"]["background"]
         
+        # Add bassline patterns based on current scale
+        bassline_patterns = {
+            "walking": [0, 3, 5, 7],
+            "boogie": [0, 0, 7, 0],
+            "octave": [0, 12, 7, 12],
+            "fifth": [0, 7, 0, 7],
+            "arpeggios": [0, 4, 7, 12],
+        }
+        
+        # Track which pattern we're using
+        current_pattern = random.choice(list(bassline_patterns.keys()))
+        
+        # Track when melody last changed
+        last_melody_change = time.time()
+        last_melody_number = self.state["melody_number"]
+        fill_played = False
+        
         while True:
-            note = shared_state["key"].value - 24
-            print(f"[DEBUG] Playing background note: {note} in style: {self.state['baseline_style']}")
+            # Get base note
+            note = shared_state["key"].value - 24  # 2 octaves below the current key
             
-            if self.state["baseline_style"] == "long":
-                instrument.play_note(note, volume, 4.0*4, blocking=True)
-            elif self.state["baseline_style"] == "pulsing":
-                instrument.play_note(note, volume, 4.0*4, "tremolo", blocking=True)
+            # Check if melody has changed
+            current_time = time.time()
+            if last_melody_number != self.state["melody_number"]:
+                last_melody_change = current_time
+                last_melody_number = self.state["melody_number"]
+                fill_played = False
+            
+            # Determine if we should play a fill
+            melody_static_duration = current_time - last_melody_change
+            should_play_fill = melody_static_duration > 10.0 and not fill_played
+            
+            if should_play_fill:
+                # Play a fill since melody hasn't changed in over 10 seconds
+                print(f"Playing background fill - melody static for {melody_static_duration:.1f}s")
+                
+                # Create a fill pattern that's musically interesting
+                fill_notes = [note, note+7, note+12, note+7, note+5, note+7, note+3, note]
+                
+                # Play the fill with a different articulation
+                for fill_note in fill_notes:
+                    instrument.play_note(fill_note, volume * 1.1, 0.5, "marcato", blocking=True)
+                
+                # Mark that we've played a fill
+                fill_played = True
+                
+                # Optionally change the pattern after a fill
+                current_pattern = random.choice(list(bassline_patterns.keys()))
+                
             else:
-                for _ in range(4):
-                    instrument.play_note(note, volume, 0.5, "staccato", blocking=True)
-                    wait(0.5)
+                # Get the current bassline pattern
+                pattern = bassline_patterns[current_pattern]
+                
+                if self.state["baseline_style"] == "long":
+                    # For long style, play a sustained note but with the bassline pattern
+                    # as subtle changes in pitch
+                    for offset in pattern:
+                        bass_note = note + offset
+                        # Shorter duration for each note in the pattern
+                        duration = 4.0 * 4 / len(pattern)
+                        instrument.play_note(bass_note, volume, duration, blocking=True)
+                    
+                elif self.state["baseline_style"] == "pulsing":
+                    # For pulsing, apply the pattern with tremolo effect
+                    for offset in pattern:
+                        bass_note = note + offset
+                        duration = 4.0 * 4 / len(pattern)
+                        instrument.play_note(bass_note, volume, duration, "tremolo", blocking=True)
+                    
+                else:  # "beat" style
+                    # For beat style, play staccato notes following the pattern
+                    for offset in pattern:
+                        bass_note = note + offset
+                        instrument.play_note(bass_note, volume, 0.5, "staccato", blocking=True)
+                        wait(0.5)
+                
+                # Occasionally change the pattern (10% chance)
+                if random.random() < 0.1:
+                    new_pattern = random.choice(list(bassline_patterns.keys()))
+                    if new_pattern != current_pattern:
+                        print(f"Changing bassline pattern from {current_pattern} to {new_pattern}")
+                        current_pattern = new_pattern
 
 
 class SoundManager:

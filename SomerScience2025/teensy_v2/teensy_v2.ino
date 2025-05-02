@@ -357,4 +357,13 @@ void loop() {
 
   // Update LEDs
   FastLED.show();
+
+  // Add this in your loop() function
+  void echo_serial_commands() {
+    if (Serial.available()) {
+      String received = Serial.readStringUntil(';');
+      Serial.print("ECHO: ");
+      Serial.println(received + ";");
+    }
+  }
 }

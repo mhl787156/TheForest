@@ -70,21 +70,13 @@ class Controller():
         self.previous_led_status = [(0, 0, 0) for _ in range(self.pillar_manager.num_tubes)]
 
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
-        
-        # Add API sender if endpoint is configured
-        if "tonnetz_server_api_endpoint" in config and config["tonnetz_server_api_endpoint"]:
-            self.api_sender = APISender(config["tonnetz_server_api_endpoint"], self.data_queue)
-            self.api_sender.start()
-            print(f"[DEBUG] API sender started with endpoint: {config['tonnetz_server_api_endpoint']}")
-        else:
-            print("[DEBUG] No API endpoint configured, skipping API sender")
             
         # Add rate limiting for loop processing
         self.min_loop_interval = 0.1  # Minimum time between loop iterations (10Hz max)
         self.last_loop_time = 0
             
-        print(f"[DEBUG] Controller initialized for hostname: {hostname}")
-        print(f"[DEBUG] Using mapping: {self.pillar_config['map']}")
+        print(f"Controller initialized for hostname: {hostname}")
+        print(f"Using mapping: {self.pillar_config['map']}")
 
 
     def start(self, frequency):
@@ -93,7 +85,7 @@ class Controller():
         Args:
             frequency (_type_): _description_
         """
-        print(f"[DEBUG] Starting controller loop with target frequency: {frequency} Hz")
+        print(f"Starting controller loop with target frequency: {frequency} Hz")
         self.running = True
         
         try:
@@ -109,7 +101,7 @@ class Controller():
                 self.last_loop_time = time.time()
                 self.loop()
         except KeyboardInterrupt:
-            print("[DEBUG] Keyboard interrupt detected, stopping controller")
+            print("Keyboard interrupt detected, stopping controller")
             self.stop()
         except Exception as e:
             print(f"[ERROR] Exception in controller main loop: {e}")
@@ -121,7 +113,7 @@ class Controller():
         # Stop API sender if it exists
         if hasattr(self, 'api_sender'):
             self.api_sender.stop()
-            print("[DEBUG] API sender stopped")
+            print("API sender stopped")
 
     def loop(self):
         current_time = time.time()
@@ -134,7 +126,7 @@ class Controller():
             
             # Periodically request LED status from the Teensy (less frequently)
             if current_time - self.last_led_request_time >= self.led_request_interval:
-                print(f"[DEBUG] Requesting LED status from Teensy (interval: {self.led_request_interval}s)")
+                print(f"Requesting LED status from Teensy (interval: {self.led_request_interval}s)")
                 self.pillar_manager.request_led_status()
                 self.last_led_request_time = current_time
             
@@ -146,7 +138,7 @@ class Controller():
             for i, (curr, prev) in enumerate(zip(current_led_status, self.previous_led_status)):
                 if curr != prev:
                     led_status_changed = True
-                    print(f"[DEBUG] LED status changed for tube {i}: {prev} -> {curr}")
+                    print(f"LED status changed for tube {i}: {prev} -> {curr}")
                     break
             
             # Only log every 30 iterations unless there's a change
@@ -156,9 +148,9 @@ class Controller():
             if led_status_changed or (current_time - self.last_led_process_time >= self.led_process_interval):
                 if should_log:
                     if led_status_changed:
-                        print("[DEBUG] Processing LED status - status changed")
+                        print("Processing LED status - status changed")
                     else:
-                        print("[DEBUG] Processing LED status - regular interval")
+                        print("Processing LED status - regular interval")
                 
                 try:
                     # Generate the sound and light state based on button presses
@@ -172,7 +164,7 @@ class Controller():
                         
                     # Add extra debug for sound state
                     if should_log:
-                        print(f"[DEBUG] Sound state: {sound_state}")
+                        print(f"Sound state: {sound_state}")
                 
                     # Update sound parameters
                     for param_name, value in sound_state.items():
@@ -205,9 +197,17 @@ class Controller():
                 self.sound_manager.tick(time_delta=1/30.0)
                 
                 if should_log:
-                    print(f"[DEBUG] Regular tick with no LED changes (loop {self.loop_idx})")
+                    print(f"Regular tick with no LED changes (loop {self.loop_idx})")
     
             self.loop_idx += 1
+            
+            # Add this at the top of your loop() method
+            def debug_serial_communication(self):
+                # Log incoming data
+                print("\n=== COMMUNICATION DEBUG ===")
+                print(f"Touch status: {self.pillar_manager.get_all_touch_status()}")
+                print(f"LED status: {self.pillar_manager.get_all_light_status()}")
+                print("==========================\n")
             
         except Exception as e:
             print(f"[ERROR] Exception in controller loop: {e}")
@@ -244,5 +244,3 @@ if __name__=="__main__":
     print("Intiialise and run Controller")
     controller = Controller(hostname, config)
     controller.start(args.frequency)
-    # asyncio.get_event_loop().run_until_complete(controller.run(args.frequency))
-    # asyncio.get_event_loop().run_forever()
