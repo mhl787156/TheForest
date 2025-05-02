@@ -82,20 +82,15 @@ class Controller():
         self.show_touch_debug = True
         self.show_led_debug = False  # Turn off LED debug since that's working
 
-        # Add a fallback mode flag
-        self.use_fallback_mode = True  # Set to True to use fallback mode
+        # Disable automatic note playing
+        self.use_fallback_mode = False  # Disable fallback mode
 
         print(f"Controller initialized for hostname: {hostname}")
         print(f"Using mapping: {self.pillar_config['map']}")
 
-        # Test sound with direct note playback
-        print("\n[TEST] Playing startup test notes to verify sound engine")
-        time.sleep(3)  # Give sound system time to initialize
-        self.sound_manager.play_direct_notes([60, 64, 67])  # C-E-G chord notes
-        print("[TEST] Startup test notes completed\n")
-
-        # Call this at the end of Controller.__init__
-        self.test_critical_systems()
+        # Remove or comment out these test calls:
+        # self.sound_manager.play_direct_notes([60, 64, 67])
+        # self.test_critical_systems()
 
     def start(self, frequency):
         """Starts the main control loop
@@ -224,41 +219,6 @@ class Controller():
             # Always process sound system
             self.sound_manager.tick(time_delta=1/30.0)
             
-            if newly_touched_tubes:
-                print(f"\n[TOUCH PIPELINE] ==== START OF TOUCH EVENT ====")
-                print(f"[TOUCH PIPELINE] Tubes touched: {newly_touched_tubes}")
-                
-                # Log LED status for diagnostics
-                for tube_id in newly_touched_tubes:
-                    if tube_id < len(current_led_status):
-                        hue, bright, _ = current_led_status[tube_id]
-                        print(f"[TOUCH PIPELINE] Tube {tube_id} LED status: hue={hue}, brightness={bright}")
-                
-                # At the end of reaction note processing
-                print(f"[TOUCH PIPELINE] Final reaction notes: {reaction_notes}")
-                print(f"[TOUCH PIPELINE] ==== END OF TOUCH EVENT ====\n")
-            
-            # Fallback mode - use keyboard input for testing if touch not working
-            if self.use_fallback_mode and time.time() - getattr(self, 'last_fallback_test', 0) > 10:
-                self.last_fallback_test = time.time()
-                
-                # Simulate a touch on tube 0
-                test_tube_id = 0
-                if test_tube_id < len(current_led_status):
-                    print(f"\n[FALLBACK] Simulating touch on tube {test_tube_id}")
-                    hue, brightness, _ = current_led_status[test_tube_id]
-                    
-                    # Generate and play a note
-                    semitone = self.mapping_interface.hue_to_semitone(hue)
-                    octave = self.mapping_interface.octave
-                    note = semitone + (octave * 12)
-                    
-                    print(f"[FALLBACK] Playing note {note} from hue {hue}")
-                    self.sound_manager.update_pillar_setting("reaction_notes", [note])
-                    
-                    # Also try emergency playback
-                    self.sound_manager.play_emergency_note(note)
-            
             self.loop_idx += 1
             
         except Exception as e:
@@ -270,6 +230,8 @@ class Controller():
         print(f"[DIRECT TEST] Playing note {note_number}")
         self.sound_manager.update_pillar_setting("reaction_notes", [note_number])
 
+    # Either comment out or remove the entire test_critical_systems method
+    '''
     def test_critical_systems(self):
         """Test critical systems to verify functionality"""
         print("\n=== 🧪 CRITICAL SYSTEM TEST ===")
@@ -287,9 +249,10 @@ class Controller():
         
         # 3. Test emergency sound
         print("\n3. Testing emergency sound...")
-        self.sound_manager.play_emergency_note(60)  # Middle C
+        # self.sound_manager.play_emergency_note(60)
         
         print("=== 🏁 TEST COMPLETE ===\n")
+    '''
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")

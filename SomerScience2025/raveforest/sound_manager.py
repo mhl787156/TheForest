@@ -10,6 +10,8 @@ import copy
 import time
 import threading
 import json
+import os
+import psutil
 
 from interfaces import *
 
@@ -195,38 +197,31 @@ class Composer:
             print(f"[DEBUG] Skipping note {note} - melody volume is 0")
             return
         
-        # Make sure the melody instrument exists and is initialized
-        if self.instrument_manager.melody_instrument() is None:
-            print("[DEBUG] Initializing melody instrument because it doesn't exist")
-            self.instrument_manager.update_instrument(self.state["instruments"]["melody"], function="melody")
-            
-        instrument = self.instrument_manager.melody_instrument()
+        # Cache the instrument for faster access
+        if not hasattr(self, '_melody_instrument_cache'):
+            self._melody_instrument_cache = self.instrument_manager.melody_instrument()
+            if self._melody_instrument_cache is None:
+                print("[DEBUG] Initializing melody instrument because it doesn't exist")
+                self.instrument_manager.update_instrument(self.state["instruments"]["melody"], function="melody")
+                self._melody_instrument_cache = self.instrument_manager.melody_instrument()
         
-        # Only play the note if it's still in active_reaction_notes
-        if note_id is None or note_id in self.active_reaction_notes:
-            # Print more visible message to confirm note is being played
-            print(f"[DEBUG] PLAYING NOTE: {note} with volume {volume} on {instrument.name}")
-            
-            # Test with different envelope to make sure we hear it
+        instrument = self._melody_instrument_cache
+        
+        # Record time to measure latency
+        start_time = time.time()
+        
+        # Use very short duration for immediate response
+        try:
+            # Non-blocking with shorter duration for faster response
+            instrument.play_note(note, volume, 0.5, "staccato", blocking=False)
+            print(f"[SOUND] ⚡ Note {note} started at {start_time:.3f}, latency: {time.time() - start_time:.3f}s")
+        except Exception as e:
+            print(f"[ERROR] Failed to play note {note}: {e}")
+            # Try simpler approach as fallback
             try:
-                # Use a longer duration with non-blocking to make the note more audible
-                # Add articulation to make it more pronounced
-                instrument.play_note(note, volume, 1.0, "marcato", blocking=False)
-                
-                # If we have a note_id, remove it from active notes after playing
-                if note_id and note_id in self.active_reaction_notes:
-                    # Wait a short time then remove the note
-                    wait(1.1, units="time")
-                    if note_id in self.active_reaction_notes:
-                        del self.active_reaction_notes[note_id]
-                        print(f"[DEBUG] Note {note} completed normally")
-            except Exception as e:
-                print(f"[ERROR] Failed to play note {note}: {e}")
-                # Try again with simpler parameters
-                try:
-                    instrument.play_note(note, volume, 1.0, blocking=True)
-                except Exception as e2:
-                    print(f"[ERROR] Failed again: {e2}")
+                instrument.play_note(note, volume, 0.2, blocking=False)
+            except Exception as e2:
+                print(f"[ERROR] Fallback play failed: {e2}")
 
     def fork_melody(self, shared_state):        
         # Generate initial note
@@ -406,7 +401,8 @@ class SoundManager:
         try:
             from scamp import Session
             self.session = Session()
-            self.session.tempo = 60
+            self.session.tempo = 120  # Higher tempo can reduce perceived latency
+            self.session.set_synchronization_mode('loose')  # Use looser synchronization for lower latency
             print(f"[SOUND] SCAMP session initialized")
         except Exception as e:
             print(f"[ERROR] Failed to initialize SCAMP session: {e}")
@@ -432,6 +428,17 @@ class SoundManager:
         self.clear_interval = 5.0  # Clear reaction notes every 5 seconds
         
         print(f"SoundManager initialization complete for pillar: {pillar_id}")
+        
+        # In SoundManager.__init__, set process priority
+        try:
+            # Increase process priority for better audio performance
+            process = psutil.Process(os.getpid())
+            process.nice(psutil.ABOVE_NORMAL_PRIORITY_CLASS)
+            print("[SOUND] Increased process priority for better audio performance")
+        except ImportError:
+            print("[SOUND] Could not import psutil - skipping priority adjustment")
+        except Exception as e:
+            print(f"[SOUND] Failed to set process priority: {e}")
     
     def run_diagnostics(self):
         """Run sound system diagnostics"""
@@ -534,29 +541,30 @@ class SoundManager:
             "last_notes": getattr(self, "last_notes", [])
         }
 
+    # Either comment out or remove the emergency_note method
+    '''
     def play_emergency_note(self, note=60):
-        """Emergency direct note playback that bypasses all systems"""
-        print(f"\n[EMERGENCY] 🔊 Attempting to play emergency note {note}")
+        """Emergency direct note playback with minimal latency"""
+        print(f"\n[EMERGENCY] 🔊 Playing emergency note {note}")
         try:
-            # Create a completely new session to avoid any issues
-            from scamp import Session
-            emergency_session = Session()
-            emergency_session.tempo = 60
+            # Use cached session if possible
+            if not hasattr(self, '_emergency_session'):
+                from scamp import Session
+                self._emergency_session = Session()
+                self._emergency_session.tempo = 120  # Faster tempo
+                self._emergency_piano = self._emergency_session.new_part("piano")
             
-            # Create a basic piano
-            piano = emergency_session.new_part("piano")
+            # Use ultra-short notes for immediate response
+            start_time = time.time()
+            self._emergency_piano.play_note(note, 1.0, 0.2, blocking=False)
             
-            # Play a loud, long note
-            print("[EMERGENCY] 🎹 Playing note...")
-            piano.play_note(note, 1.0, 2.0)
-            
-            from scamp import wait
-            wait(2.5)
-            print("[EMERGENCY] ✅ Emergency note completed\n")
+            # Report latency but don't wait
+            print(f"[EMERGENCY] Note played, latency: {time.time() - start_time:.3f}s")
             return True
         except Exception as e:
-            print(f"[EMERGENCY] ❌ Emergency playback failed: {e}")
+            print(f"[EMERGENCY] Emergency playback failed: {e}")
             return False
+    '''
 
 if __name__=="__main__":
 

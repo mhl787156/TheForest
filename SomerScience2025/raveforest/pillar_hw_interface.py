@@ -41,16 +41,19 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 continue
                 
             # Only process valid message formats
-            if response_str.startswith("CAP,") and len(response_str) >= 10:
+            if response_str.startswith("CAP,"):
                 parts = response_str.split(",")
                 
                 if len(parts) >= 7:  # "CAP" + 6 values
                     try:
                         touch_values = [bool(int(parts[i])) for i in range(1, 7)]
+                        # Use a priority queue or set a flag for immediate processing
                         cap_queue.put(touch_values)
-                        print(f"\n[TOUCH] 👆 CAP event detected: {touch_values}")
+                        # Add timestamp to measure latency
+                        touch_time = time.time()
+                        print(f"\n[TOUCH] �� CAP event detected at {touch_time:.3f}: {touch_values}")
                     except (ValueError, IndexError) as e:
-                        print(f"[ERROR] ⚠️ Failed to process CAP data: {e}")
+                        print(f"[ERROR] Failed to process CAP data: {e}")
                         
             elif response_str.startswith("LED,") and len(response_str) >= 10:
                 parts = response_str.split(",")
