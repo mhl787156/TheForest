@@ -407,6 +407,9 @@ class SoundManager:
             self.session.tempo = 120  # Higher tempo can reduce perceived latency
             self.session.set_synchronization_mode('loose')  # Use looser synchronization for lower latency
             print(f"[SOUND] SCAMP session initialized")
+            # Create the dedicated xylophone part for direct notes here
+            self.direct_xylophone = self.session.new_part("xylophone")
+            print(f"[SOUND] Created dedicated xylophone for direct notes.")
         except Exception as e:
             print(f"[ERROR] Failed to initialize SCAMP session: {e}")
         
@@ -510,30 +513,40 @@ class SoundManager:
     def play_direct_notes(self, notes):
         """Directly play notes for testing, now with a simple echo effect."""
         try:
-            if hasattr(self, 'session') and notes:
-                print(f"[DIRECT] Playing {len(notes)} notes directly with echo")
-                
-                # Use xylophone (instrument part needs to be accessible for echo)
-                xylophone = self.session.new_part("xylophone")
+            # Ensure the direct_xylophone exists
+            if not hasattr(self, 'direct_xylophone') or self.direct_xylophone is None:
+                 print("[ERROR] Direct xylophone instrument not initialized!")
+                 # Attempt to create it now as a fallback
+                 if hasattr(self, 'session'):
+                    self.direct_xylophone = self.session.new_part("xylophone")
+                    print("[WARN] Created direct xylophone late.")
+                 else:
+                    return # Cannot proceed without session
 
-                # Helper function for the echo
-                def play_echo(note_to_echo, volume_echo, duration_echo, delay_echo):
+            if hasattr(self, 'session') and notes:
+                print(f"[DIRECT] Playing {len(notes)} notes directly with echo using stored instrument")
+                
+                # Use the stored xylophone part
+                # xylophone = self.session.new_part("xylophone") # REMOVED
+
+                # Helper function for the echo (now takes instrument as argument)
+                def play_echo(instrument, note_to_echo, volume_echo, duration_echo, delay_echo):
                     wait(delay_echo)
                     print(f"[ECHO] Playing echo for note {note_to_echo}")
-                    xylophone.play_note(note_to_echo, volume_echo, duration_echo, blocking=False)
+                    instrument.play_note(note_to_echo, volume_echo, duration_echo, blocking=False)
 
                 for note in notes:
                     print(f"[DIRECT] Playing note {note}")
-                    # Main note
+                    # Main note using the stored instrument
                     main_volume = 0.9
                     main_duration = 1.5
-                    xylophone.play_note(note, main_volume, main_duration, blocking=False)
+                    self.direct_xylophone.play_note(note, main_volume, main_duration, blocking=False)
 
-                    # Schedule the echo using fork
+                    # Schedule the echo using fork, passing the stored instrument
                     echo_volume = main_volume * 0.5 # Echo is quieter
                     echo_duration = main_duration * 0.7 # Echo is shorter
                     echo_delay = 0.15 # Delay in seconds
-                    self.session.fork(play_echo, args=[note, echo_volume, echo_duration, echo_delay])
+                    self.session.fork(play_echo, args=[self.direct_xylophone, note, echo_volume, echo_duration, echo_delay])
                     
                     # Short wait before processing next note in the list (if any)
                     from scamp import wait
