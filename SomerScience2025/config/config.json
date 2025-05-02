@@ -35,7 +35,7 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "map": "FixedMapper",
+            "map": "LightSoundMapper",
             "notes": [0, 2, 3, 7, 9, 11],
             "octave": 5
         },
@@ -55,7 +55,7 @@
     "default_state": {
         "volume": {
             "melody": 0.9,
-            "harmony": 0.5,
+            "harmony": 0,
             "background": 0.5
         },
         "instruments": {

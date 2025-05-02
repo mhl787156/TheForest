@@ -17,28 +17,160 @@ def clamp(val, b=0, c=255):
 
 def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
     print(f"Serial Read Thread Started With {serial_port}")
+    
+    # Buffer to collect fragments for message reassembly
+    buffer = ""
+    last_process_time = 0
+    process_interval = 0.25  # Only process every 250ms to reduce load
+    
+    # Keep track of last time we received different message types to deduplicate
+    last_cap_time = 0
+    last_led_times = {}  # Dictionary to track LED updates by tube_id
+    dedup_interval = 0.5  # Deduplicate messages within this time window (500ms)
+    
     while True:
         try:
-
             if kill_event.is_set():
                 break
 
-            response = serial_port.readline().decode().strip()
-            # print("RECEIVEDDDDD", response)
-            if "CAP" in response:
-                status = response.split(",")[1:]
-                # print("RECEIVED STATUS", status)
-                cap_queue.put([bool(int(i)) for i in status])
-            elif "LED" in response:
-                status = response.split(",")[1:]
-                light_queue.put([int(i) for i in status])
-
+            # Read response and add to buffer
+            try:
+                raw_response = serial_port.readline()
+                if not raw_response:
+                    time.sleep(0.05)  # Short sleep to reduce CPU usage when no data
+                    continue
+                
+                # Add to buffer, handling decoding errors gracefully
+                response_str = raw_response.decode('utf-8', errors='ignore').strip()
+                if response_str:
+                    buffer += response_str + "\n"  # Add a newline for separation
+            except Exception as e:
+                print(f"Error reading from serial: {e}")
+                time.sleep(0.1)  # Longer sleep on error
+                continue
+            
+            # Only process the buffer at a controlled interval to prevent overwhelming the system
+            current_time = time.time()
+            if current_time - last_process_time < process_interval:
+                continue
+                
+            last_process_time = current_time
+                
+            # Skip if buffer is empty
+            if not buffer:
+                continue
+                
+            # Debug the entire buffer (limit to first 200 chars to avoid spamming)
+            buffer_excerpt = buffer[:200] + ("..." if len(buffer) > 200 else "")
+            print(f"Processing buffer ({len(buffer)} chars): {repr(buffer_excerpt)}")
+            
+            # Process complete CAP messages
+            cap_data = None
+            if "CAP" in buffer:
+                try:
+                    # Look for complete CAP message
+                    for line in buffer.split('\n'):
+                        if "CAP" in line and "," in line:
+                            parts = line.split("CAP")[1].split(",")
+                            values = []
+                            for part in parts:
+                                # Filter out non-numeric characters
+                                digits = ''.join(c for c in part if c.isdigit())
+                                if digits:
+                                    values.append(int(digits))
+                            
+                            # Ensure we have some values
+                            if values:
+                                cap_data = [bool(v) for v in values]
+                                print(f"Extracted CAP data: {cap_data}")
+                                
+                                # Only queue if it's been a while since last update
+                                if current_time - last_cap_time > dedup_interval:
+                                    cap_queue.put(cap_data)
+                                    last_cap_time = current_time
+                                else:
+                                    print(f"Skipping duplicate CAP data (within {dedup_interval}s)")
+                except Exception as e:
+                    print(f"Error processing CAP data: {e}")
+            
+            # Process LED messages - first collect potential LED messages
+            led_messages = []
+            for line in buffer.split('\n'):
+                if "LED" in line or "LD" in line:
+                    led_messages.append(line)
+            
+            # Process LED messages
+            for msg in led_messages:
+                try:
+                    # Extract tube_id, hue, brightness
+                    tube_id = None
+                    hue = None
+                    brightness = None
+                    
+                    # Handle LED,id,hue,brightness format
+                    if "LED" in msg and "," in msg:
+                        parts = msg.split(",")
+                        # Find which part has LED
+                        for i, part in enumerate(parts):
+                            if "LED" in part:
+                                # Extract tube ID from the part with LED or next part
+                                id_part = part.replace("LED", "").strip()
+                                if id_part and id_part.isdigit():
+                                    tube_id = int(id_part)
+                                elif i + 1 < len(parts) and parts[i+1].strip().isdigit():
+                                    tube_id = int(parts[i+1].strip())
+                                
+                                # Extract hue and brightness from subsequent parts
+                                numeric_parts = []
+                                for j in range(i+1, len(parts)):
+                                    clean_part = ''.join(c for c in parts[j] if c.isdigit())
+                                    if clean_part:
+                                        numeric_parts.append(int(clean_part))
+                                
+                                if len(numeric_parts) >= 1:
+                                    # If tube_id is None, use first numeric part as tube_id
+                                    if tube_id is None and numeric_parts:
+                                        tube_id = numeric_parts[0]
+                                        numeric_parts = numeric_parts[1:]
+                                    
+                                    # Assign hue and brightness
+                                    if numeric_parts:
+                                        hue = numeric_parts[0]
+                                        if len(numeric_parts) > 1:
+                                            brightness = numeric_parts[1]
+                                        else:
+                                            brightness = 255  # Default brightness
+                                break
+                    
+                    # Handle LD{id}{hue} format
+                    elif "LD" in msg:
+                        # Extract digits after LD
+                        digits = ''.join(c for c in msg.replace("LD", "") if c.isdigit())
+                        if len(digits) >= 2:
+                            tube_id = int(digits[0])
+                            hue = int(digits[1:])
+                            brightness = 255  # Default brightness
+                    
+                    # Queue valid LED data with deduplication
+                    if tube_id is not None and hue is not None:
+                        tube_key = f"tube_{tube_id}"
+                        if tube_key not in last_led_times or current_time - last_led_times[tube_key] > dedup_interval:
+                            light_queue.put((tube_id, hue, brightness or 255))
+                            last_led_times[tube_key] = current_time
+                            print(f"Processed LED data: tube={tube_id}, hue={hue}, brightness={brightness or 255}")
+                        else:
+                            print(f"Skipping duplicate LED update for tube {tube_id} (within {dedup_interval}s)")
+                except Exception as e:
+                    print(f"Error processing LED message '{msg}': {e}")
+            
+            # Clear buffer after processing
+            buffer = ""
+            
         except Exception as e:
-            pass
-            print(f"Error reading data: {e}")
+            print(f"Error in read_serial_data: {e}")
+            time.sleep(0.1)  # Sleep on error to avoid spinning
 
     print("Serial Read Thread Killed")
-
 
 def write_serial_data(serial_port, write_queue):
     print(f"Serial Write Thread Started With {serial_port}")
@@ -79,7 +211,7 @@ class Pillar():
         self.light_status = [(0, 0, 0) for _ in range(self.num_tubes)]
 
         self.cap_queue = queue.Queue()
-        self.light_queue = queue.Queue()
+        self.light_queue = queue.Queue()  # Using light_queue for all LED status
         self.write_queue = queue.Queue()
 
 
@@ -228,21 +360,62 @@ class Pillar():
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
 
     def read_from_serial(self):
-        # Existing implementation...
-        # print("Reading from serial")
+        # Handle touch sensor data
         try:
             while not self.cap_queue.empty():
-                # print("HELLLOOOOOO")
                 received_status = self.cap_queue.get_nowait()
-                # print("Receiving", received_status)
+                
+                # Ensure received_status has the correct length
+                if len(received_status) != self.num_touch_sensors:
+                    print(f"Warning: Received touch status has {len(received_status)} sensors, expected {self.num_touch_sensors}")
+                    # Pad with False if too short
+                    if len(received_status) < self.num_touch_sensors:
+                        received_status.extend([False] * (self.num_touch_sensors - len(received_status)))
+                    # Truncate if too long
+                    if len(received_status) > self.num_touch_sensors:
+                        received_status = received_status[:self.num_touch_sensors]
+                
+                print(f"Processing touch status: {received_status}")
                 if received_status != self.previous_received_status:
                     self.set_touch_status(received_status)
                     # Assuming a function to handle end of touch event
                     self.handle_end_of_touch(received_status)
                 self.previous_received_status = received_status
         except queue.Empty:
-            # print("Queue Empty")
             pass
+
+        # Handle LED status data
+        try:
+            while not self.light_queue.empty():
+                led_data = self.light_queue.get_nowait()
+                
+                # Check data format and convert if needed
+                if isinstance(led_data, tuple) and len(led_data) == 3:
+                    # Format from the new processing: (tube_id, hue, brightness)
+                    tube_id, hue, brightness = led_data
+                elif isinstance(led_data, list):
+                    # Legacy format, possibly [tube_id, hue, brightness]
+                    if len(led_data) >= 2:
+                        tube_id = led_data[0]
+                        hue = led_data[1]
+                        brightness = led_data[2] if len(led_data) > 2 else 255
+                    else:
+                        print(f"Warning: Invalid LED data format: {led_data}")
+                        continue
+                else:
+                    print(f"Warning: Unrecognized LED data format: {led_data}")
+                    continue
+                
+                # Validate tube_id is in range
+                if 0 <= tube_id < self.num_tubes:
+                    self.light_status[tube_id] = (hue, brightness, 0)  # Store as (hue, brightness, 0)
+                    print(f"Updated light status for tube {tube_id}: hue={hue}, brightness={brightness}")
+                else:
+                    print(f"Warning: LED tube_id {tube_id} out of range (0-{self.num_tubes-1})")
+        except queue.Empty:
+            pass
+        except Exception as e:
+            print(f"Error processing light queue: {e}")
 
     def handle_end_of_touch(self, received_status):
         if all(status == 0 for status in received_status):  # All touch sensors are inactive
@@ -254,4 +427,18 @@ class Pillar():
         reset_message = json.dumps({"type": "touch_reset", "pillar_id": self.id})
         # Placeholder for actual WebSocket sending logic
         # send_to_all_clients(reset_message)  # You need to implement this based on your WebSocket setup
+        
+    # Add a method to request LED status from the Teensy
+    def request_led_status(self):
+        """Send a command to the Teensy to request current LED status for all tubes."""
+        try:
+            message = "GETLED;\n\r"
+            print(f"[DEBUG] Requesting LED status from Teensy: {message.strip()}")
+            self.write_queue.put(message)
+            # Short sleep to avoid overwhelming the serial buffer
+            time.sleep(0.1)
+            return True
+        except Exception as e:
+            print(f"[ERROR] Failed to request LED status: {e}")
+            return False
         
