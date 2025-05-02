@@ -500,29 +500,46 @@ class SoundManager:
             
             # Test direct note generation for debugging
             self.play_direct_notes(value)
-            # Pass to composer for normal processing
-            self.composer.update(param_name, value)
+            # Pass to composer for normal processing - COMMENTED OUT
+            # self.composer.update(param_name, value)
         
         # Default handling for other parameters
         else:
             self.composer.update(param_name, value)
 
     def play_direct_notes(self, notes):
-        """Directly play notes for testing"""
+        """Directly play notes for testing, now with a simple echo effect."""
         try:
             if hasattr(self, 'session') and notes:
-                print(f"[DIRECT] Playing {len(notes)} notes directly")
+                print(f"[DIRECT] Playing {len(notes)} notes directly with echo")
                 
-                # Use piano for reliable testing
-                piano = self.session.new_part("piano")
-                
+                # Use xylophone (instrument part needs to be accessible for echo)
+                xylophone = self.session.new_part("xylophone")
+
+                # Helper function for the echo
+                def play_echo(note_to_echo, volume_echo, duration_echo, delay_echo):
+                    wait(delay_echo)
+                    print(f"[ECHO] Playing echo for note {note_to_echo}")
+                    xylophone.play_note(note_to_echo, volume_echo, duration_echo, blocking=False)
+
                 for note in notes:
                     print(f"[DIRECT] Playing note {note}")
-                    piano.play_note(note, 0.9, 0.5)
-                    from scamp import wait
-                    wait(0.1)
+                    # Main note
+                    main_volume = 0.9
+                    main_duration = 1.5
+                    xylophone.play_note(note, main_volume, main_duration, blocking=False)
+
+                    # Schedule the echo using fork
+                    echo_volume = main_volume * 0.5 # Echo is quieter
+                    echo_duration = main_duration * 0.7 # Echo is shorter
+                    echo_delay = 0.15 # Delay in seconds
+                    self.session.fork(play_echo, args=[note, echo_volume, echo_duration, echo_delay])
                     
-                print("[DIRECT] Finished playing notes")
+                    # Short wait before processing next note in the list (if any)
+                    from scamp import wait
+                    wait(0.05) # Reduced wait to allow echoes to overlap slightly
+                    
+                print("[DIRECT] Finished playing notes and scheduling echoes")
         except Exception as e:
             print(f"[ERROR] Direct note playback failed: {e}")
 
