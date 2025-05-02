@@ -148,7 +148,6 @@ class Pillar_Mapper_Base(object):
 
         # Update internal state
         self.interaction_update_sound_light(self.state_array, state_array)
-
         self.state_array = state_array
 
         return self.sound_state, self.light_state

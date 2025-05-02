@@ -89,9 +89,10 @@ class Controller():
         # print("sounds:", sound_state)
 
         # print(f"Sending Lights {self.pillar_manager.id}: {light_state}")
-        self.pillar_manager.send_all_light_change(light_state)
+        # self.pillar_manager.send_all_light_change(light_state) # LEDs handled on Teensy only
 
-        # print("Setting params", sound_state)
+        print("Setting params", sound_state)
+
         for param_name, value in sound_state.items():
             self.sound_manager.update_pillar_setting(param_name, value) 
 
