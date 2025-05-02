@@ -126,7 +126,7 @@ class Controller():
             current_touch_status = self.pillar_manager.get_all_touch_status()
             current_led_status = self.pillar_manager.get_all_light_status()
             print(f"!!!!!!!!!!Current touch status: {current_touch_status}")
-            print(f"!!!!!!!!!!Current LED status: {current_led_status}")
+            #print(f"!!!!!!!!!!Current LED status: {current_led_status}")
             # Get previous touch status (or initialize if first run)
             previous_touch_status = getattr(self, 'previous_touch_status', [False] * self.pillar_manager.num_tubes)
             
@@ -163,11 +163,16 @@ class Controller():
                 
                 # Play the reaction notes
                 if reaction_notes:
+                    print(f"[DEBUG] Sending reaction notes to sound manager: {reaction_notes}")
                     self.sound_manager.update_pillar_setting("reaction_notes", reaction_notes)
+                    # After sending, verify the sound manager received them
+                    current_settings = self.sound_manager.get_pillar_settings()
+                    print(f"[DEBUG] Current sound settings: {current_settings}")
             
             # Periodically request LED status from the Teensy
             if current_time - self.last_led_request_time >= self.led_request_interval:
                 self.pillar_manager.request_led_status()
+                print("Requesting LED status")
                 self.last_led_request_time = current_time
             
             # Process LED status changes or periodic updates

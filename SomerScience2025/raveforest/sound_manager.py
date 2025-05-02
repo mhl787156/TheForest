@@ -395,9 +395,13 @@ class SoundManager:
         """String representation of the pillar for debugging."""
         return f"Pillar({self.pillar_id}) {self.state}"
     
-    def update_pillar_setting(self, setting_name, value):
-        """Updates the settings dictionary for a specific pillar."""
-        self.composer.update(setting_name, value)
+    def update_pillar_setting(self, param_name, value):
+        print(f"[DEBUG] Updating sound parameter: {param_name} = {value}")
+        if param_name == "volume":
+            print(f"[DEBUG] Setting volumes: melody={value.get('melody', 'N/A')}, harmony={value.get('harmony', 'N/A')}, background={value.get('background', 'N/A')}")
+            # Check how the volume is applied to each layer
+        
+        self.composer.update(param_name, value)
 
     def tick(self, time_delta=1/30.0):
         # Check if we need to clear reaction notes
