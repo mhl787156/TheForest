@@ -33,6 +33,7 @@ const unsigned long period2 = 50;   // Updating lights based on touch sensor sta
 
 // Serial
 const unsigned int serial_max_char = 150;
+int msg_count = 0;
 
 // LEDs
 CRGB leds[6][MAX_LEDS];
@@ -46,11 +47,11 @@ int tube5[3] = { 0, 200, 0 };
 int tube6[3] = { 0, 200, 0 };
 
 // Star effects
-#define star_brightness 240
-#define MAX_STARS 3       // Max number of active stars per tube
+#define star_brightness 250
+#define MAX_STARS 6      // Max number of active stars per tube
 #define STAR_ON_TIME 500  // Time a star stays ON (milliseconds)
 int star_id[6] = { 0 };
-#define STAR_SIZE 3 
+#define STAR_SIZE 2
 
 // Cap sensors
 const int cap_pins[6] = { 1, 3, 5, 17, 19, 21 };  //17 nbot 16
@@ -122,10 +123,12 @@ void light_tube_number(int tnum, int hue, int brightness) {
 }
 
 void sendledstatus() {
+  String msg = "LED";
   for (int i = 0; i < 6; i++) {
     led_status[i][0] = tube[i][0];
-    Serial.println("LED," + String(i) + "," + String(led_status[i][0]) + "," + String(led_status[i][1]));
+    msg += "," + String(tube[i][0]);
   }
+  Serial.println(msg);
 }
 
 void parseledfromserial() {
@@ -221,7 +224,6 @@ void flickerStars(int t) {
   }
 }
 
-
 // ------- Sensing code
 
 void readCap(long sensorVal, int capnum) {
@@ -291,18 +293,23 @@ void setup() {
 void loop() {
   currentMillis = millis();
 
-
   // Read serial data to update tube colors and effects
-  if (currentMillis - startMillis0 >= period0) {
-    startMillis0 = currentMillis;
-    parseledfromserial();
-  }
+  // if (currentMillis - startMillis0 >= period0) {
+  //   startMillis0 = currentMillis;
+  //   parseledfromserial();
+  // }
 
   // Read capacitive sensors
   if (currentMillis - startMillis1 >= period1) {
     startMillis1 = currentMillis;
-    readallcaps();
-    sendledstatus();
+    if (msg_count == 0) {
+        readallcaps();
+        msg_count = 1;
+        }
+    else {
+        sendledstatus();
+        msg_count = 0;
+    }
   }
 
   // Loop through each tube and update LEDs
@@ -342,7 +349,10 @@ void loop() {
           for (int j = 0; j < MAX_LEDS; j++) {
             leds[i][j] = CRGB::Black;
           }
-          tube[i][0] += 10 % 255;
+          tube[i][0] += 10;
+          if (tube[i][0] > 255) {
+              tube[i][0] = 0;
+          } 
         }
         flickerStars(i);
       }
