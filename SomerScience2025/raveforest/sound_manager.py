@@ -548,9 +548,9 @@ class SoundManager:
                     echo_delay = 0.15 # Delay in seconds
                     self.session.fork(play_echo, args=[self.direct_xylophone, note, echo_volume, echo_duration, echo_delay])
                     
-                    # Short wait before processing next note in the list (if any)
-                    from scamp import wait
-                    wait(0.05) # Reduced wait to allow echoes to overlap slightly
+                    # Short wait before processing next note in the list (if any) - REMOVED
+                    # from scamp import wait
+                    # wait(0.05) # Reduced wait to allow echoes to overlap slightly
                     
                 print("[DIRECT] Finished playing notes and scheduling echoes")
         except Exception as e:
