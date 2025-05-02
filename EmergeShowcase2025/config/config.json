@@ -27,7 +27,7 @@
             "pan": 0,
             "num_tubes": 6,
             "map": "FixedMapper",
-            "notes": [3, 3, 3, 3, 3, 3],
+            "notes": [1, 2, 3, 4, 5, 6],
             "octave": 4
         },
         "fon004": {
