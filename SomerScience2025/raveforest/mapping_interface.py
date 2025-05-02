@@ -390,16 +390,19 @@ class LightSoundMapper(Pillar_Mapper_Base):
         self.sound_state.clear_reaction_notes()
 
         # If we now detect as active, we add a reaction note and change the light state
-        for tube_id, (old_active, active) in enumerate(zip(old_state, new_state)):
-            if not old_active and active:
-                note = self.notes[tube_id]
-                note_to_play = note + self.octave * 12
-                self.sound_state.append_reaction_notes(note_to_play)
-                self.light_state[tube_id] = (self.fixed_hue_map[note], 255, 255)
+        # --- The following block is commented out as touch-triggered notes for LightSoundMapper
+        # --- are handled in main.py based on the current light hue. ---
+        # for tube_id, (old_active, active) in enumerate(zip(old_state, new_state)):
+        #     if not old_active and active:
+        #         note = self.notes[tube_id]
+        #         note_to_play = note + self.octave * 12
+        #         self.sound_state.append_reaction_notes(note_to_play)
+        #         self.light_state[tube_id] = (self.fixed_hue_map[note], 255, 255)
                 
-                # Update light-driven notes to avoid duplicate triggering
-                self.light_driven_notes[tube_id] = note_to_play
-                print(f"[DEBUG] Button press on tube {tube_id} → Playing note {note_to_play}")
+        #         # Update light-driven notes to avoid duplicate triggering
+        #         self.light_driven_notes[tube_id] = note_to_play
+        #         print(f"[DEBUG] Button press on tube {tube_id} → Playing note {note_to_play}")
+        pass # Keep the method structure but do nothing for touch events here
 
 def generate_mapping_interface(cfg, cfg_pillar) -> Pillar_Mapper_Base:
     """Generator Function which you can call which reads the config

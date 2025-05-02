@@ -133,6 +133,7 @@ class Controller():
         should_print = (self.loop_idx % 10 == 0)  # Only print every 10th iteration
         
         current_time = time.time()
+        touch_notes_sent_this_cycle = False # Flag to track if touch notes were sent
         
         try:
             # Read from serial to update touch status and LED status
@@ -189,6 +190,7 @@ class Controller():
                 if reaction_notes:
                     print(f"[MELODY] Sending notes to sound manager: {reaction_notes}")
                     self.sound_manager.update_pillar_setting("reaction_notes", reaction_notes)
+                    touch_notes_sent_this_cycle = True # Set the flag
             
             # Periodically request LED status from the Teensy
             if current_time - self.last_led_request_time >= self.led_request_interval:
@@ -210,6 +212,9 @@ class Controller():
                     
                 # Update sound parameters
                 for param_name, value in sound_state.items():
+                    # If touch notes were already sent this cycle, skip sending reaction_notes again
+                    if param_name == "reaction_notes" and touch_notes_sent_this_cycle:
+                        continue
                     self.sound_manager.update_pillar_setting(param_name, value)
                 
                 # Update tracking variables
