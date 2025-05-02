@@ -213,13 +213,16 @@ class Composer:
         # Use very short duration for immediate response
         try:
             # Non-blocking with shorter duration for faster response
-            instrument.play_note(note, volume, 0.5, "staccato", blocking=False)
+            # instrument.play_note(note, volume, 0.5, "staccato", blocking=False) # Old short staccato
+            # Play longer note without staccato
+            instrument.play_note(note, volume, 1.5, blocking=False)
             print(f"[SOUND] ⚡ Note {note} started at {start_time:.3f}, latency: {time.time() - start_time:.3f}s")
         except Exception as e:
             print(f"[ERROR] Failed to play note {note}: {e}")
             # Try simpler approach as fallback
             try:
-                instrument.play_note(note, volume, 0.2, blocking=False)
+                # instrument.play_note(note, volume, 0.2, blocking=False) # Old fallback
+                instrument.play_note(note, volume, 1.0, blocking=False) # Longer fallback
             except Exception as e2:
                 print(f"[ERROR] Fallback play failed: {e2}")
 
@@ -420,6 +423,11 @@ class SoundManager:
             self.composer.harmony_enabled = False  # Explicitly disable harmony
             
             print(f"[SOUND] Volumes set - melody: {self.composer.melody_volume}, harmony: {self.composer.harmony_volume}")
+
+            # Explicitly set melody instrument to xylophone after composer creation
+            print("[SOUND] Ensuring melody instrument is xylophone for reaction notes.")
+            self.composer.instrument_manager.update_instrument("xylophone", function="melody")
+
         except Exception as e:
             print(f"[ERROR] Failed to create sound composer: {e}")
         
