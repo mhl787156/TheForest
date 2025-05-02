@@ -328,15 +328,16 @@ class LightSoundMapper(Pillar_Mapper_Base):
     
     def hue_to_semitone(self, hue):
         """Convert a hue value (0-255) to a semitone (0-11)"""
-        # Handle edge cases
+        # Simple direct mapping - divide the hue range into 12 equal parts
         if hue < 0:
             hue = 0
         if hue > 255:
             hue = 255
-            
-        # Use the pre-calculated mapping
-        semitone = self.hue_to_note_map.get(hue, 0)
-        print(f"[DEBUG] Converting hue {hue} to semitone {semitone}")
+        
+        # Map 0-255 to 0-11 range
+        semitone = (hue * 12) // 256
+        
+        print(f"[MAPPING] Hue {hue} maps to semitone {semitone} (octave {self.octave})")
         return semitone
     
     def update_from_light_status(self, light_status):

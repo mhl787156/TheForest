@@ -238,6 +238,16 @@ class Composer:
             instrument.play_note(note, volume, d, blocking=True)
 
     def fork_harmony(self, shared_state):
+        # Skip completely if harmony_enabled is False
+        if hasattr(self, 'harmony_enabled') and not self.harmony_enabled:
+            print("[DEBUG] Harmony playback skipped - disabled")
+            return
+        
+        # Also check volume directly as a backup
+        if hasattr(self, 'harmony_volume') and self.harmony_volume == 0:
+            print("[DEBUG] Harmony playback skipped - volume is 0")
+            return
+        
         instrument = self.instrument_manager.harmony_instrument()
         key = next(self.key_generator)
         print(f"[DEBUG] Harmony using key: {key}")
@@ -389,6 +399,29 @@ class SoundManager:
         self.last_clear_time = time.time()
         self.clear_interval = 5.0  # Clear reaction notes every 5 seconds
         
+        # Force update volume settings to ensure they're applied
+        self.update_pillar_setting("volume", self.state.default_state["volume"])
+        print(f"[DEBUG] Initial volumes set from default state: {self.state.default_state['volume']}")
+        
+        # Test the sound engine with simple commands
+        print("[SOUND] Testing sound engine...")
+        try:
+            # Try to create a basic instrument and play a note
+            from scamp import Session, wait
+            test_session = Session()
+            piano = test_session.new_part("piano")
+            
+            # Play a simple middle C
+            print("[SOUND] Playing test note (middle C)")
+            piano.play_note(60, 0.8, 1.0)
+            wait(1)
+            print("[SOUND] Test completed successfully")
+        except Exception as e:
+            print(f"[SOUND ERROR] Sound engine test failed: {e}")
+        
+        # Call this in __init__ after loading config
+        self.diagnostics()
+        
         print(f"[DEBUG] SoundManager initialized for pillar: {pillar_id}")
 
     def __repr__(self):
@@ -396,10 +429,15 @@ class SoundManager:
         return f"Pillar({self.pillar_id}) {self.state}"
     
     def update_pillar_setting(self, param_name, value):
+        """Updates the settings dictionary for a specific pillar."""
         print(f"[DEBUG] Updating sound parameter: {param_name} = {value}")
-        if param_name == "volume":
-            print(f"[DEBUG] Setting volumes: melody={value.get('melody', 'N/A')}, harmony={value.get('harmony', 'N/A')}, background={value.get('background', 'N/A')}")
-            # Check how the volume is applied to each layer
+        
+        # Special handling for reaction_notes (melody triggers)
+        if param_name == "reaction_notes" and value:
+            print(f"[MELODY] Attempting to play notes: {value}")
+            # Set a flag to verify notes were processed
+            self.last_notes_received = time.time()
+            self.last_notes = value
         
         self.composer.update(param_name, value)
 
@@ -414,6 +452,49 @@ class SoundManager:
         self.composer.play()
         wait(time_delta, units="time")
 
+    def get_pillar_settings(self):
+        """Return the current sound settings."""
+        # Getting the actual values from the composer or wherever they're stored
+        settings = {
+            "volume": {
+                "melody": getattr(self.composer, "melody_volume", "unknown"),
+                "harmony": getattr(self.composer, "harmony_volume", "unknown"),
+                "background": getattr(self.composer, "background_volume", "unknown")
+            },
+            "harmony_enabled": getattr(self.composer, "harmony_enabled", "unknown"),
+            # Add other relevant settings
+        }
+        return settings
+
+    def test_note(self):
+        """Test function to play a simple note."""
+        print("[TEST] Playing test note (middle C)")
+        try:
+            # Direct play using SCAMP
+            from scamp import Session, wait
+            
+            # Use a new session to avoid interfering with main one
+            test_session = Session()
+            test_session.tempo = 60
+            
+            piano = test_session.new_part("piano")
+            piano.play_note(60, 0.8, 1.0)  # Middle C, 80% volume, 1 second
+            wait(1)
+            print("[TEST] Test note completed")
+            return True
+        except Exception as e:
+            print(f"[TEST] Error playing test note: {e}")
+            return False
+
+    def diagnostics(self):
+        """Run diagnostic checks on the sound system"""
+        print("\n=== SOUND SYSTEM DIAGNOSTICS ===")
+        print(f"Melody volume: {getattr(self.composer, 'melody_volume', 'unknown')}")
+        print(f"Harmony volume: {getattr(self.composer, 'harmony_volume', 'unknown')}")
+        print(f"Background volume: {getattr(self.composer, 'background_volume', 'unknown')}")
+        print(f"Sound engine active: {self.composer.is_active()}")
+        print(f"Instrument settings: {getattr(self.composer, 'instruments', 'unknown')}")
+        print("=================================\n")
 
 if __name__=="__main__":
 

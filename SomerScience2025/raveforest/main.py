@@ -78,6 +78,10 @@ class Controller():
         # Avoid excessive debug printing
         self.debug_print = False  # Add a flag to control debug printing
 
+        # Add special debug flags
+        self.show_touch_debug = True
+        self.show_led_debug = False  # Turn off LED debug since that's working
+
         print(f"Controller initialized for hostname: {hostname}")
         print(f"Using mapping: {self.pillar_config['map']}")
 
@@ -148,6 +152,11 @@ class Controller():
             # Store current touch status for next iteration
             self.previous_touch_status = current_touch_status
             
+            # Add clear debug output for touch detection
+            for i, (prev, curr) in enumerate(zip(previous_touch_status, current_touch_status)):
+                if not prev and curr:  # Rising edge detected
+                    print(f"[TOUCH DETECTED] Tube {i} was just touched")
+            
             # For LightSoundMapper, trigger notes based on LED colors when tubes are touched
             if isinstance(self.mapping_interface, LightSoundMapper) and newly_touched_tubes:
                 # Prepare reaction notes based on LED colors of touched tubes
@@ -212,6 +221,11 @@ class Controller():
         except Exception as e:
             print(f"[ERROR] Exception in controller loop: {e}")
             time.sleep(0.1)
+
+    def play_direct_test_note(self, note_number=60):
+        """Test function to directly trigger a note"""
+        print(f"[DIRECT TEST] Playing note {note_number}")
+        self.sound_manager.update_pillar_setting("reaction_notes", [note_number])
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="A script to parse host, port, and config file path.")
