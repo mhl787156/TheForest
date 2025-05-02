@@ -124,6 +124,10 @@ class Controller():
     
             # Get current touch status
             current_touch_status = self.pillar_manager.get_all_touch_status()
+            print(f"Current touch status: {current_touch_status}")
+
+            current_led_status = self.pillar_manager.get_all_light_status()
+            print(f"Current LED status: {current_led_status}")
             
             # Get previous touch status (or initialize if first run)
             previous_touch_status = getattr(self, 'previous_touch_status', [False] * self.pillar_manager.num_tubes)
