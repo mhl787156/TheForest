@@ -511,7 +511,7 @@ class SoundManager:
             self.composer.update(param_name, value)
 
     def play_direct_notes(self, notes):
-        """Directly play notes using an ADSR envelope."""
+        """Directly play notes using simple volume/duration (reverted for testing)."""
         try:
             # Ensure the direct_xylophone exists
             if not hasattr(self, 'direct_xylophone') or self.direct_xylophone is None:
@@ -524,28 +524,35 @@ class SoundManager:
                     return # Cannot proceed without session
 
             if hasattr(self, 'session') and notes:
-                print(f"[DIRECT] Playing {len(notes)} notes directly with ADSR envelope")
+                print(f"[DIRECT] Playing {len(notes)} notes directly (simple volume/duration test)")
                 
                 # Use the stored xylophone part
 
-                # Define a simpler ADSR envelope for testing
-                peak_level = 0.9
-                sustain_level_proportion = 0.7 # Higher sustain
-                envelope = expe.Envelope.adsr(
-                    attack_time=0.01,     # Quick attack
-                    peak_level=peak_level, 
-                    decay_time=0.1,       # Quick decay
-                    sustain_level=peak_level * sustain_level_proportion, # High sustain level
-                    release_time=0.2      # Quick release
-                )
-                note_duration = 1.0 # Shorter total duration for testing
+                # Define a simpler ADSR envelope for testing - COMMENTED OUT
+                # peak_level = 0.9
+                # sustain_level_proportion = 0.7 # Higher sustain
+                # Corrected argument names: attack, decay, sustain, release
+                # envelope = expe.Envelope.adsr(
+                #     attack=0.01,     # Quick attack 
+                #     # peak_level might be implicit or set differently, error was about time args
+                #     decay=0.1,       # Quick decay
+                #     sustain=peak_level * sustain_level_proportion, # High sustain level
+                #     release=0.2      # Quick release
+                # )
+                # note_duration = 1.0 # Shorter total duration for testing
+
+                # --- REVERTED TO SIMPLE VOLUME/DURATION --- 
+                play_volume = 0.9
+                play_duration = 1.5 
+                # --- END REVERT --- 
 
                 for note in notes:
-                    print(f"[DIRECT] Playing note {note} with envelope")
-                    # Play note using the stored instrument and the envelope
-                    self.direct_xylophone.play_note(note, envelope, note_duration, blocking=False)
+                    print(f"[DIRECT] Playing note {note} (simple)")
+                    # Play note using the stored instrument and simple volume/duration
+                    # self.direct_xylophone.play_note(note, envelope, note_duration, blocking=False)
+                    self.direct_xylophone.play_note(note, play_volume, play_duration, blocking=False)
 
-                print("[DIRECT] Finished playing notes with ADSR")
+                print("[DIRECT] Finished playing notes (simple)")
         except Exception as e:
             print(f"[ERROR] Direct note playback failed: {e}")
 
