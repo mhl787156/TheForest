@@ -511,50 +511,48 @@ class SoundManager:
             self.composer.update(param_name, value)
 
     def play_direct_notes(self, notes):
-        """Directly play notes using simple volume/duration (reverted for testing)."""
+        """
+        Directly play notes with minimal latency for immediate sound feedback.
+        This method bypasses normal sound processing for faster response.
+        
+        Args:
+            notes: List of MIDI note numbers to play
+        """
+        if not notes:
+            return
+            
+        print(f"[FAST-PATH] Playing {len(notes)} notes with minimal latency")
+        
         try:
-            # Ensure the direct_xylophone exists
-            if not hasattr(self, 'direct_xylophone') or self.direct_xylophone is None:
-                 print("[ERROR] Direct xylophone instrument not initialized!")
-                 # Attempt to create it now as a fallback
-                 if hasattr(self, 'session'):
-                    self.direct_xylophone = self.session.new_part("xylophone")
-                    print("[WARN] Created direct xylophone late.")
-                 else:
-                    return # Cannot proceed without session
-
-            if hasattr(self, 'session') and notes:
-                print(f"[DIRECT] Playing {len(notes)} notes directly (simple volume/duration test)")
-                
-                # Use the stored xylophone part
-
-                # Define a simpler ADSR envelope for testing - COMMENTED OUT
-                # peak_level = 0.9
-                # sustain_level_proportion = 0.7 # Higher sustain
-                # Corrected argument names: attack, decay, sustain, release
-                # envelope = expe.Envelope.adsr(
-                #     attack=0.01,     # Quick attack 
-                #     # peak_level might be implicit or set differently, error was about time args
-                #     decay=0.1,       # Quick decay
-                #     sustain=peak_level * sustain_level_proportion, # High sustain level
-                #     release=0.2      # Quick release
-                # )
-                # note_duration = 1.0 # Shorter total duration for testing
-
-                # --- REVERTED TO SIMPLE VOLUME/DURATION --- 
-                play_volume = 0.9
-                play_duration = 1.5 
-                # --- END REVERT --- 
-
-                for note in notes:
-                    print(f"[DIRECT] Playing note {note} (simple)")
-                    # Play note using the stored instrument and simple volume/duration
-                    # self.direct_xylophone.play_note(note, envelope, note_duration, blocking=False)
-                    self.direct_xylophone.play_note(note, play_volume, play_duration, blocking=False)
-
-                print("[DIRECT] Finished playing notes (simple)")
+            # Ensure we have an instrument ready - use the fastest instrument for responsiveness
+            instrument = self.composer.instrument_manager.melody_instrument()
+            if instrument is None:
+                print("[FAST-PATH] Creating melody instrument for responsive playback")
+                self.composer.instrument_manager.update_instrument("xylophone", function="melody")
+                instrument = self.composer.instrument_manager.melody_instrument()
+            
+            # Use a higher volume for direct notes to ensure they're audible
+            volume = 0.9  # Slightly higher volume for direct notes
+            
+            # Get current time for latency measurement
+            start_time = time.time()
+            
+            # Play each note with minimal duration - non-blocking for maximum responsiveness
+            for note in notes:
+                # Use a non-blocking play for minimum latency
+                instrument.play_note(note, volume, 0.3, blocking=False)
+                print(f"[FAST-PATH] Note {note} triggered, latency: {(time.time() - start_time)*1000:.1f}ms")
+            
+            # Returning quickly without blocking for further sound processing
+            return True
         except Exception as e:
             print(f"[ERROR] Direct note playback failed: {e}")
+            # Fallback to regular note playing
+            try:
+                self.update_pillar_setting("reaction_notes", notes)
+            except Exception:
+                pass
+            return False
 
     def tick(self, time_delta=1/30.0):
         """Process a time step in the sound system."""
