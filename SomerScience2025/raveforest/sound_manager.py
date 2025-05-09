@@ -11,7 +11,23 @@ import time
 import threading
 import json
 import os
-import psutil
+import traceback
+
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    print("[SOUND] psutil not available - process priority adjustment will be skipped")
+    HAS_PSUTIL = False
+
+try:
+    from scamp import Session, wait, current_clock
+    import scamp_extensions.process as seprocess
+    import expenvelope as expe
+    HAS_SCAMP = True
+except ImportError:
+    print("[CRITICAL] SCAMP library not found - sound functionality will be disabled")
+    HAS_SCAMP = False
 
 from interfaces import *
 
@@ -38,15 +54,23 @@ class InstrumentManager:
             return
         
         if self.instrument_names[function] is not None:
-            # Remove Existing Instrument
-            current_instruments = [i.name for i in self.session.instruments]
-            idx = list(current_instruments).index(self.instrument_names[function])
-            self.session.pop_instrument(idx)
-            print(f"[DEBUG] Previous instrument removed: {self.instrument_names[function]}")
-            
-        self.instruments[function] = self.session.new_part(instrument_name)
-        self.instrument_names[function] = instrument_name
-        print(f"[DEBUG] New instrument added: {self.instrument_names[function]}")
+            try:
+                # Remove Existing Instrument
+                current_instruments = [i.name for i in self.session.instruments]
+                idx = list(current_instruments).index(self.instrument_names[function])
+                self.session.pop_instrument(idx)
+                print(f"[DEBUG] Previous instrument removed: {self.instrument_names[function]}")
+            except Exception as e:
+                print(f"[WARNING] Could not remove previous instrument: {e}")
+        
+        try:    
+            self.instruments[function] = self.session.new_part(instrument_name)
+            self.instrument_names[function] = instrument_name
+            print(f"[DEBUG] New instrument added: {self.instrument_names[function]}")
+        except Exception as e:
+            print(f"[ERROR] Failed to add new instrument {instrument_name}: {e}")
+            self.instruments[function] = None
+            self.instrument_names[function] = None
 
     def melody_instrument(self):
         return self.instruments["melody"]
@@ -215,7 +239,7 @@ class Composer:
             # Non-blocking with shorter duration for faster response
             # instrument.play_note(note, volume, 0.5, "staccato", blocking=False) # Old short staccato
             # Play longer note without staccato
-            instrument.play_note(note, volume, 1.5, blocking=False)
+            instrument.play_note(note, volume, 1, blocking=False)
             print(f"[SOUND] ⚡ Note {note} started at {start_time:.3f}, latency: {time.time() - start_time:.3f}s")
         except Exception as e:
             print(f"[ERROR] Failed to play note {note}: {e}")
@@ -368,7 +392,7 @@ class Composer:
                     for offset in pattern:
                         bass_note = note + offset
                         instrument.play_note(bass_note, volume, 0.5, "staccato", blocking=True)
-                        wait(0.5)
+                    wait(0.5)
                 
                 # Occasionally change the pattern (10% chance)
                 if random.random() < 0.1:
@@ -385,7 +409,7 @@ class SoundManager:
         """Initializes the sound manager"""
         print(f"Initializing SoundManager for pillar: {pillar_id}")
         self.pillar_id = pillar_id
-        
+
         # Load configuration with proper defaults
         default_state = {
             "volume": {"melody": 0.9, "harmony": 0.0, "background": 0.5},
@@ -398,59 +422,126 @@ class SoundManager:
             "chord_levels": 0,
             "reaction_notes": []
         }
-        self.state = default_state
         
-        # Initialize SCAMP session
         try:
-            from scamp import Session
-            self.session = Session()
-            self.session.tempo = 120  # Higher tempo can reduce perceived latency
-            self.session.set_synchronization_mode('loose')  # Use looser synchronization for lower latency
-            print(f"[SOUND] SCAMP session initialized")
-            # Create the dedicated xylophone part for direct notes here
-            self.direct_xylophone = self.session.new_part("xylophone")
-            print(f"[SOUND] Created dedicated xylophone for direct notes.")
-        except Exception as e:
-            print(f"[ERROR] Failed to initialize SCAMP session: {e}")
-        
-        # Setup sound composer with proper state
-        try:
-            print("[SOUND] Creating sound composer...")
-            from scamp import wait
-            self.composer = Composer(self.session, default_state)
+            self.state = default_state
             
-            # Explicitly set volume properties
-            self.composer.melody_volume = default_state["volume"]["melody"]
-            self.composer.harmony_volume = default_state["volume"]["harmony"]
-            self.composer.background_volume = default_state["volume"]["background"]
-            self.composer.harmony_enabled = False  # Explicitly disable harmony
+            # Initialize attributes with defaults - ensures they exist even if errors occur
+            self._instruments_cache = {}
+            self._direct_instrument = None
+            self.last_notes_played = []
+            self.last_play_time = 0
+            self.debounce_time = 0.05
+            self.last_clear_time = time.time()
+            self.clear_interval = 5.0
             
-            print(f"[SOUND] Volumes set - melody: {self.composer.melody_volume}, harmony: {self.composer.harmony_volume}")
-
-            # Explicitly set melody instrument to xylophone after composer creation
-            print("[SOUND] Ensuring melody instrument is xylophone for reaction notes.")
-            self.composer.instrument_manager.update_instrument("xylophone", function="melody")
-
+            # Initialize SCAMP session with proper error handling
+            self.session = None
+            if HAS_SCAMP:
+                try:
+                    print("[SOUND] Initializing SCAMP session...")
+                    self.session = Session()
+                    
+                    # Set basic tempo but handle version differences
+                    self.session.tempo = 120  # Higher tempo can reduce perceived latency
+                    
+                    # Check if set_synchronization_mode exists before calling it
+                    if hasattr(self.session, 'set_synchronization_mode'):
+                        self.session.set_synchronization_mode('loose')  # Use looser synchronization for lower latency
+                        print(f"[SOUND] SCAMP session initialized with loose synchronization")
+                    else:
+                        print("[SOUND] SCAMP session initialized (set_synchronization_mode not available in this version)")
+                    
+                    # CRITICAL: Instrument preloading
+                    try:
+                        self._preload_instruments()
+                        print("[SOUND] Instrument preloading completed successfully")
+                    except Exception as preload_error:
+                        print(f"[ERROR] Instrument preloading failed: {preload_error}")
+                        self._direct_instrument = None
+                except Exception as e:
+                    print(f"[ERROR] Failed to initialize SCAMP session: {e}")
+                    print(f"[DEBUG] SCAMP exception details: {traceback.format_exc()}")
+                    self.session = None
+            else:
+                print("[ERROR] SCAMP libraries not available - sound functionality disabled")
+                self.session = None
+                
+            # Setup sound composer with proper state
+            self.composer = None
+            if self.session is not None:
+                try:
+                    print("[SOUND] Creating sound composer...")
+                    self.composer = Composer(self.session, default_state)
+                    
+                    # Explicitly set volume properties
+                    self.composer.melody_volume = default_state["volume"]["melody"]
+                    self.composer.harmony_volume = default_state["volume"]["harmony"]
+                    self.composer.background_volume = default_state["volume"]["background"]
+                    self.composer.harmony_enabled = False  # Explicitly disable harmony
+                    
+                    print(f"[SOUND] Volumes set - melody: {self.composer.melody_volume}, harmony: {self.composer.harmony_volume}")
+            
+                    # Explicitly set melody instrument to xylophone after composer creation
+                    try:
+                        print("[SOUND] Ensuring melody instrument is xylophone for reaction notes.")
+                        self.composer.instrument_manager.update_instrument("xylophone", function="melody")
+                    except Exception as inst_err:
+                        print(f"[ERROR] Failed to set initial melody instrument: {inst_err}")
+                except Exception as e:
+                    print(f"[ERROR] Failed to create sound composer: {e}")
+                    print(f"[DEBUG] Composer exception details: {traceback.format_exc()}")
+                    self.composer = None
+            else:
+                print("[ERROR] Cannot create composer - no valid session")
+                self.composer = None
+            
+            # Set process priority if psutil is available
+            if HAS_PSUTIL:
+                try:
+                    process = psutil.Process(os.getpid())
+                    # Check for platform-specific priority constants
+                    if hasattr(psutil, 'ABOVE_NORMAL_PRIORITY_CLASS'):
+                        process.nice(psutil.ABOVE_NORMAL_PRIORITY_CLASS)
+                    else:
+                        # On Unix systems, use negative nice values for higher priority
+                        process.nice(-10)  # Higher priority on Unix systems
+                    print("[SOUND] Increased process priority for better audio performance")
+                except Exception as e:
+                    print(f"[SOUND] Failed to set process priority: {e}")
         except Exception as e:
-            print(f"[ERROR] Failed to create sound composer: {e}")
-        
-        # Manage reaction notes clearing
-        self.last_clear_time = time.time()
-        self.clear_interval = 5.0  # Clear reaction notes every 5 seconds
-        
+            print(f"[CRITICAL] Sound manager initialization failed: {e}")
+            print(f"[DEBUG] Initialization traceback: {traceback.format_exc()}")
+            
         print(f"SoundManager initialization complete for pillar: {pillar_id}")
         
-        # In SoundManager.__init__, set process priority
-        try:
-            # Increase process priority for better audio performance
-            process = psutil.Process(os.getpid())
-            process.nice(psutil.ABOVE_NORMAL_PRIORITY_CLASS)
-            print("[SOUND] Increased process priority for better audio performance")
-        except ImportError:
-            print("[SOUND] Could not import psutil - skipping priority adjustment")
-        except Exception as e:
-            print(f"[SOUND] Failed to set process priority: {e}")
+        # Verify initialization
+        self.verify_initialization()
     
+    def _preload_instruments(self):
+        """OPTIMIZATION: Pre-initialize all instruments we'll need"""
+        try:
+            # Pre-create instruments for faster access during performance
+            print("[SOUND] Pre-initializing instruments for lower latency")
+            
+            # CRITICAL: Create dedicated instrument for direct note playing
+            # This avoids any initialization delay when a touch happens
+            self._direct_instrument = self.session.new_part("xylophone")
+            print("[SOUND] Created dedicated fast-response instrument")
+            
+            # Cache other commonly used instruments
+            instruments = ["piano", "flute", "strings", "synth", "glockenspiel"]
+            for name in instruments:
+                try:
+                    instrument = self.session.new_part(name)
+                    self._instruments_cache[name] = instrument
+                    print(f"[SOUND] Pre-loaded instrument: {name}")
+                except Exception as e:
+                    print(f"[SOUND] Failed to pre-load {name}: {e}")
+                    
+        except Exception as e:
+            print(f"[ERROR] Failed in instrument preloading: {e}")
+
     def run_diagnostics(self):
         """Run sound system diagnostics"""
         print("\n=== SOUND SYSTEM DIAGNOSTICS ===")
@@ -467,107 +558,452 @@ class SoundManager:
         """Test if sound output is working"""
         print("[TEST] Playing test note...")
         try:
-            if hasattr(self, 'session'):
-                piano = self.session.new_part("piano")
-                piano.play_note(60, 0.5, 0.5)  # Play middle C
-                wait(0.5)
-                print("[TEST] Test note completed")
+            if self.session is not None:
+                try:
+                    piano = self.session.new_part("piano")
+                    piano.play_note(60, 0.5, 0.5)  # Play middle C
+                    from scamp import wait
+                    wait(0.5)
+                    print("[TEST] Test note completed")
+                    return True
+                except Exception as e:
+                    print(f"[ERROR] Failed to play test note with piano: {e}")
+            else:
+                print("[ERROR] Cannot play test note - no valid session")
+            return False
         except Exception as e:
-            print(f"[ERROR] Failed to play test note: {e}")
+            print(f"[ERROR] Failed in test_sound method: {e}")
+            return False
     
+    def verify_initialization(self):
+        """Verify that the sound manager is initialized correctly"""
+        if self.session is None:
+            print("[ERROR] SoundManager initialization failed - no valid session")
+            return False
+        if self.composer is None:
+            print("[ERROR] SoundManager initialization failed - no valid composer")
+            return False
+        return True
+    
+    def ensure_direct_instrument(self):
+        """Ensure the direct instrument is ready for playback"""
+        if hasattr(self, '_direct_instrument') and self._direct_instrument is not None:
+            return True  # Already initialized
+            
+        print("[SOUND] Setting up direct instrument...")
+        try:
+            if hasattr(self, 'session') and self.session is not None:
+                # Try to create the instrument directly - prioritize responsive instruments
+                try:
+                    # Xylophone is generally more responsive with clear attack
+                    self._direct_instrument = self.session.new_part("xylophone")
+                    print("[SOUND] Direct xylophone instrument created for responsive playback")
+                    return True
+                except Exception:
+                    # Fallback to piano if xylophone fails
+                    try:
+                        self._direct_instrument = self.session.new_part("piano")
+                        print("[SOUND] Direct piano instrument created (fallback)")
+                        return True
+                    except Exception as e:
+                        print(f"[ERROR] Failed to create standard instruments: {e}")
+                        
+                # Last-resort fallback: try to create any available instrument
+                try:
+                    # Get all available instruments
+                    available_instruments = getattr(self.session, 'available_instruments', 
+                                               ["piano", "xylophone", "marimba", "glockenspiel"])
+                    
+                    # Try instruments one by one until one works
+                    for inst_name in available_instruments:
+                        try:
+                            self._direct_instrument = self.session.new_part(inst_name)
+                            print(f"[SOUND] Created fallback instrument: {inst_name}")
+                            return True
+                        except Exception:
+                            continue
+                            
+                    # If we get here, none of the instruments worked
+                    print("[ERROR] Failed to create any instrument")
+                    return False
+                except Exception as e:
+                    print(f"[ERROR] Fallback instrument creation failed: {e}")
+                    return False
+            else:
+                print("[ERROR] Cannot create direct instrument - no valid session")
+                return False
+        except Exception as e:
+            print(f"[ERROR] Failed to create direct instrument: {e}")
+            return False
+
     def update_pillar_setting(self, param_name, value):
         """Updates the settings dictionary for a specific pillar."""
         print(f"[SOUND] Updating parameter: {param_name} = {value}")
         
-        # Special handling for volume settings
-        if param_name == "volume":
-            # Store current values before updating
-            self.composer.update(param_name, value)
-            
-            # Explicitly handle harmony silencing when volume is 0
-            if "harmony" in value and value["harmony"] == 0:
-                print("[SOUND] Explicitly disabling harmony (volume=0)")
-                self.composer.harmony_enabled = False
-            else:
-                self.composer.harmony_enabled = True
+        # First check if composer is properly initialized
+        if self.composer is None:
+            print("[ERROR] Cannot update settings - composer not initialized")
+            # Try to reinitialize the composer
+            try:
+                if self.session is not None:
+                    print("[SOUND] Attempting to recreate composer...")
+                    self.composer = Composer(self.session, self.state)
+                    print("[SOUND] Successfully recreated composer")
+                else:
+                    print("[ERROR] Cannot recreate composer - no valid session")
+                    return
+            except Exception as e:
+                print(f"[ERROR] Failed to recreate composer: {e}")
+                return
         
-        # Special handling for reaction notes
-        elif param_name == "reaction_notes" and value:
-            print(f"[SOUND] Playing reaction notes: {value}")
-            
-            # Ensure melody instrument is initialized and working
-            instrument_name = self.state["instruments"]["melody"]
-            if self.composer.instrument_manager.melody_instrument() is None:
-                print(f"[FIX] Reinitializing melody instrument '{instrument_name}'")
-                self.composer.instrument_manager.update_instrument(instrument_name, function="melody")
-            
-            # Test direct note generation for debugging
-            self.play_direct_notes(value)
-            # Pass to composer for normal processing - COMMENTED OUT
-            # self.composer.update(param_name, value)
-        
-        # Default handling for other parameters
-        else:
-            self.composer.update(param_name, value)
-
-    def play_direct_notes(self, notes):
-        """Directly play notes using simple volume/duration (reverted for testing)."""
         try:
-            # Ensure the direct_xylophone exists
-            if not hasattr(self, 'direct_xylophone') or self.direct_xylophone is None:
-                 print("[ERROR] Direct xylophone instrument not initialized!")
-                 # Attempt to create it now as a fallback
-                 if hasattr(self, 'session'):
-                    self.direct_xylophone = self.session.new_part("xylophone")
-                    print("[WARN] Created direct xylophone late.")
-                 else:
-                    return # Cannot proceed without session
-
-            if hasattr(self, 'session') and notes:
-                print(f"[DIRECT] Playing {len(notes)} notes directly (simple volume/duration test)")
+            # Special handling for volume settings
+            if param_name == "volume":
+                # Store current values before updating
+                self.composer.update(param_name, value)
                 
-                # Use the stored xylophone part
-
-                # Define a simpler ADSR envelope for testing - COMMENTED OUT
-                # peak_level = 0.9
-                # sustain_level_proportion = 0.7 # Higher sustain
-                # Corrected argument names: attack, decay, sustain, release
-                # envelope = expe.Envelope.adsr(
-                #     attack=0.01,     # Quick attack 
-                #     # peak_level might be implicit or set differently, error was about time args
-                #     decay=0.1,       # Quick decay
-                #     sustain=peak_level * sustain_level_proportion, # High sustain level
-                #     release=0.2      # Quick release
-                # )
-                # note_duration = 1.0 # Shorter total duration for testing
-
-                # --- REVERTED TO SIMPLE VOLUME/DURATION --- 
-                play_volume = 0.9
-                play_duration = 1.5 
-                # --- END REVERT --- 
-
-                for note in notes:
-                    print(f"[DIRECT] Playing note {note} (simple)")
-                    # Play note using the stored instrument and simple volume/duration
-                    # self.direct_xylophone.play_note(note, envelope, note_duration, blocking=False)
-                    self.direct_xylophone.play_note(note, play_volume, play_duration, blocking=False)
-
-                print("[DIRECT] Finished playing notes (simple)")
+                # Explicitly handle harmony silencing when volume is 0
+                if "harmony" in value and value["harmony"] == 0:
+                    print("[SOUND] Explicitly disabling harmony (volume=0)")
+                    self.composer.harmony_enabled = False
+                else:
+                    self.composer.harmony_enabled = True
+            
+            # Special handling for reaction notes
+            elif param_name == "reaction_notes" and value:
+                print(f"[SOUND] Playing reaction notes: {value}")
+                
+                # Ensure melody instrument is initialized and working
+                instrument_name = self.state["instruments"]["melody"]
+                if self.composer.instrument_manager.melody_instrument() is None:
+                    print(f"[FIX] Reinitializing melody instrument '{instrument_name}'")
+                    self.composer.instrument_manager.update_instrument(instrument_name, function="melody")
+                
+                # Test direct note generation for debugging
+                self.play_direct_notes(value)
+            
+            # Default handling for other parameters
+            else:
+                self.composer.update(param_name, value)
+                
         except Exception as e:
-            print(f"[ERROR] Direct note playback failed: {e}")
+            print(f"[ERROR] Failed to update parameter {param_name}: {e}")
+            # Try to recover the composer if needed
+            if self.composer is None:
+                print("[RECOVERY] Attempting to restore composer...")
+                self.verify_initialization()
 
+    def play_direct_notes(self, notes, tube_note_mapping=None):
+        """
+        ULTRA LOW LATENCY direct note player - optimized for minimal delay
+        Bypass all normal processing for the fastest possible response time.
+        
+        Args:
+            notes: List of MIDI note numbers to play
+            tube_note_mapping: Dict mapping tube_id to note, used to track and stop notes from the same tube
+        """
+        if not notes:
+            return False
+            
+        # Track notes by tube for proper note management
+        if tube_note_mapping is None:
+            tube_note_mapping = {}
+            
+        # Skip debounce check to always respond to touches immediately
+        now = time.time()
+        self.last_play_time = now
+        
+        # Get starting timestamp for latency measurement
+        start_time = time.time()
+        print(f"[⚡FAST] Playing {len(notes)} notes: {notes}, from tubes: {list(tube_note_mapping.keys())}")
+        
+        try:
+            # Phase 1: Get or create the direct instrument
+            # Make sure we have a direct instrument 
+            if not hasattr(self, '_direct_instrument') or self._direct_instrument is None:
+                print("[FIX] Direct instrument not available - creating one")
+                success = self.ensure_direct_instrument()
+                if not success:
+                    # If we couldn't create a direct instrument, try using the composer's instrument
+                    print("[FIX] Falling back to composer's instrument")
+                    if hasattr(self, 'composer') and self.composer is not None:
+                        try:
+                            self._direct_instrument = self.composer.instrument_manager.melody_instrument()
+                            if self._direct_instrument is None:
+                                self.composer.instrument_manager.update_instrument("xylophone", function="melody")
+                                self._direct_instrument = self.composer.instrument_manager.melody_instrument()
+                        except Exception as e:
+                            print(f"[ERROR] Fallback to composer instrument failed: {e}")
+            
+            # Phase 2: Play notes using the available instrument
+            if hasattr(self, '_direct_instrument') and self._direct_instrument is not None:
+                # Our primary instrument is available
+                instrument = self._direct_instrument
+                print(f"[SOUND] Using direct instrument for playback")
+            elif hasattr(self, 'composer') and self.composer is not None:
+                # Try the composer's instrument as backup
+                instrument = self.composer.instrument_manager.melody_instrument()
+                print(f"[SOUND] Using composer instrument for playback")
+            elif hasattr(self, 'session') and self.session is not None:
+                # Last resort - create a one-time instrument
+                print(f"[SOUND] Creating one-time emergency instrument")
+                instrument = self.session.new_part("piano")
+            else:
+                print("[ERROR] No valid instrument or session available")
+                return False
+            
+            # Initialize structure for tracking active notes by tube if it doesn't exist
+            if not hasattr(self, '_active_tube_notes'):
+                self._active_tube_notes = {}
+                
+            # Also track active notes by their pitch value (for instruments without end_note)
+            if not hasattr(self, '_active_notes'):
+                self._active_notes = {}
+                
+            # Phase 3: Play each note with maximal reliability
+            volume = 1.0  # Maximum volume
+            success_count = 0
+            
+            # First check if end_note is supported by the instrument
+            has_end_note = hasattr(instrument, 'end_note')
+            
+            # For each tube in the mapping, stop previous notes if needed
+            for tube_id, note in tube_note_mapping.items():
+                # Stop previous note on this tube if one exists
+                if tube_id in self._active_tube_notes:
+                    try:
+                        previous_note = self._active_tube_notes[tube_id]
+                        
+                        # Try to stop the note using the most appropriate method
+                        if has_end_note:
+                            print(f"[SOUND] Stopping previous note {previous_note} on tube {tube_id}")
+                            instrument.end_note(previous_note)
+                        elif hasattr(instrument, 'stop_note'):
+                            # Alternative method in some SCAMP versions
+                            print(f"[SOUND] Stopping previous note {previous_note} using stop_note")
+                            instrument.stop_note(previous_note)
+                        elif hasattr(self, '_active_notes') and previous_note in self._active_notes:
+                            # Try to release the note in the _active_notes dictionary
+                            # Mark it for release by setting its volume to 0
+                            print(f"[SOUND] Marking previous note {previous_note} for release")
+                            self._active_notes[previous_note]['releasing'] = True
+                            
+                            # Play a zero-volume note to "cut off" the previous one (hack)
+                            try:
+                                instrument.play_note(previous_note, 0, 0.01, blocking=False)
+                            except Exception as e:
+                                print(f"[WARNING] Failed to cut off note with zero volume: {e}")
+                    except Exception as stop_error:
+                        print(f"[WARNING] Failed to stop previous note: {stop_error}")
+                
+                # Store the new active note for this tube
+                self._active_tube_notes[tube_id] = note
+            
+            # Play each note with minimal latency
+            for note in notes:
+                try:
+                    # Use non-blocking to maximize responsiveness
+                    # Use a longer duration for better sound quality (1.5 seconds)
+                    instrument.play_note(note, volume, 1, blocking=False)
+                    
+                    # Track this note with its start time for future management
+                    self._active_notes[note] = {
+                        'start_time': now,
+                        'releasing': False,
+                        'volume': volume
+                    }
+                    
+                    success_count += 1
+                    
+                    # Calculate latency but don't wait for it
+                    latency_ms = (time.time() - start_time) * 1000
+                    print(f"[⚡LATENCY] Note {note} triggered in {latency_ms:.1f}ms")
+                except Exception as note_error:
+                    print(f"[ERROR] Note {note} failed: {note_error}")
+            
+            # Clean up old notes from tracking dictionary to prevent memory leaks
+            # Only keep notes that started in the last 10 seconds
+            if hasattr(self, '_active_notes'):
+                old_notes = []
+                for note, info in self._active_notes.items():
+                    if now - info['start_time'] > 10.0:
+                        old_notes.append(note)
+                
+                for note in old_notes:
+                    if note in self._active_notes:
+                        del self._active_notes[note]
+            
+            # Return success if we played at least one note
+            return success_count > 0
+            
+        except Exception as e:
+            print(f"[ERROR] Note playback system completely failed: {e}")
+            # If EVERYTHING else failed, create a completely new session as absolute last resort
+            try:
+                if HAS_SCAMP:
+                    emergency_session = Session()
+                    emergency_instrument = emergency_session.new_part("piano")
+                    for note in notes:
+                        emergency_instrument.play_note(note, 1.0, 0.2, blocking=False)
+                    print("[EMERGENCY] Created completely new session for last-resort playback")
+                    return True
+                return False
+            except Exception as final_error:
+                print(f"[FATAL] Complete system failure: {final_error}")
+                return False
+                
+    def stop_notes(self, tubes):
+        """
+        Stop notes for specific tubes when they are released
+        
+        Args:
+            tubes: List of tube IDs to stop notes for
+            
+        Returns:
+            bool: True if at least one note was stopped
+        """
+        if not tubes:
+            return False
+            
+        print(f"[SOUND] Stopping notes for tubes: {tubes}")
+        
+        # Get the current instrument
+        instrument = None
+        if hasattr(self, '_direct_instrument') and self._direct_instrument is not None:
+            instrument = self._direct_instrument
+        elif hasattr(self, 'composer') and self.composer is not None:
+            instrument = self.composer.instrument_manager.melody_instrument()
+        elif hasattr(self, 'session') and self.session is not None:
+            # Last resort - create a one-time instrument
+            try:
+                instrument = self.session.new_part("piano")
+            except Exception as e:
+                print(f"[ERROR] Failed to create emergency instrument: {e}")
+        
+        if instrument is None:
+            print("[ERROR] No valid instrument available to stop notes")
+            return False
+            
+        # Check if we have active tube notes to stop
+        if not hasattr(self, '_active_tube_notes'):
+            print("[WARNING] No active tube notes to stop")
+            return False
+            
+        # Track success
+        success_count = 0
+        
+        # Check if end_note or stop_note is supported
+        has_end_note = hasattr(instrument, 'end_note')
+        has_stop_note = hasattr(instrument, 'stop_note')
+        
+        # For each tube, stop its note if it exists
+        for tube_id in tubes:
+            if tube_id in self._active_tube_notes:
+                try:
+                    note = self._active_tube_notes[tube_id]
+                    print(f"[SOUND] Stopping note {note} for tube {tube_id}")
+                    
+                    # Try to stop the note using the most appropriate method
+                    if has_end_note:
+                        instrument.end_note(note)
+                        success_count += 1
+                    elif has_stop_note:
+                        instrument.stop_note(note)
+                        success_count += 1
+                    elif hasattr(self, '_active_notes') and note in self._active_notes:
+                        # Mark it for release using zero volume
+                        self._active_notes[note]['releasing'] = True
+                        
+                        # Play a zero-volume note to "cut off" the previous one
+                        try:
+                            instrument.play_note(note, 0, 0.01, blocking=False)
+                            success_count += 1
+                        except Exception as e:
+                            print(f"[WARNING] Failed to stop note with zero volume: {e}")
+                    
+                    # Remove the note from active tube notes regardless of success
+                    del self._active_tube_notes[tube_id]
+                    
+                except Exception as e:
+                    print(f"[ERROR] Failed to stop note for tube {tube_id}: {e}")
+        
+        return success_count > 0
+
+    def manage_active_notes(self):
+        """
+        Manage the lifecycle of active notes - release old notes, clean up memory
+        This should be called periodically from the tick method
+        """
+        now = time.time()
+        
+        if not hasattr(self, '_active_notes') or not self._active_notes:
+            return  # Nothing to do
+        
+        # Get the current instrument if available
+        instrument = None
+        if hasattr(self, '_direct_instrument') and self._direct_instrument:
+            instrument = self._direct_instrument
+        elif hasattr(self, 'composer') and self.composer and hasattr(self.composer, 'instrument_manager'):
+            instrument = self.composer.instrument_manager.melody_instrument()
+        
+        if not instrument:
+            # No valid instrument to work with, just clean up old notes
+            self._active_notes = {}
+            return
+            
+        # Identify notes to clean up
+        notes_to_remove = []
+        
+        # Process each active note
+        for note, info in self._active_notes.items():
+            age = now - info['start_time']
+            
+            # Notes older than 10 seconds should be removed
+            if age > 10.0:
+                notes_to_remove.append(note)
+                # Try to explicitly stop old notes if possible
+                if hasattr(instrument, 'end_note'):
+                    try:
+                        instrument.end_note(note)
+                    except Exception:
+                        pass  # Ignore errors when stopping old notes
+            
+            # Notes in releasing state should fade out
+            elif info.get('releasing', False):
+                # Play a zero-volume version to effectively stop it
+                try:
+                    instrument.play_note(note, 0, 0.01, blocking=False)
+                    notes_to_remove.append(note)  # Remove after processing
+                except Exception:
+                    pass  # Ignore errors
+        
+        # Clean up notes marked for removal
+        for note in notes_to_remove:
+            if note in self._active_notes:
+                del self._active_notes[note]
+                
     def tick(self, time_delta=1/30.0):
         """Process a time step in the sound system."""
-        # Periodically clear reaction notes
-        current_time = time.time()
-        if current_time - self.last_clear_time > self.clear_interval:
-            print("[SOUND] Periodic reaction notes clearing")
-            self.update_pillar_setting("reaction_notes", [])
-            self.last_clear_time = current_time
+        try:
+            # Periodically clean up active notes
+            self.manage_active_notes()
             
-        # Process sound generation
-        self.composer.play()
-        wait(time_delta, units="time")
+            # Periodically clear reaction notes
+            current_time = time.time()
+            if current_time - self.last_clear_time > self.clear_interval:
+                print("[SOUND] Periodic reaction notes clearing")
+                self.update_pillar_setting("reaction_notes", [])
+                self.last_clear_time = current_time
+                
+            # Process sound generation if composer exists
+            if hasattr(self, 'composer') and self.composer is not None:
+                try:
+                    self.composer.play()
+                    wait(time_delta, units="time")
+                except Exception as e:
+                    print(f"[ERROR] Composer play/wait failed: {e}")
+        except Exception as e:
+            print(f"[ERROR] Error in sound manager tick: {e}")
 
     def get_pillar_settings(self):
         """Return current sound settings for diagnostics"""
@@ -579,41 +1015,114 @@ class SoundManager:
             "last_notes": getattr(self, "last_notes", [])
         }
 
-    # Either comment out or remove the emergency_note method
-    '''
-    def play_emergency_note(self, note=60):
-        """Emergency direct note playback with minimal latency"""
-        print(f"\n[EMERGENCY] 🔊 Playing emergency note {note}")
+    def cleanup(self):
+        """Clean up resources properly before shutdown"""
+        print("[SOUND] Performing sound system cleanup...")
+        
         try:
-            # Use cached session if possible
-            if not hasattr(self, '_emergency_session'):
-                from scamp import Session
-                self._emergency_session = Session()
-                self._emergency_session.tempo = 120  # Faster tempo
-                self._emergency_piano = self._emergency_session.new_part("piano")
+            # Stop any active notes
+            if hasattr(self, '_active_notes') and self._active_notes:
+                # Get the main instrument
+                instrument = None
+                if hasattr(self, '_direct_instrument') and self._direct_instrument:
+                    instrument = self._direct_instrument
+                elif hasattr(self, 'composer') and self.composer and self.composer.instrument_manager:
+                    instrument = self.composer.instrument_manager.melody_instrument()
+                
+                if instrument:
+                    # Try to stop each active note
+                    for note in self._active_notes.keys():
+                        try:
+                            if hasattr(instrument, 'end_note'):
+                                instrument.end_note(note)
+                            elif hasattr(instrument, 'stop_note'):
+                                instrument.stop_note(note)
+                        except Exception:
+                            pass  # Ignore errors when stopping notes
+                
+                # Clear the active notes dictionary
+                self._active_notes.clear()
             
-            # Use ultra-short notes for immediate response
-            start_time = time.time()
-            self._emergency_piano.play_note(note, 1.0, 0.2, blocking=False)
+            # Clear any composer resources
+            if hasattr(self, 'composer') and self.composer:
+                # Stop any active forks
+                for fork_name, fork in getattr(self.composer, 'active_forks', {}).items():
+                    if fork and hasattr(fork, 'kill'):
+                        try:
+                            fork.kill()
+                            print(f"[SOUND] Stopped active fork: {fork_name}")
+                        except Exception:
+                            pass
+                
+                # Clear active notes in composer
+                if hasattr(self.composer, 'active_reaction_notes'):
+                    self.composer.active_reaction_notes.clear()
             
-            # Report latency but don't wait
-            print(f"[EMERGENCY] Note played, latency: {time.time() - start_time:.3f}s")
+            # Close the SCAMP session if present
+            if hasattr(self, 'session') and self.session:
+                # Some SCAMP versions have an explicit shutdown method
+                if hasattr(self.session, 'cleanup') and callable(self.session.cleanup):
+                    try:
+                        self.session.cleanup()
+                        print("[SOUND] SCAMP session cleanup called")
+                    except Exception as e:
+                        print(f"[WARNING] Error during session cleanup: {e}")
+                        
+                # Alternative shutdown approaches
+                if hasattr(self.session, 'stop') and callable(self.session.stop):
+                    try:
+                        self.session.stop()
+                        print("[SOUND] SCAMP session stopped")
+                    except Exception:
+                        pass
+                        
+                # Clear reference to session
+                self.session = None
+            
+            print("[SOUND] Cleanup complete")
             return True
         except Exception as e:
-            print(f"[EMERGENCY] Emergency playback failed: {e}")
+            print(f"[ERROR] Error during sound system cleanup: {e}")
             return False
-    '''
+            
+    def restart_sound_system(self):
+        """Attempt to restart the sound system after failures"""
+        print("[SOUND] Attempting to restart sound system...")
+        
+        try:
+            # Clean up existing resources
+            self.cleanup()
+            
+            # Create a new session
+            if HAS_SCAMP:
+                self.session = Session()
+                print("[SOUND] Created new SCAMP session")
+                
+                # Recreate direct instrument
+                success = self.ensure_direct_instrument()
+                if not success:
+                    print("[WARNING] Failed to recreate direct instrument")
+                
+                # Recreate composer if needed
+                if not hasattr(self, 'composer') or self.composer is None:
+                    try:
+                        self.composer = Composer(self.session, self.state)
+                        print("[SOUND] Created new composer")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to recreate composer: {e}")
+                
+                print("[SOUND] Sound system restarted successfully")
+                return True
+            else:
+                print("[ERROR] SCAMP not available - cannot restart sound system")
+                return False
+        except Exception as e:
+            print(f"[ERROR] Failed to restart sound system: {e}")
+            return False
 
 if __name__=="__main__":
-
     sm = SoundManager("test")
     while True:
         sm.tick()
-    # session = Session()
-    # session.bpm = 60
-    # comp = Composer(session, DEFAULT_STATE)
-    # while True:
-        # comp.play()
-        # wait(1/30.0, units="time")
 
     

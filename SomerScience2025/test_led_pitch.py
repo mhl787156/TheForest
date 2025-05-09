@@ -13,6 +13,7 @@ import sys
 import os
 import threading
 import queue
+import serial
 
 # Add the raveforest directory to sys.path so we can import from it
 sys.path.append(os.path.join(os.path.dirname(__file__), 'raveforest'))
@@ -140,5 +141,65 @@ def test_led_status_and_pitch():
     
     print("Test completed successfully!")
 
+def test_teensy_communication(port='/dev/ttyACM0', baud=9600, duration=60):
+    # Open serial connection
+    ser = serial.Serial(port, baud)
+    print(f"Connected to {port} at {baud} baud")
+    
+    # Record start time
+    start_time = time.time()
+    end_time = start_time + duration
+    
+    # Test commands to send
+    test_commands = [
+        "LED,0,100,255;",    # Set tube 0 to hue 100, brightness 255
+        "GETLED;",           # Request LED status
+        "ALLLED,0,255,0,50,255,0,100,255,0,150,255,0,200,255,0,250,255,0;"  # Set all LEDs
+    ]
+    command_index = 0
+    last_command_time = start_time
+    
+    # Create log file
+    log_file = open("teensy_communication_log.txt", "w")
+    
+    try:
+        while time.time() < end_time:
+            # Send test command every 5 seconds
+            current_time = time.time()
+            if current_time - last_command_time > 5:
+                command = test_commands[command_index % len(test_commands)]
+                ser.write(command.encode())
+                log_entry = f"[{current_time - start_time:.2f}s] SENT: {command}\n"
+                print(log_entry, end="")
+                log_file.write(log_entry)
+                
+                command_index += 1
+                last_command_time = current_time
+            
+            # Read and log any incoming data
+            if ser.in_waiting:
+                data = ser.readline().decode('utf-8', errors='ignore').strip()
+                if data:
+                    log_entry = f"[{current_time - start_time:.2f}s] RECEIVED: {data}\n"
+                    print(log_entry, end="")
+                    log_file.write(log_entry)
+            
+            # Short sleep to avoid hogging CPU
+            time.sleep(0.01)
+                
+    except KeyboardInterrupt:
+        print("\nTest interrupted by user")
+    finally:
+        ser.close()
+        log_file.close()
+        print(f"\nTest completed. Log saved to teensy_communication_log.txt")
+
 if __name__ == "__main__":
-    test_led_status_and_pitch() 
+    import argparse
+    parser = argparse.ArgumentParser(description="Test Teensy-Pi communication")
+    parser.add_argument("--port", default="/dev/ttyACM0", help="Serial port")
+    parser.add_argument("--baud", type=int, default=9600, help="Baud rate")
+    parser.add_argument("--duration", type=int, default=60, help="Test duration in seconds")
+    args = parser.parse_args()
+    
+    test_teensy_communication(args.port, args.baud, args.duration) 

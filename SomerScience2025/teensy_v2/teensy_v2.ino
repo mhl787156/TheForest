@@ -28,7 +28,7 @@ unsigned long startMillis1 = 0;
 unsigned long startMillis2 = 0;
 unsigned long currentMillis;
 const unsigned long period0 = 200;  // Polling for colour changes from python
-const unsigned long period1 = 100;   // Checking touch sensor status
+const unsigned long period1 = 50;   // Checking touch sensor status
 const unsigned long period2 = 50;   // Updating lights based on touch sensor status (effect speed)
 
 // Serial
@@ -268,7 +268,7 @@ void readallcaps() {
 // ------- Setup and loop
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   FastLED.addLeds<WS2811, LED_PIN_0, GRB>(leds[0], NUM_LEDS_0);
   FastLED.addLeds<WS2811, LED_PIN_1, GRB>(leds[1], NUM_LEDS_1);
   FastLED.addLeds<WS2811, LED_PIN_2, GRB>(leds[2], NUM_LEDS_2);

@@ -56,10 +56,10 @@
         "volume": {
             "melody": 0.9,
             "harmony": 0,
-            "background": 0.5
+            "background": 1
         },
         "instruments": {
-            "melody": "xylophone",
+            "melody": "piano",
             "harmony": "flute",
             "background": "strings"
         },

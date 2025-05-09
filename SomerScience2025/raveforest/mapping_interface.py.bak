@@ -161,9 +161,9 @@ class SoundState(object):
                 print(f"[WARNING] Scale {self.melody_scale} not in SCALES_TYPES_LIST, using first scale")
                 self.melody_scale = SCALES_TYPES_LIST[0]
                 
-            new_idx = (SCALES_TYPES_LIST.index(self.melody_scale) + 1) % len(SCALES_TYPES_LIST)
-            self.melody_scale = SCALES_TYPES_LIST[new_idx]
-            return self.melody_scale
+        new_idx = (SCALES_TYPES_LIST.index(self.melody_scale) + 1) % len(SCALES_TYPES_LIST)
+        self.melody_scale = SCALES_TYPES_LIST[new_idx]
+        return self.melody_scale
         except Exception as e:
             print(f"[ERROR] Error changing scale: {e}")
             return self.melody_scale
@@ -174,9 +174,9 @@ class SoundState(object):
                 print(f"[WARNING] Baseline style {self.baseline_style} not in BASELINE_STYLE, using first style")
                 self.baseline_style = BASELINE_STYLE[0]
                 
-            new_idx = (BASELINE_STYLE.index(self.baseline_style) + 1) % len(BASELINE_STYLE)
-            self.baseline_style = BASELINE_STYLE[new_idx]        
-            return self.baseline_style
+        new_idx = (BASELINE_STYLE.index(self.baseline_style) + 1) % len(BASELINE_STYLE)
+        self.baseline_style = BASELINE_STYLE[new_idx]        
+        return self.baseline_style
         except Exception as e:
             print(f"[ERROR] Error changing baseline: {e}")
             return self.baseline_style
@@ -211,8 +211,8 @@ class LightState(object):
 
     def __getitem__(self, indices):
         try:
-            if not isinstance(indices, list):
-                indices = [indices]
+        if not isinstance(indices, list):
+            indices = [indices]
                 
             # Filter out invalid indices
             valid_indices = [i for i in indices if 0 <= i < len(self.lights)]
@@ -221,9 +221,9 @@ class LightState(object):
             ret = [self.lights[i] for i in valid_indices]
             
             # Return single value or list
-            if len(ret) == 1:
-                return ret[0]
-            return ret
+        if len(ret) == 1:
+            return ret[0]
+        return ret
         except Exception as e:
             print(f"[ERROR] Error in LightState.__getitem__: {e}")
             # Return safe default
@@ -274,7 +274,7 @@ class Pillar_Mapper_Base(object):
             self.num_tubes = 6
             self.sound_state = SoundState(None)
             self.light_state = LightState(self.num_tubes, random_init=True)
-            self.state_array = [False for _ in range(self.num_tubes)]
+        self.state_array = [False for _ in range(self.num_tubes)]
 
     def update_pillar(self, state_array) -> Tuple[SoundState, LightState]:
         """
@@ -295,13 +295,13 @@ class Pillar_Mapper_Base(object):
                 else:
                     state_array = state_array + [False] * (len(self.state_array) - len(state_array))
 
-            # Update internal state
+        # Update internal state
             self.interaction_update_sound_light(self.state_array.copy(), state_array)
 
             # Store new state for next update
             self.state_array = state_array.copy()  # Make copy to avoid reference issues
 
-            return self.sound_state, self.light_state
+        return self.sound_state, self.light_state
         except Exception as e:
             print(f"[ERROR] Error in update_pillar: {e}")
             return self.sound_state, self.light_state
@@ -335,7 +335,7 @@ class FixedMapper(Pillar_Mapper_Base):
             # Default octave is 4 if not specified
             self.octave = pillar_cfg.get("octave", 4)
 
-            # Create a fixed color map from midi note (0-11) to hue (0-255)
+        # Create a fixed color map from midi note (0-11) to hue (0-255)
             self.fixed_hue_map = getattr(ifc, "FIXED_NOTE_HUE_MAP", {})
             
             # If hue map is empty, create a default one
@@ -353,18 +353,18 @@ class FixedMapper(Pillar_Mapper_Base):
     # This should be implemented in child classes
     def interaction_update_sound_light(self, old_state, new_state):
         try:
-            # Clears the reaction note for the Composer 
-            self.sound_state.clear_reaction_notes()
+        # Clears the reaction note for the Composer 
+        self.sound_state.clear_reaction_notes()
 
-            # If we now detect as active, we add a reaction note and change the light state as specified
-            for tube_id, (old_active, active) in enumerate(zip(old_state, new_state)):
+        # If we now detect as active, we add a reaction note and change the light state as specified
+        for tube_id, (old_active, active) in enumerate(zip(old_state, new_state)):
                 if tube_id >= len(self.notes):
                     continue  # Skip tubes without corresponding notes
                     
-                if not old_active and active:
-                    note = self.notes[tube_id]
-                    note_to_play = note + self.octave * 12
-                    self.sound_state.append_reaction_notes(note_to_play)
+            if not old_active and active:
+                note = self.notes[tube_id]
+                note_to_play = note + self.octave * 12
+                self.sound_state.append_reaction_notes(note_to_play)
                     
                     # Get hue from fixed_hue_map or use a default if note not in map
                     hue = self.fixed_hue_map.get(note % 12, (note * 21) % 256)
@@ -379,7 +379,7 @@ class RotationMapper(Pillar_Mapper_Base):
         try:
             # Get tube allocation or use defaults
             if "tube_allocation" in pillar_cfg:
-                self.tube_allocation = pillar_cfg["tube_allocation"]
+        self.tube_allocation = pillar_cfg["tube_allocation"]
                 # Pad or truncate to match num_tubes
                 if len(self.tube_allocation) < self.num_tubes:
                     # Default allocations for missing tubes
@@ -393,9 +393,9 @@ class RotationMapper(Pillar_Mapper_Base):
                 defaults = ["i", "t", "k+", "k-", "m", "s", "b"]
                 self.tube_allocation = defaults[:self.num_tubes]
 
-            # Create a colormap from red to blue scaled between 0 and 255
+        # Create a colormap from red to blue scaled between 0 and 255
             try:
-                self.cmap = plt.get_cmap('coolwarm')
+        self.cmap = plt.get_cmap('coolwarm')
             except Exception as cmap_error:
                 print(f"[WARNING] Failed to get colormap 'coolwarm': {cmap_error}")
                 # Create a simple fallback colormap function
@@ -415,23 +415,23 @@ class RotationMapper(Pillar_Mapper_Base):
                     
                 tube_allocation = self.tube_allocation[tube_id]
                 
-                if active:
-                    delta = 1 
+            if active:
+                delta = 1 
                     try:
-                        if 'i' in tube_allocation:
-                            value = self.sound_state.change_instrument()
-                        elif 't' in tube_allocation:
-                            value = self.sound_state.change_tempo(delta=5)
-                        elif 'k+' in tube_allocation:
-                            value = self.sound_state.change_key(delta=5)
-                        elif 'k-' in tube_allocation:
-                            value = self.sound_state.change_key(delta=-4)
-                        elif 'm' in tube_allocation:
-                            value = self.sound_state.change_melody()
-                        elif 's' in tube_allocation:
-                            value = self.sound_state.change_scale()
-                        elif 'b' in tube_allocation:
-                            value = self.sound_state.change_baseline()
+                if 'i' in tube_allocation:
+                    value = self.sound_state.change_instrument()
+                elif 't' in tube_allocation:
+                    value = self.sound_state.change_tempo(delta=5)
+                elif 'k+' in tube_allocation:
+                    value = self.sound_state.change_key(delta=5)
+                elif 'k-' in tube_allocation:
+                    value = self.sound_state.change_key(delta=-4)
+                elif 'm' in tube_allocation:
+                    value = self.sound_state.change_melody()
+                elif 's' in tube_allocation:
+                    value = self.sound_state.change_scale()
+                elif 'b' in tube_allocation:
+                    value = self.sound_state.change_baseline()
 
                         # Generate a random color using the colormap
                         try:
@@ -461,7 +461,7 @@ class EventRotationMapper(Pillar_Mapper_Base):
         try:
             # Get tube allocation or use defaults
             if "tube_allocation" in pillar_cfg:
-                self.tube_allocation = pillar_cfg["tube_allocation"]
+        self.tube_allocation = pillar_cfg["tube_allocation"]
                 # Pad or truncate to match num_tubes
                 if len(self.tube_allocation) < self.num_tubes:
                     # Default allocations for missing tubes
@@ -475,9 +475,9 @@ class EventRotationMapper(Pillar_Mapper_Base):
                 defaults = ["i", "t+", "t-", "k+", "k-", "m", "s", "b"]
                 self.tube_allocation = defaults[:self.num_tubes]
 
-            # Create a colormap from red to blue scaled between 0 and 255
+        # Create a colormap from red to blue scaled between 0 and 255
             try:
-                self.cmap = plt.get_cmap('coolwarm')
+        self.cmap = plt.get_cmap('coolwarm')
             except Exception as cmap_error:
                 print(f"[WARNING] Failed to get colormap 'coolwarm': {cmap_error}")
                 # Create a simple fallback colormap function
@@ -496,26 +496,26 @@ class EventRotationMapper(Pillar_Mapper_Base):
                     continue  # Skip invalid tube indices
                     
                 # Only change on a rising edge (0→1)
-                if not old_active and active:
+            if not old_active and active:
                     tube_allocation = self.tube_allocation[tube_id]
-                    delta = 1 
+                delta = 1 
                     try:
-                        if 'i' in tube_allocation:
-                            value = self.sound_state.change_instrument()
-                        elif 't+' in tube_allocation:
-                            value = self.sound_state.change_tempo(delta=10)
-                        elif 't-' in tube_allocation:
-                            value = self.sound_state.change_tempo(delta=-10)
-                        elif 'k+' in tube_allocation:
-                            value = self.sound_state.change_key(delta=5)
-                        elif 'k-' in tube_allocation:
-                            value = self.sound_state.change_key(delta=-4)
-                        elif 'm' in tube_allocation:
-                            value = self.sound_state.change_melody()
-                        elif 's' in tube_allocation:
-                            value = self.sound_state.change_scale()
-                        elif 'b' in tube_allocation:
-                            value = self.sound_state.change_baseline()
+                if 'i' in tube_allocation:
+                    value = self.sound_state.change_instrument()
+                elif 't+' in tube_allocation:
+                    value = self.sound_state.change_tempo(delta=10)
+                elif 't-' in tube_allocation:
+                    value = self.sound_state.change_tempo(delta=-10)
+                elif 'k+' in tube_allocation:
+                    value = self.sound_state.change_key(delta=5)
+                elif 'k-' in tube_allocation:
+                    value = self.sound_state.change_key(delta=-4)
+                elif 'm' in tube_allocation:
+                    value = self.sound_state.change_melody()
+                elif 's' in tube_allocation:
+                    value = self.sound_state.change_scale()
+                elif 'b' in tube_allocation:
+                    value = self.sound_state.change_baseline()
 
                         # Generate a random color using the colormap
                         try:
@@ -623,19 +623,14 @@ class LightSoundMapper(Pillar_Mapper_Base):
     def hue_to_semitone(self, hue):
         """Convert a hue value (0-255) to a semitone (0-11)"""
         try:
-            # Ensure hue is within valid range
-            hue = max(0, min(255, int(hue)))
+            # Simple direct mapping - divide the hue range into 12 equal parts
+            if hue < 0:
+                hue = 0
+            if hue > 255:
+                hue = 255
             
-            # Use the pre-calculated mapping for consistent results
-            if hasattr(self, 'hue_to_note_map') and hue in self.hue_to_note_map:
-                semitone = self.hue_to_note_map[hue]
-            else:
-                # Fallback to direct calculation if mapping is not available
-                # Map 0-255 to 0-11 range (12 semitones)
-                semitone = (hue * 12) // 256
-            
-            # Ensure we get a value within 0-11 range
-            semitone = semitone % 12
+            # Map 0-255 to 0-11 range
+            semitone = (hue * 12) // 256
             
             print(f"[MAPPING] Hue {hue} maps to semitone {semitone} (octave {self.octave})")
             return semitone
@@ -712,37 +707,15 @@ class LightSoundMapper(Pillar_Mapper_Base):
             # Clears the reaction note for the Composer 
             self.sound_state.clear_reaction_notes()
     
-            # Process all active tubes to support polyphony (multiple simultaneous touches)
-            active_tubes = []
+            # This method is intentionally empty for LightSoundMapper
+            # Touch-triggered notes are handled in main.py based on the current light hue
             
-            # First identify all active tubes
-            for tube_id, active in enumerate(new_state):
-                if active:
-                    # Collect all active tubes for processing
-                    active_tubes.append(tube_id)
+            # Uncomment for debugging specific edge cases
+            # print(f"[DEBUG] LightSoundMapper.interaction_update_sound_light called with old_state={old_state}, new_state={new_state}")
             
-            # Process each active tube
-            for tube_id in active_tubes:
-                # Make sure we have a valid hue for this tube
-                hue, brightness, _ = self.light_state[tube_id]
-                
-                # Skip if tube is not lit or has no brightness
-                if brightness < 20:
-                    continue
-                    
-                # Convert hue to note
-                semitone = self.hue_to_semitone(hue)
-                note_to_play = semitone + self.octave * 12
-                
-                # Add to reaction notes (these will be played in main.py)
-                self.sound_state.append_reaction_notes(note_to_play)
-                print(f"[DEBUG] Added reaction note {note_to_play} for tube {tube_id} (hue={hue})")
-                
-            # Return true if we added any notes
-            return len(self.sound_state.reaction_notes) > 0
+            pass  # Keep the method structure but do nothing for touch events here
         except Exception as e:
             print(f"[ERROR] Error in LightSoundMapper.interaction_update_sound_light: {e}")
-            return False
 
 def generate_mapping_interface(cfg, cfg_pillar) -> Pillar_Mapper_Base:
     """Generator Function which you can call which reads the config
@@ -772,7 +745,7 @@ def generate_mapping_interface(cfg, cfg_pillar) -> Pillar_Mapper_Base:
         # Get the class and instantiate it
         targetClass = globals()[map_class_name]
         print(f"[INFO] Creating mapping interface: {map_class_name}")
-        return targetClass(cfg, cfg_pillar)
+    return targetClass(cfg, cfg_pillar)
     except Exception as e:
         print(f"[ERROR] Error creating mapping interface: {e}")
         # Default to FixedMapper as fallback
