@@ -144,6 +144,7 @@ class Composer:
         volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
         env_cfg = self.state["envelopes"]["melody"]
+        print(env_cfg)
         envelope = Envelope.adsr(
             env_cfg["attack"],
             volume,
