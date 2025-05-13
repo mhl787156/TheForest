@@ -296,6 +296,12 @@ class ColorSequencerMapper(Pillar_Mapper_Base):
         note_to_play = note + self.octave * 12
         self.sound_state.append_reaction_notes(note_to_play)
 
+        print(f"[STEP {self.step_index}] hue={hue}, s={s}, v={v} → note={note}, midi={note_to_play}")
+
+        print("Full light_state:")
+        for i in range(self.num_tubes):
+            print(f"  Tube {i}: {self.light_state[i]}")
+
         # Advance step
         now = time.time()
         if now - self.last_step_time >= self.step_interval:
