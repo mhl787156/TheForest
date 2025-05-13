@@ -21,7 +21,7 @@
             "map": "ColorSequencerMapper",
             "notes": [3, 3, 3, 3, 3, 3],
             "octave": 2,
-            "bpm": 10,
+            "bpm": 100,
             "instruments": {
                 "melody": "pluck_synth",
                 "harmony": "flute",
