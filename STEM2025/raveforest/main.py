@@ -79,7 +79,12 @@ class Controller():
         self.pillar_manager.read_from_serial()
 
         current_btn_press = self.pillar_manager.get_all_touch_status()
-        # print("current btn press:", current_btn_press)
+        print("current btn press:", current_btn_press)
+
+        # Update Mapping Interface light state object from Pillar object light statuses as read from Serial
+        for i in range(self.pillar_manager.num_tubes):
+            hue, brightness, _ = self.pillar_manager.get_light_status(i)
+            self.mapping_interface.light_state[i] = (hue, 255, brightness)
 
         # Generate the lights and notes based on the current btn inputs
         sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)

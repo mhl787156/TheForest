@@ -270,7 +270,6 @@ class Pillar():
         except Exception as e:
             print(f"[ERROR] Error processing light queue: {e}")
 
-
     def reset_touch_status(self):
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
 
