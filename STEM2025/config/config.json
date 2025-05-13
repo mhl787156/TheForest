@@ -20,10 +20,10 @@
             "num_tubes": 6,
             "map": "ColorSequencerMapper",
             "notes": [3, 3, 3, 3, 3, 3],
-            "octave": 3,
+            "octave": 2,
             "bpm": 200,
             "instruments": {
-                "melody": "pluck_synth",
+                "melody": "strings",
                 "harmony": "flute",
                 "background": "strings"
             }
