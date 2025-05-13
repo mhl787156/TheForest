@@ -76,10 +76,12 @@ class Controller():
 
     def loop(self):
 
+        # Get the light state from the Teensy through a Serial read
         self.pillar_manager.read_from_serial()
 
-        current_btn_press = self.pillar_manager.get_all_touch_status()
-        print("current btn press:", current_btn_press)
+        # Get button press. NOTE: this is not used for this implementation
+        # current_btn_press = self.pillar_manager.get_all_touch_status()
+        current_btn_press = [0, 0, 0, 0, 0, 0]
 
         # Update Mapping Interface light state object from Pillar object light statuses as read from Serial
         for i in range(self.pillar_manager.num_tubes):
@@ -88,8 +90,6 @@ class Controller():
 
         # Generate the lights and notes based on the current btn inputs
         sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
-        # print("lights:", light_state)
-        # print("sounds:", sound_state)
 
         print("Setting params", sound_state)
 
