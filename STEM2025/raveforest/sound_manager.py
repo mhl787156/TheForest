@@ -1,6 +1,6 @@
 from scamp import Session, wait, current_clock
 import scamp_extensions.process as seprocess
-import expenvelope as Envelope
+import expenvelope as expe
  
 import multiprocessing as mp
 from queue import Queue
@@ -143,16 +143,11 @@ class Composer:
     def fork_melody_single_note(self, note):
         volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
-        env_cfg = self.state["envelopes"]["melody"]
-        envelope = Envelope.adsr(
-            env_cfg["attack"],
-            volume,
-            env_cfg["sustain"],
-            env_cfg["decay"],
-            env_cfg["release"],
-            env_cfg["duration"]
-        )
-        instrument.play_note(note, volume=volume, blocking=True)
+        # envelope = expe.envelope.Envelope.from_levels_and_durations(
+        #     [0.1, volume, 1.0], [0.5, 3.0]
+        # )
+        # envelope = expe.envelope.Envelope.adsr(0.5, volume, 1.0, 0.2, 0.15, 0.5)
+        instrument.play_note(note, volume, 1.0, blocking=True)
 
     def fork_melody(self, shared_state):        
         # Generate initial note
