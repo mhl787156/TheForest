@@ -18,7 +18,7 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "map": "FixedMapper",
+            "map": "ColorSequencerMapper",
             "notes": [0, 0, 0, 0, 0, 0],
             "octave": 4
         },
@@ -27,7 +27,7 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "map": "FixedMapper",
+            "map": "ColorSequencerMapper",
             "notes": [3, 3, 3, 3, 3, 3],
             "octave": 4
         },
@@ -36,7 +36,7 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "map": "FixedMapper",
+            "map": "ColorSequencerMapper",
             "notes": [7, 7, 7, 7, 7, 7],
             "octave": 5
         },
@@ -45,7 +45,7 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "map": "FixedMapper",
+            "map": "ColorSequencerMapper",
             "notes": [0, 0, 0, 0, 0, 0],
             "octave": 4
         }

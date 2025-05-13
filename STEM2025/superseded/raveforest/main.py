@@ -57,7 +57,6 @@ class Controller():
         self.sound_manager = SoundManager(hostname)
         self.loop_idx = 0
         self.running = True
-
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
 
     def start(self, frequency):
@@ -86,8 +85,10 @@ class Controller():
         # print("lights:", light_state)
         # print("sounds:", sound_state)
 
-        print("Setting params", sound_state)
+        # print(f"Sending Lights {self.pillar_manager.id}: {light_state}")
+        self.pillar_manager.send_all_light_change(light_state)
 
+        # print("Setting params", sound_state)
         for param_name, value in sound_state.items():
             self.sound_manager.update_pillar_setting(param_name, value) 
 
@@ -115,6 +116,7 @@ if __name__=="__main__":
     # Get Hostname
     hostname = args.hostname if args.hostname is not None else socket.gethostname()
     print("HOSTNAME is ", hostname)
+        
 
     # Read the JSON config file
     with open(args.config, 'r') as config_file:

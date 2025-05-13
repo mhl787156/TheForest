@@ -148,6 +148,7 @@ class Pillar_Mapper_Base(object):
 
         # Update internal state
         self.interaction_update_sound_light(self.state_array, state_array)
+
         self.state_array = state_array
 
         return self.sound_state, self.light_state
@@ -184,6 +185,7 @@ class FixedMapper(Pillar_Mapper_Base):
                 self.sound_state.append_reaction_notes(note_to_play)
                 self.light_state[tube_id] = (self.fixed_hue_map[note], 255, 255)
 
+# Implementation of Pillar Mapper Base to use
 class RotationMapper(Pillar_Mapper_Base):
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
@@ -223,6 +225,7 @@ class RotationMapper(Pillar_Mapper_Base):
 
                 self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(random.random())[:3]))
 
+# Implementation of Pillar Mapper Base to use
 class EventRotationMapper(Pillar_Mapper_Base):
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
@@ -263,38 +266,6 @@ class EventRotationMapper(Pillar_Mapper_Base):
 
                 self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(random.random())[:3]))
 
-class ColorSequencerMapper(Pillar_Mapper_Base):
-    '''
-    Implementation similar to EVOMUSART 2024 but using new sound library.
-
-    The aim here is to use the pillars like a step sequencer and the colour they are currently lit at
-    corresponds to the note that they play.
-    '''
-    def __init__(self, cfg, pillar_cfg):
-        super().__init__(cfg, pillar_cfg)
-        self.num_tubes = pillar_cfg["num_tubes"]
-        self.octave = pillar_cfg["octave"]
-        self.step_index = 0
-
-    def get_note_from_hue(self, hue):
-        """Map hue (0–255) to pitch class (0–11)"""
-        note = int((hue % 256) / 256 * 12)  # gives 0–11
-        return note
-
-    def interaction_update_sound_light(self, old_state, new_state):
-        # Note - state array is ignorted for this implementation so old_state, new_state not used
-        self.sound_state.clear_reaction_notes()
-
-        # Step through each tube
-        hue, s, v = self.light_state[self.step_index]
-        note = self.get_note_from_hue(hue)
-        note_to_play = note + self.octave * 12
-        self.sound_state.append_reaction_notes(note_to_play)
-
-        # Advance step
-        self.step_index = (self.step_index + 1) % self.num_tubes
-
-        return self.sound_state, self.light_state
 
 
 def generate_mapping_interface(cfg, cfg_pillar) -> Pillar_Mapper_Base:

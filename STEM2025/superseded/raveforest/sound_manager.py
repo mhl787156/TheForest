@@ -224,14 +224,18 @@ class Composer:
                     instrument.play_note(note, volume, 0.5, "staccato", blocking=True)
                     wait(0.5)
 
+
 class SoundManager:
     """Manages and schedules sound playback for pillars using the Sonic Pi server."""          
     
     def __init__(self, pillar_id, initial_state=None):
         self.pillar_id = pillar_id
+
         self.session = Session()
         self.state = initial_state if initial_state is not None else DEFAULT_STATE
+
         self.composer = Composer(self.session, self.state)
+
 
     def __repr__(self):
         """String representation of the pillar for debugging."""
