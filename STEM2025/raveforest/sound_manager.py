@@ -152,7 +152,7 @@ class Composer:
             env_cfg["release"],
             env_cfg["duration"]
         )
-        instrument.play_note(note, volume, 1.0, envelope=envelope, blocking=True)
+        instrument.play_note(note, volume, 1.0, blocking=True)
 
     def fork_melody(self, shared_state):        
         # Generate initial note
