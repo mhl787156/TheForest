@@ -13,11 +13,11 @@ from matplotlib.colors import rgb_to_hsv
 
 class SoundState(object):
 
-    def __init__(self, initial_state):
+    def __init__(self, initial_state, pillar_cfg):
 
         self.volume = initial_state["volume"]
-        self.instruments = initial_state["instruments"]
-        self.bpm = initial_state["bpm"]
+        self.instruments = pillar_cfg["instruments"]
+        self.bpm = pillar_cfg["bpm"]
         self.melody_scale = initial_state["melody_scale"]
         self.melody_number = initial_state["melody_number"]
         self.key = initial_state["key"]
@@ -141,7 +141,7 @@ class Pillar_Mapper_Base(object):
 
         self.num_tubes = pillar_cfg["num_tubes"]
 
-        self.sound_state: SoundState = SoundState(cfg["default_state"])
+        self.sound_state: SoundState = SoundState(cfg["default_state"], pillar_cfg)
         self.light_state: LightState = LightState(self.num_tubes, random_init=True)
         self.state_array = [False for _ in range(self.num_tubes)]
 
@@ -288,7 +288,7 @@ class ColorSequencerMapper(Pillar_Mapper_Base):
         return note
 
     def interaction_update_sound_light(self, old_state, new_state):
-        # Note - state array is ignorted for this implementation so old_state, new_state not used
+        # Note - state array is ignored for this implementation so old_state, new_state not used
         self.sound_state.clear_reaction_notes()
 
         # Only trigger on step change
