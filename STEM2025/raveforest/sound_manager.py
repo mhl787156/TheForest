@@ -144,7 +144,6 @@ class Composer:
         volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
         env_cfg = self.state["envelopes"]["melody"]
-        print(env_cfg)
         envelope = Envelope.adsr(
             env_cfg["attack"],
             volume,
@@ -153,7 +152,8 @@ class Composer:
             env_cfg["release"],
             env_cfg["duration"]
         )
-        instrument.play_note(note, volume, 1.0, blocking=True)
+        instrument.play_note(note, envelope=envelope, blocking=True)
+
 
     def fork_melody(self, shared_state):        
         # Generate initial note
