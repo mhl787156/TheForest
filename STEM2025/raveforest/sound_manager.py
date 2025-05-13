@@ -1,6 +1,6 @@
 from scamp import Session, wait, current_clock
 import scamp_extensions.process as seprocess
-import expenvelope as Envelope
+import expenvelope as expe
  
 import multiprocessing as mp
 from queue import Queue
@@ -103,8 +103,6 @@ class Composer:
                 # self.session.bpm = value
                 self.session.set_tempo_target(value, 0.2)
             if setting_name == "reaction_notes":
-
-                print(f"[DEBUG] Firing note(s): {value}")
                 for i, note in enumerate(value):
                     self.session.fork(self.fork_melody_single_note, args=(note,))
             
@@ -143,21 +141,13 @@ class Composer:
             self.active_forks[function_name] = self.session.fork(function, args=(self.shared_state,))
     
     def fork_melody_single_note(self, note):
-        print("[DEBUG] playing note", note)
         volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
-        env_cfg = self.state["envelopes"]["melody"]
-        envelope = Envelope.adsr(
-            env_cfg["attack"],
-            volume,
-            env_cfg["sustain"],
-            env_cfg["decay"],
-            env_cfg["release"],
-            env_cfg["duration"]
-        )
-        print("[DEBUG] playing note", note)
-        instrument.play_note(note, envelope=envelope, blocking=True)
-
+        # envelope = expe.envelope.Envelope.from_levels_and_durations(
+        #     [0.1, volume, 1.0], [0.5, 3.0]
+        # )
+        # envelope = expe.envelope.Envelope.adsr(0.5, volume, 1.0, 0.2, 0.15, 0.5)
+        instrument.play_note(note, volume, 1.0, blocking=True)
 
     def fork_melody(self, shared_state):        
         # Generate initial note

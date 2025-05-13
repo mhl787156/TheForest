@@ -23,7 +23,7 @@
             "octave": 2,
             "bpm": 10,
             "instruments": {
-                "melody": "flute",
+                "melody": "pluck_synth",
                 "harmony": "flute",
                 "background": "strings"
             }
