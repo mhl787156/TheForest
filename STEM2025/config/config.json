@@ -51,7 +51,7 @@
             "map": "ColorSequencerMapper",
             "notes": [0, 0, 0, 0, 0, 0],
             "octave": 4,
-            "bpm": 60,
+            "bpm": 120,
             "instruments": {
                 "melody": "xylophone",
                 "harmony": "flute",
