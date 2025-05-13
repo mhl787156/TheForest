@@ -81,27 +81,27 @@
         "chord_levels": 0,
         "reaction_notes": [],
         "envelopes": {
-        "melody": {
-            "attack": 0.05,
-            "decay": 0.1,
-            "sustain": 0.7,
-            "release": 0.3,
-            "duration": 1.0
-        },
-        "harmony": {
-            "attack": 0.2,
-            "decay": 0.3,
-            "sustain": 0.6,
-            "release": 0.4,
-            "duration": 3.0
-        },
-        "background": {
-            "attack": 0.1,
-            "decay": 0.1,
-            "sustain": 0.8,
-            "release": 0.2,
-            "duration": 6.0
+            "melody": {
+                "attack": 0.05,
+                "decay": 0.1,
+                "sustain": 0.7,
+                "release": 0.3,
+                "duration": 1.0
+            },
+            "harmony": {
+                "attack": 0.2,
+                "decay": 0.3,
+                "sustain": 0.6,
+                "release": 0.4,
+                "duration": 3.0
+            },
+            "background": {
+                "attack": 0.1,
+                "decay": 0.1,
+                "sustain": 0.8,
+                "release": 0.2,
+                "duration": 6.0
+            }
         }
-    }
     }
 }
