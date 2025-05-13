@@ -20,7 +20,7 @@
             "num_tubes": 6,
             "map": "ColorSequencerMapper",
             "notes": [3, 3, 3, 3, 3, 3],
-            "octave": 4,
+            "octave": 2,
             "bpm": 30,
             "instruments": {
                 "melody": "strings",
