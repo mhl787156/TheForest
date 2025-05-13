@@ -142,7 +142,8 @@ class Composer:
         if self.active_forks[function_name] is None or not self.active_forks[function_name].alive:
             self.active_forks[function_name] = self.session.fork(function, args=(self.shared_state,))
     
-    def fork_melody_single_note(self, note):
+    def fork_melody_single_note(self, note)
+        print("[DEBUG] playing note", note)
         volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
         env_cfg = self.state["envelopes"]["melody"]
