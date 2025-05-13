@@ -298,6 +298,8 @@ class ColorSequencerMapper(Pillar_Mapper_Base):
             note_to_play = note + self.octave * 12
             self.sound_state.append_reaction_notes(note_to_play)
 
+            self.last_step_index = self.step_index
+
             print(f"[STEP {self.step_index}] hue={hue}, s={s}, v={v} → note={note}, midi={note_to_play}")
 
         # Advance step
