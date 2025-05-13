@@ -280,6 +280,7 @@ class ColorSequencerMapper(Pillar_Mapper_Base):
         self.bpm = cfg["default_state"]["bpm"]
         self.step_interval = 60.0 / self.bpm
         self.last_step_time = time.time()
+        self.last_step_index = None
 
     def get_note_from_hue(self, hue):
         """Map hue (0–255) to pitch class (0–11)"""
@@ -290,17 +291,12 @@ class ColorSequencerMapper(Pillar_Mapper_Base):
         # Note - state array is ignorted for this implementation so old_state, new_state not used
         self.sound_state.clear_reaction_notes()
 
-        # Step through each tube
-        hue, s, v = self.light_state[self.step_index]
-        note = self.get_note_from_hue(hue)
-        note_to_play = note + self.octave * 12
-        self.sound_state.append_reaction_notes(note_to_play)
-
-        print(f"[STEP {self.step_index}] hue={hue}, s={s}, v={v} → note={note}, midi={note_to_play}")
-
-        print("Full light_state:")
-        for i in range(self.num_tubes):
-            print(f"  Tube {i}: {self.light_state[i]}")
+        # Only trigger on step change
+        if self.step_index != self.last_step_index:
+            hue, s, v = self.light_state[self.step_index]
+            note = self.get_note_from_hue(hue)
+            note_to_play = note + self.octave * 12
+            self.sound_state.append_reaction_notes(note_to_play)
 
         # Advance step
         now = time.time()
