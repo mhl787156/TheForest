@@ -2,6 +2,7 @@ import random
 import sys
 from typing import Tuple
 import numpy as np
+import time
 
 from interfaces import DEFAULT_STATE, SCALE_TYPES, INSTRUMENTS, MELODIES, SCALES_TYPES_LIST, BASELINE_STYLE
 import interfaces as ifc
@@ -276,6 +277,10 @@ class ColorSequencerMapper(Pillar_Mapper_Base):
         self.octave = pillar_cfg["octave"]
         self.step_index = 0
 
+        self.bpm = cfg["default_state"]["bpm"]
+        self.step_interval = 60.0 / self.bpm
+        self.last_step_time = time.time()
+
     def get_note_from_hue(self, hue):
         """Map hue (0–255) to pitch class (0–11)"""
         note = int((hue % 256) / 256 * 12)  # gives 0–11
@@ -292,7 +297,10 @@ class ColorSequencerMapper(Pillar_Mapper_Base):
         self.sound_state.append_reaction_notes(note_to_play)
 
         # Advance step
-        self.step_index = (self.step_index + 1) % self.num_tubes
+        now = time.time()
+        if now - self.last_step_time >= self.step_interval:
+            self.step_index = (self.step_index + 1) % self.num_tubes
+            self.last_step_time = now
 
         return self.sound_state, self.light_state
 
