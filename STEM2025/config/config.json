@@ -23,7 +23,7 @@
             "octave": 2,
             "bpm": 10,
             "instruments": {
-                "melody": "strings",
+                "melody": "flute",
                 "harmony": "flute",
                 "background": "strings"
             }
