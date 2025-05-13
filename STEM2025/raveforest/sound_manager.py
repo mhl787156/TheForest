@@ -103,6 +103,8 @@ class Composer:
                 # self.session.bpm = value
                 self.session.set_tempo_target(value, 0.2)
             if setting_name == "reaction_notes":
+
+                print(f"[DEBUG] Firing note(s): {value}")
                 for i, note in enumerate(value):
                     self.session.fork(self.fork_melody_single_note, args=(note,))
             
@@ -152,6 +154,7 @@ class Composer:
             env_cfg["release"],
             env_cfg["duration"]
         )
+        print("[DEBUG] playing note", note)
         instrument.play_note(note, envelope=envelope, blocking=True)
 
 
