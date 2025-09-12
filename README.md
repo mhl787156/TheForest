@@ -11,6 +11,9 @@ This currently includes the following projects:
 - Evomusart 2024 (Forest V3)
 - Festival of Nature 2024 (Forest V3)
 - CHIME 2024 (Forest V3s)
+- SomerScience2025 (Forest V3s)
+- STEM2025 (Forest V3s)
+- Konstanz2025 (Portable Pillar V1)
 
 There also exists an experimentation folder
 
