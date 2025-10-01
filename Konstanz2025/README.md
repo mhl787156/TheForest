@@ -60,6 +60,8 @@ python3 raveforest/main.py --serial_port /dev/pts/3 --hostname fon006
 
 ## What it does
 
+![systemdesign](./SystemDesign.png)
+
 ### Sound Manager
 
 The Sound Manager now interacts iwth scamp instead of sonic pi to generate sounds. 
