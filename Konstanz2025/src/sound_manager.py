@@ -1,5 +1,7 @@
 from scamp import Session, wait, current_clock
 import scamp_extensions.process as seprocess
+from scamp_extensions.playback.supercollider import add_sc_extensions
+
 import expenvelope as expe
  
 import multiprocessing as mp
@@ -9,6 +11,9 @@ import numpy as np
 import copy
 
 from interfaces import *
+from sc_synths import * 
+
+add_sc_extensions()
 
 class InstrumentManager:
 
@@ -27,9 +32,15 @@ class InstrumentManager:
             "background": None
         }
 
+        self.all_scamp_instruments = INSTRUMENTS
+        self.all_sc_instruments = SC_PARTS
+
     def update_instrument(self, instrument_name, function="melody"):
         print("Sound Manager Update Instrument Called")
         if self.instrument_names[function] == instrument_name:
+            return
+        
+        if instrument_name == "disable":
             return
         
         if self.instrument_names[function] is not None:
@@ -38,8 +49,11 @@ class InstrumentManager:
             idx = list(current_instruments).index(self.instrument_names[function])
             self.session.pop_instrument(idx)
             # print(f"Previous Instrument Removed {self.instrument_names[function]}")
-            
-        self.instruments[function] = self.session.new_part(instrument_name)
+
+        if instrument_name in self.all_sc_instruments:
+            self.instruments[function] = create_supercollider_synth(self.session, instrument_name)
+        else:
+            self.instruments[function] = self.session.new_part(instrument_name)
         self.instrument_names[function] = instrument_name
         # print(f"New Instrument Added {self.instrument_names[function]}")
 
@@ -73,7 +87,8 @@ class Composer:
 
         self.shared_state = {
             "key": self.mp_manager.Value('s', next(self.key_generator)),
-            "chord_levels": self.mp_manager.Value('d', 0)
+            "chord_levels": self.mp_manager.Value('d', 0),
+            "melody_speed_multipler": 8.0
         }
 
         self.active_forks = {
@@ -130,8 +145,8 @@ class Composer:
         return seprocess.generators.non_repeating_shuffle(list(notes))
 
     def play(self):
-        # self.start_fork("melody", self.fork_melody)
-        # self.start_fork("harmony", self.fork_harmony)
+        self.start_fork("melody", self.fork_melody)
+        self.start_fork("harmony", self.fork_harmony)
         self.start_fork("background", self.fork_background)
         pass
         
@@ -147,65 +162,71 @@ class Composer:
         #     [0.1, volume, 1.0], [0.5, 3.0]
         # )
         # envelope = expe.envelope.Envelope.adsr(0.5, volume, 1.0, 0.2, 0.15, 0.5)
-        instrument.play_note(note, volume, 1.0, blocking=True)
+        print("Single Note Being Played", note, volume)
+        # duration_multiplier = self.shared_state["melody_speed_multipler"]
+        instrument.play_note(note, volume, 0.25, blocking=True)
 
-    def fork_melody(self, shared_state):        
+    def fork_melody(self, shared_state):
+        pass
+
+    def fork_harmony(self, shared_state):        
         # Generate initial note
         scale = SCALE_TYPES[self.state["melody_scale"]](self.shared_state["key"].value)
         melody_num = self.state["melody_number"]
         melody = MELODIES[melody_num]
         
-        volume = self.state["volume"]["melody"]
-        instrument = self.instrument_manager.melody_instrument()
+        volume = self.state["volume"]["harmony"]
+        instrument = self.instrument_manager.harmony_instrument()
+        duration_multiplier = self.shared_state["melody_speed_multipler"]
         for n, d in melody:
             if n is None:
                 note = None
             else:
                 note = scale.degree_to_pitch(n)
-            instrument.play_note(note, volume, d, blocking=True)
+            instrument.play_note(note, volume, d * duration_multiplier, blocking=True)
 
-    def fork_harmony(self, shared_state):
-        # current_clock().tempo = self.state["bpm"]["harmony"]
-        instrument = self.instrument_manager.harmony_instrument()
-        key = next(self.key_generator)
-        # print("harmony", key)
-        scale = list(SCALE_TYPES[self.state["melody_scale"]](key))
+    # def fork_harmony(self, shared_state):
+    #     # current_clock().tempo = self.state["bpm"]["harmony"]
+    #     instrument = self.instrument_manager.harmony_instrument()
+    #     key = next(self.key_generator)
+    #     # print("harmony", key)
+    #     scale = list(SCALE_TYPES[self.state["melody_scale"]](key))
 
-        # Add 7/9/11/13 etc depending on chord_levels
-        chord_levels = shared_state["chord_levels"].value
+    #     # Add 7/9/11/13 etc depending on chord_levels
+    #     chord_levels = shared_state["chord_levels"].value
 
-        chord = []
-        gen_chords = [0, 2, 4] + [6 + 2*chord_levels*i for i in range(chord_levels)]
-        for offset in gen_chords:
-            if offset >= len(scale):
-                new_offset = offset % len(scale)
-                number_up = offset // len(scale)
-                # print(offset, new_offset, number_up)
-                note = scale[new_offset] + number_up * 12
-            else:
-                note = scale[offset]
-            chord.append(int(note))
+    #     chord = []
+    #     gen_chords = [0, 2, 4] + [6 + 2*chord_levels*i for i in range(chord_levels)]
+    #     for offset in gen_chords:
+    #         if offset >= len(scale):
+    #             new_offset = offset % len(scale)
+    #             number_up = offset // len(scale)
+    #             # print(offset, new_offset, number_up)
+    #             note = scale[new_offset] + number_up * 12
+    #         else:
+    #             note = scale[offset]
+    #         chord.append(int(note))
 
-        # Adjust voicings
-        # print(chord)
-        random.shuffle(chord)
-        key_idx = chord.index(key)
-        chord = np.array(chord)
-        chord[key_idx:] += 12 # If some of the chords are below tonic, shift down octave
-        # print(chord)
+    #     # Adjust voicings
+    #     # print(chord)
+    #     random.shuffle(chord)
+    #     key_idx = chord.index(key)
+    #     chord = np.array(chord)
+    #     chord[key_idx:] += 12 # If some of the chords are below tonic, shift down octave
+    #     # print(chord)
 
         
-        volume = self.state["volume"]["harmony"]
-        envelope = expe.envelope.Envelope.from_levels_and_durations(
-            [0.1, volume, 1.0], [0.5, 3.0]
-        )
-        envelope = expe.envelope.Envelope.adsr(0.5, volume, 1.0, 0.2, 0.15, 0.5)
-        instrument.play_chord(chord, envelope, 4.0, blocking=True)
+    #     volume = self.state["volume"]["harmony"]
+    #     envelope = expe.envelope.Envelope.from_levels_and_durations(
+    #         [0.1, volume, 1.0], [0.5, 3.0]
+    #     )
+    #     envelope = expe.envelope.Envelope.adsr(0.5, volume, 1.0, 0.2, 0.15, 0.5)
+    #     # instrument.play_chord(chord, envelope, 4.0, blocking=True)
 
-        if chord_levels > 0:
-            shared_state["chord_levels"].value -= 1
+    #     if chord_levels > 0:
+    #         shared_state["chord_levels"].value -= 1
 
-        shared_state["key"].value = key
+    #     shared_state["key"].value = key
 
     def fork_background(self, shared_state):
         # current_clock().tempo = self.state["bpm"]["background"]

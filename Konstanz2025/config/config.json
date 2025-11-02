@@ -9,14 +9,19 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "map": "ColorSequencerMapper",
-            "notes": [3, 3, 3, 3, 3, 3],
-            "octave": 2,
-            "bpm": 120,
+            "map": "FixedMapper",
+            "notes": [1, 2, 4, 5, 8, 11],
+            "octave": 6,
+            "bpm": 45,
             "instruments": {
-                "melody": "strings",
-                "harmony": "flute",
-                "background": "strings"
+                "melody": "melody_bells",
+                "harmony": "melody_reed",
+                "background": "bass_fmGrowl"
+            },
+            "volume": {
+                "melody": 0.6,
+                "harmony": 0.5,
+                "background": 0.2
             }
         },
         "fon004": {
@@ -24,14 +29,19 @@
             "port": "/dev/ttyACM0",
             "pan": 0,
             "num_tubes": 6,
-            "map": "ColorSequencerMapper",
-            "notes": [7, 7, 7, 7, 7, 7],
+            "map": "FixedMapper",
+            "notes": [2, 3, 4, 6, 8, 10],
             "octave": 5,
             "bpm": 60,
             "instruments": {
-                "melody": "xylophone",
-                "harmony": "flute",
-                "background": "strings"
+                "melody": "melody_softEP",
+                "harmony": "melody_vocal",
+                "background": "bassHum_beating"
+            },
+            "volume": {
+                "melody": 0.3,
+                "harmony": 0.5,
+                "background": 0.3
             }
         },
         "fon002": {

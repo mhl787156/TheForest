@@ -8,7 +8,7 @@ import time
 from pillar_hw_interface import Pillar
 from mapping_interface import RotationMapper, EventRotationMapper, generate_mapping_interface
 from sound_manager import SoundManager
-from mqtt_manager import MqttPillarClient
+# from mqtt_manager import MqttPillarClient
 
 import requests
 
@@ -62,10 +62,10 @@ class Controller():
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
 
         # MQTT to finish
-        if config["mqtt"]["enable"]:
-            self.mqtt_client = MqttPillarClient(
-                broker_host=config["mqtt"]["mqtt_broker_ip"]
-            )
+        # if config["mqtt"]["enable"]:
+        #     self.mqtt_client = MqttPillarClient(
+        #         broker_host=config["mqtt"]["mqtt_broker_ip"]
+        #     )
 
     def start(self, frequency):
         """Starts the main control loop
@@ -83,14 +83,19 @@ class Controller():
     def stop(self):
         self.running = False
 
+    def on_other_pillar_receive(self, their_state):
+        # On receive of a different pillar do something
+        # E.g. play a sound, change a light or something. 
+        pass
+
     def loop(self):
 
         # Get the light state from the Teensy through a Serial read
         self.pillar_manager.read_from_serial()
 
         # Get button press. NOTE: this is not used for this implementation
-        # current_btn_press = self.pillar_manager.get_all_touch_status()
-        current_btn_press = [0, 0, 0, 0, 0, 0]
+        current_btn_press = self.pillar_manager.get_all_touch_status()
+        # current_btn_press = [0, 0, 0, 0, 0, 0]
 
         # Update Mapping Interface light state object from Pillar object light statuses as read from Serial
         for i in range(self.pillar_manager.num_tubes):
@@ -100,7 +105,7 @@ class Controller():
         # Generate the lights and notes based on the current btn inputs
         sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
 
-        print("Setting params", sound_state)
+        # print("Setting params", sound_state)
 
         for param_name, value in sound_state.items():
             self.sound_manager.update_pillar_setting(param_name, value) 
