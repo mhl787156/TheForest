@@ -9,6 +9,7 @@ from queue import Queue
 import random
 import numpy as np
 import copy
+from functools import reduce
 
 from interfaces import *
 from sc_synths import * 
@@ -120,6 +121,10 @@ class Composer:
             if setting_name == "reaction_notes":
                 for i, note in enumerate(value):
                     self.session.fork(self.fork_melody_single_note, args=(note,))
+            if setting_name == "broadcast_notes":
+                delay = self.state["broadcast"]["echo_delay_duration"]
+                for i, note in enumerate(value):
+                    self.session.fork(self.fork_melody_single_note, args=(note,delay,))
             
             # Play any sounds
             # self.session.fork(self.fork_melody, args=(self.shared_state,))
@@ -155,7 +160,7 @@ class Composer:
         if self.active_forks[function_name] is None or not self.active_forks[function_name].alive:
             self.active_forks[function_name] = self.session.fork(function, args=(self.shared_state,))
     
-    def fork_melody_single_note(self, note):
+    def fork_melody_single_note(self, note, delay=0.0):
         volume = self.state["volume"]["melody"]
         instrument = self.instrument_manager.melody_instrument()
         # envelope = expe.envelope.Envelope.from_levels_and_durations(
@@ -164,6 +169,8 @@ class Composer:
         # envelope = expe.envelope.Envelope.adsr(0.5, volume, 1.0, 0.2, 0.15, 0.5)
         print("Single Note Being Played", note, volume)
         # duration_multiplier = self.shared_state["melody_speed_multipler"]
+        if delay > 0:
+            wait(delay) # If received a delay before playing note
         instrument.play_note(note, volume, 0.25, blocking=True)
 
     def fork_melody(self, shared_state):
@@ -252,6 +259,10 @@ class SoundManager:
         self.pillar_id = pillar_id
         self.session = Session()
         self.state = initial_state if initial_state is not None else DEFAULT_STATE
+        print(self.state)
+        for k, d in DEFAULT_STATE.items(): # merge (note is not recursive)
+            if k not in self.state:
+                self.state[k] = d
         self.composer = Composer(self.session, self.state)
 
     def __repr__(self):

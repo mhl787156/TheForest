@@ -15,7 +15,8 @@ class SoundState(object):
 
     def __init__(self, initial_state, pillar_cfg):
 
-        self.volume = initial_state["volume"]
+        # Note need a better way of merginging states...
+        self.volume = pillar_cfg["volume"]
         self.instruments = pillar_cfg["instruments"]
         self.bpm = pillar_cfg["bpm"]
         self.melody_scale = initial_state["melody_scale"]
@@ -105,6 +106,8 @@ class SoundState(object):
         self.reaction_notes.append(note)
         return self.reaction_notes
 
+    def has_reaction_notes(self):
+        return len(self.reaction_notes) > 0
 
 class LightState(object):
     def __init__(self, num_tubes, random_init=True, lights=None):

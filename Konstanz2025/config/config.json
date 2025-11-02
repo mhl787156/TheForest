@@ -22,6 +22,9 @@
                 "melody": 0.6,
                 "harmony": 0.5,
                 "background": 0.2
+            },
+            "broadcast":{
+                "echo_delay_duration": 4.0
             }
         },
         "fon004": {
@@ -39,24 +42,12 @@
                 "background": "bassHum_beating"
             },
             "volume": {
-                "melody": 0.3,
-                "harmony": 0.5,
+                "melody": 0.1,
+                "harmony": 0.6,
                 "background": 0.3
-            }
-        },
-        "fon002": {
-            "id": 1,
-            "port": "/dev/ttyACM0",
-            "pan": 0,
-            "num_tubes": 6,
-            "map": "ColorSequencerMapper",
-            "notes": [0, 0, 0, 0, 0, 0],
-            "octave": 4,
-            "bpm": 60,
-            "instruments": {
-                "melody": "xylophone",
-                "harmony": "flute",
-                "background": "strings"
+            },
+            "broadcast":{
+                "echo_delay_duration": 4.0
             }
         }
     },
@@ -100,6 +91,9 @@
                 "release": 0.2,
                 "duration": 6.0
             }
+        },
+        "broadcast":{
+            "echo_delay_duration": 4.0
         }
     }
 }

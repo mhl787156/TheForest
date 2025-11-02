@@ -47,6 +47,34 @@ from paho.mqtt.matcher import MQTTMatcher
 JSONDict = Dict[str, Any]
 Handler = Callable[[str, Any, Optional[mqtt.Properties]], None]
 
+class MqttPillarClientMock:
+    def __init__(
+        self,
+        broker_host: str,
+        broker_port: int = 1883,
+        client_id: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        tls: bool = False,
+        keepalive: int = 30,
+        base_topic: str = "pillars",
+        pillar_id: Optional[str] = None,
+        clean_session: bool = True,
+        default_qos: int = 1,
+        retain_presence: bool = True,
+        reconnect_delay: Tuple[int, int] = (1, 30),
+    ) -> None:
+        pass
+
+    def on(self, topic_filter: str, handler: Handler) -> None:
+        pass
+
+    def publish(self, topic: str, payload: Any, qos: Optional[int] = None, retain: bool = False) -> mqtt.MQTTMessageInfo:
+        pass
+
+    def announce_online(self) -> None:
+        pass
+
 
 class MqttPillarClient:
     """Manage MQTT connection, presence, pub/sub, and trigger helpers.

@@ -8,7 +8,7 @@ import time
 from pillar_hw_interface import Pillar
 from mapping_interface import RotationMapper, EventRotationMapper, generate_mapping_interface
 from sound_manager import SoundManager
-# from mqtt_manager import MqttPillarClient
+from mqtt_manager import MqttPillarClient, MqttPillarClientMock
 
 import requests
 
@@ -55,17 +55,22 @@ class Controller():
         self.pillar_config = config["pillars"][hostname]
         self.pillar_manager = Pillar(**self.pillar_config)
         self.mapping_interface = generate_mapping_interface(config, self.pillar_config)
-        self.sound_manager = SoundManager(hostname)
+        self.sound_manager = SoundManager(hostname, self.pillar_config)
         self.loop_idx = 0
         self.running = True
 
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
 
+        self.mqtt_enabled = config["mqtt"]["enable"]
         # MQTT to finish
-        # if config["mqtt"]["enable"]:
-        #     self.mqtt_client = MqttPillarClient(
-        #         broker_host=config["mqtt"]["mqtt_broker_ip"]
-        #     )
+        if self.mqtt_enabled:
+            mqttObject = MqttPillarClientMock if config["mqtt"]["mock"] else MqttPillarClient
+            self.mqtt_client = mqttObject(
+                broker_host=config["mqtt"]["mqtt_broker_ip"],
+                pillar_id=hostname
+            )
+            self.mqtt_client.announce_online()
+            self.mqtt_client.on("sound_state/*", self.on_other_pillar_receive)
 
     def start(self, frequency):
         """Starts the main control loop
@@ -75,19 +80,34 @@ class Controller():
         """
         index = 0
 
-
-
         while self.running:
             self.loop()
 
     def stop(self):
         self.running = False
 
-    def on_other_pillar_receive(self, their_state):
+    def on_other_pillar_receive(self, their_sound_state):
         # On receive of a different pillar do something
         # E.g. play a sound, change a light or something. 
-        pass
 
+        # TODO: If received from yourself, ignore... 
+
+        sound_state = json.loads(their_sound_state)
+        if "reaction_notes" in sound_state:
+            # Currently telling composer to play all the reaction notes
+            notes = sound_state["reaction_notes"]
+            if len(notes) > 0:
+                self.sound_manager.update_pillar_setting("broadcast_notes", notes) 
+
+    def broadcast_notes_to_other_pillars(self, sound_state):
+        # Send Reaction Notes (or other sound state) to other pillars
+
+        # Currently only send if there is a reaction note
+        if sound_state.has_reaction_notes():
+            data = json.dumps(sound_state.to_json())
+            self.mqtt_client.publish(f"sound_state/{hostname}", data)
+            print("Sending Notes via MQTT Client")
+    
     def loop(self):
 
         # Get the light state from the Teensy through a Serial read
@@ -105,10 +125,13 @@ class Controller():
         # Generate the lights and notes based on the current btn inputs
         sound_state, light_state = self.mapping_interface.update_pillar(current_btn_press)
 
-        # print("Setting params", sound_state)
-
+        # Pass the sound state to the sound manager to activate anything
         for param_name, value in sound_state.items():
             self.sound_manager.update_pillar_setting(param_name, value) 
+
+        # Send any sound state "reaction notes" to other pillars
+        if self.mqtt_enabled:
+            self.broadcast_notes_to_other_pillars(sound_state)
 
         self.sound_manager.tick(time_delta=1/30.0)
         
@@ -128,6 +151,7 @@ if __name__=="__main__":
     parser.add_argument("--frequency", default=5, type=int, help="Frequency of the controller loop")
     parser.add_argument("--hostname", default=None, type=str, help="The hostname if different from the base computer")
     parser.add_argument("--mqtt_broker_ip", default=None, type=str, help="The IP address of the MQTT Broker which every pillar connects to")
+    parser.add_argument("--mqtt_mock", default=False, type=bool, help="Set this argument to mock the mqtt connection")
     args = parser.parse_args()
     print(args)
 
@@ -148,6 +172,8 @@ if __name__=="__main__":
 
     if args.serial_port is not None:
         config["mqtt"]["broker_ip"] = args.mqtt_broker_ip
+
+    config["mqtt"]["mock"] = args.mqtt_mock
 
     # Create a Controller instance and pass the parsed values
     print("Intiialise and run Controller")
