@@ -53,7 +53,7 @@ To subscribe to an MQTT topic with Mosquitto Client, open a terminal in Raspi #1
 mosquitto_sub -h [HOST/BROKER IP] -d -t testTopic
 ```
 ## Publishing “Hello World!” Message to testTopic Topic
-To publish a sample message to testTopic, open a terminal Window #2 and run the following command:
+To publish a sample message to testTopic, open a terminal in Raspi #2 and run the following command:
 ```bash
 mosquitto_pub -h [HOST/BROKER IP] -d -t testTopic -m "Hello world!"
 ```
