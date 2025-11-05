@@ -1,4 +1,4 @@
-#Installing Mosquitto Broker on Raspberry Pi OS
+# Installing Mosquitto Broker on Raspberry Pi OS
 
 1) Open a new Raspberry Pi terminal window
 2) Run the following command to upgrade and update your system:
@@ -25,8 +25,8 @@ Starting in local only mode. Connections will only be possible from clients runn
 This means that by default, you can’t communicate with the Mosquitto broker from another device (other than your Raspberry Pi). This applies to Mosquitto version 2. 
 In Mosquitto 2.0 and later, you must explicitly choose your authentication options before clients can connect. In earlier versions, the default is to allow clients to connect without authentication.
 
-#Enable Remote Access/ Authentication
-##Mosquitto Broker Enable Remote Access (No Authentication)
+# Enable Remote Access/ Authentication
+## Mosquitto Broker Enable Remote Access (No Authentication)
 1) Run the following command to open the mosquitto.conf file.
 ```bash
 sudo nano /etc/mosquitto/mosquitto.conf
@@ -41,18 +41,18 @@ allow_anonymous true
 ```bash
 sudo systemctl restart mosquitto
 ```
-#Raspberry Pi IP Address
+# Raspberry Pi IP Address
 To use Mosquitto broker later in your projects, you’ll need to know the Raspberry Pi IP address. To retrieve your Raspberry Pi IP address, type the next command in your Pi Terminal window:
 ```bash
 hostname -I
 ```
-#Testing Mosquitto Broker and MQTT Client
-##Subscribing to testTopic Topic
+# Testing Mosquitto Broker and MQTT Client
+## Subscribing to testTopic Topic
 To subscribe to an MQTT topic with Mosquitto Client, open a terminal in Raspi #1 and enter the command:
 ```bash
 mosquitto_sub -h [HOST/BROKER IP] -d -t testTopic
 ```
-##Publishing “Hello World!” Message to testTopic Topic
+## Publishing “Hello World!” Message to testTopic Topic
 To publish a sample message to testTopic, open a terminal Window #2 and run the following command:
 ```bash
 mosquitto_pub -h [HOST/BROKER IP] -d -t testTopic -m "Hello world!"
