@@ -4,7 +4,7 @@
         "broker_ip": "127.0.0.1"
     },
     "pillars": {
-        "fon003": {
+        "cave003": {
             "id": 1,
             "port": "/dev/ttyACM0",
             "pan": 0,
@@ -14,14 +14,16 @@
             "octave": 6,
             "bpm": 45,
             "instruments": {
-                "melody": "melody_bells",
-                "harmony": "melody_reed",
-                "background": "bass_fmGrowl"
+                "melody1": "lead_synth",
+                "melody2": "lead2_synth",
+                "harmony": "bass_synth",
+                "background": "pad_synth"
             },
             "volume": {
-                "melody": 0.6,
+                "melody1": 0.6,
+                "melody2": 0.5,
                 "harmony": 0.5,
-                "background": 0.2
+                "background": 0.8
             },
             "broadcast":{
                 "echo_delay_duration": 4.0
@@ -37,12 +39,14 @@
             "octave": 5,
             "bpm": 60,
             "instruments": {
-                "melody": "melody_softEP",
+                "melody1": "melody_softEP",
+                "melody2": "lead2_synth",
                 "harmony": "melody_vocal",
                 "background": "bassHum_beating"
             },
             "volume": {
-                "melody": 0.1,
+                "melody1": 0.1,
+                "melody2": 0.08,
                 "harmony": 0.6,
                 "background": 0.3
             },
@@ -53,12 +57,14 @@
     },
     "default_state": {
         "volume": {
-            "melody": 1.0,
+            "melody1": 1.0,
+            "melody2": 0.8,
             "harmony": 0.5,
             "background": 0.3
         },
         "instruments": {
-            "melody": "xylophone",
+            "melody1": "xylophone",
+            "melody2": "lead2_synth",
             "harmony": "flute",
             "background": "strings"
         },
@@ -70,12 +76,19 @@
         "chord_levels": 0,
         "reaction_notes": [],
         "envelopes": {
-            "melody": {
+            "melody1": {
                 "attack": 0.05,
                 "decay": 0.1,
                 "sustain": 0.7,
                 "release": 0.3,
                 "duration": 1.0
+            },
+            "melody2": {
+                "attack": 0.1,
+                "decay": 0.2,
+                "sustain": 0.6,
+                "release": 0.4,
+                "duration": 2.0
             },
             "harmony": {
                 "attack": 0.2,
