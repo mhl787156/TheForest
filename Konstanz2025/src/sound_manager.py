@@ -98,9 +98,6 @@ class Composer:
         }
 
         self.active_forks = {
-            "melody1": None,
-            "melody2": None,
-            "harmony": None,
             "background": None
         }
         
@@ -132,13 +129,12 @@ class Composer:
                 for i, note in enumerate(value):
                     self.session.fork(self.fork_melody_single_note, args=(note,))
             if setting_name == "broadcast_notes":
-                delay = self.state["broadcast"]["echo_delay_duration"]
+                delay = self.state.get("broadcast", {}).get("echo_delay_duration", 0)
                 for i, note in enumerate(value):
                     self.session.fork(self.fork_melody_single_note, args=(note,delay,))
-            
-            # Play any sounds
-            # self.session.fork(self.fork_melody, args=(self.shared_state,))
-            # self.start_fork("melody", self.fork_melody)
+            if setting_name == "active_synths":
+                # Trigger synth bursts based on button presses
+                self.handle_synth_triggers(value)
             
     def update_instruments(self, instruments):
         for k,v in instruments.items():
@@ -160,17 +156,23 @@ class Composer:
         return seprocess.generators.non_repeating_shuffle(list(notes))
 
     def play(self):
-        # Start melody/harmony forks on demand (background already running from __init__)
-        self.start_fork("melody1", self.fork_melody1)
-        self.start_fork("melody2", self.fork_melody2)
-        self.start_fork("harmony", self.fork_harmony)
+        # Background runs continuously (started in __init__)
+        # Other synths triggered by buttons
         pass
+    
+    def handle_synth_triggers(self, active_synths):
+        """Handle direct triggers from button presses"""
+        if active_synths.get("harmony", False):
+            print("[TRIGGER] Harmony burst")
+            self.session.fork(self.trigger_harmony_burst)
         
-    def start_fork(self, function_name, function):
-        # If a fork is active or not alive, then start the new fork
-        if self.active_forks[function_name] is None or not self.active_forks[function_name].alive:
-            print(f"[COMPOSER] Starting fork: {function_name}")
-            self.active_forks[function_name] = self.session.fork(function, args=(self.shared_state,))
+        if active_synths.get("melody1", False):
+            print("[TRIGGER] Melody1 burst")
+            self.session.fork(self.trigger_melody1_burst)
+        
+        if active_synths.get("melody2", False):
+            print("[TRIGGER] Melody2 burst")
+            self.session.fork(self.trigger_melody2_burst)
     
     def fork_melody_single_note(self, note, delay=0.0):
         volume = self.state["volume"]["melody1"]
@@ -185,35 +187,26 @@ class Composer:
             wait(delay) # If received a delay before playing note
         instrument.play_note(note, volume, 0.25, blocking=True)
 
-    def fork_melody1(self, shared_state):
-        # Spectral swarm - play bursts periodically
+    def trigger_melody1_burst(self):
+        """Trigger a single spectral swarm burst"""
         instrument = self.instrument_manager.melody1_instrument()
         volume = self.state["volume"]["melody1"]
-        while True:
-            # Trigger spectral swarm burst (5-10 grains internally)
-            instrument.play_note(60, volume, 1.0, blocking=False)
-            # Wait 2-5 seconds between bursts
-            wait(random.uniform(2.0, 5.0), units="time")
+        # Spectral swarm burst (5-10 grains internally, ~1s duration)
+        instrument.play_note(60, volume, 1.0, blocking=False)
     
-    def fork_melody2(self, shared_state):
-        # Formant voice - sparse utterances
+    def trigger_melody2_burst(self):
+        """Trigger a single formant voice"""
         instrument = self.instrument_manager.melody2_instrument()
         volume = self.state["volume"]["melody2"]
-        while True:
-            # Trigger formant voice (7-second envelope)
-            instrument.play_note(60, volume, 7.0, blocking=False)
-            # Wait 5-12 seconds between voices
-            wait(random.uniform(5.0, 12.0), units="time")
+        # Formant voice (7-second envelope)
+        instrument.play_note(60, volume, 7.0, blocking=False)
 
-    def fork_harmony(self, shared_state):        
-        # FM metallic throb - sparse punctuation
+    def trigger_harmony_burst(self):
+        """Trigger a single FM metallic throb"""
         instrument = self.instrument_manager.harmony_instrument()
         volume = self.state["volume"]["harmony"]
-        while True:
-            # Trigger FM throb (7-second envelope)
-            instrument.play_note(60, volume, 7.0, blocking=False)
-            # Wait 8-16 seconds between throbs
-            wait(random.uniform(8.0, 16.0), units="time")
+        # FM throb (6-second envelope)
+        instrument.play_note(60, volume, 7.0, blocking=False)
 
     # def fork_harmony(self, shared_state):
     #     # current_clock().tempo = self.state["bpm"]["harmony"]

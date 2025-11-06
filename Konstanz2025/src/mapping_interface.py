@@ -108,30 +108,22 @@ class SoundState(object):
 
     def has_reaction_notes(self):
         return len(self.reaction_notes) > 0
+    
+    def trigger_synth(self, synth_name):
+        """Trigger a synth layer (harmony, melody1, melody2)"""
+        if hasattr(self, 'active_synths') and synth_name in self.active_synths:
+            self.active_synths[synth_name] = True
+    
+    def reset_triggers(self):
+        """Reset all triggers except background"""
+        if hasattr(self, 'active_synths'):
+            self.active_synths = {
+                "background": True,
+                "harmony": False,
+                "melody1": False,
+                "melody2": False
+            }
 
-class LightState(object):
-    def __init__(self, num_tubes, random_init=True, lights=None):
-        if random_init:
-            self.lights = [
-                tuple(random.randint(0, 255) for _ in range(3))
-                for _ in range(num_tubes)
-            ]
-        else:
-            self.lights = lights
-
-    def __repr__(self):
-        return f"{self.lights}"
-
-    def __getitem__(self, indices):
-        if not isinstance(indices, list):
-            indices = [indices]
-        ret = [self.lights[i] for i in indices]
-        if len(ret) == 1:
-            return ret[0]
-        return ret
-
-    def __setitem__(self, key, newvalue):
-        self.lights[key] = newvalue
 
 class Pillar_Mapper_Base(object):
 
@@ -142,34 +134,68 @@ class Pillar_Mapper_Base(object):
             pillar_cfg (Dict): The configuration file for the pillar
         """
 
-        self.num_tubes = pillar_cfg["num_tubes"]
+        self.num_buttons = pillar_cfg.get("num_buttons", 4)
 
         self.sound_state: SoundState = SoundState(cfg["default_state"], pillar_cfg)
-        self.light_state: LightState = LightState(self.num_tubes, random_init=True)
-        self.state_array = [False for _ in range(self.num_tubes)]
+        self.state_array = [False for _ in range(self.num_buttons)]
 
-    def update_pillar(self, state_array) -> Tuple[SoundState, LightState]:
+    def update_pillar(self, state_array) -> SoundState:
 
         # Update internal state
         self.interaction_update_sound_light(self.state_array, state_array)
         self.state_array = state_array
 
-        return self.sound_state, self.light_state
+        return self.sound_state
 
     # This should be implemented in child classes
     def interaction_update_sound_light(self, old_state, new_state):
-        # This function takes the tube_id and the current tube states (sound and light)
-        # It changes the amplitude, synth and note and color for this pillar
-        # Internally changes self.sound_state and self.light_state
+        # This function takes the button states
+        # It changes the sound state
+        # Internally changes self.sound_state
         print("In Pillar Mapper Base")
+
+class ButtonTriggerMapper(Pillar_Mapper_Base):
+    """Maps button presses to synth triggers
+    
+    Button 0 → harmony
+    Button 1 → melody1
+    Button 2 → melody2
+    Button 3 → melody1 (duplicate)
+    """
+    def __init__(self, cfg, pillar_cfg):
+        super().__init__(cfg, pillar_cfg)
+
+    def interaction_update_sound_light(self, old_state, new_state):
+        # Reset active synths (triggers are one-shot)
+        self.sound_state.active_synths = {
+            "background": True,  # Always on
+            "harmony": False,
+            "melody1": False,
+            "melody2": False
+        }
+
+        # Detect button presses (rising edge: old=False, new=True)
+        for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
+            if not old_active and active:
+                if button_id == 0:
+                    self.sound_state.active_synths["harmony"] = True
+                    print(f"[BUTTON {button_id}] Triggering harmony")
+                elif button_id == 1:
+                    self.sound_state.active_synths["melody1"] = True
+                    print(f"[BUTTON {button_id}] Triggering melody1")
+                elif button_id == 2:
+                    self.sound_state.active_synths["melody2"] = True
+                    print(f"[BUTTON {button_id}] Triggering melody2")
+                elif button_id == 3:
+                    self.sound_state.active_synths["melody1"] = True
+                    print(f"[BUTTON {button_id}] Triggering melody1 (duplicate)")
 
 class FixedMapper(Pillar_Mapper_Base):
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
         
-        self.num_tubes = pillar_cfg["num_tubes"]
-        self.notes = pillar_cfg["notes"]
-        self.octave = pillar_cfg["octave"]
+        self.notes = pillar_cfg.get("notes", [60, 62, 64, 67])
+        self.octave = pillar_cfg.get("octave", 5)
 
         # Create a fixed color map from midi note (0-11) to hue (0-255)
         self.fixed_hue_map = ifc.FIXED_NOTE_HUE_MAP
@@ -180,104 +206,83 @@ class FixedMapper(Pillar_Mapper_Base):
         # Clears the reaction note for the Composer 
         self.sound_state.clear_reaction_notes()
 
-        # If we now detect as active, we add a reaction note and change the light state as specified
-        for tube_id, (old_active, active) in enumerate(zip(old_state, new_state)):
-            if not old_active and active:
-                note = self.notes[tube_id]
+        # If we now detect as active, we add a reaction note
+        for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
+            if not old_active and active and button_id < len(self.notes):
+                note = self.notes[button_id]
                 note_to_play = note + self.octave * 12
                 self.sound_state.append_reaction_notes(note_to_play)
-                self.light_state[tube_id] = (self.fixed_hue_map[note], 255, 255)
 
 class RotationMapper(Pillar_Mapper_Base):
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
 
-        self.tube_allocation = pillar_cfg["tube_allocation"]
-
-        # Create a colormap from red to blue scaled between 0 and 255
-        self.cmap = plt.get_cmap('coolwarm')
-        # self.hsv_values = rgb_to_hsv(self.colormap[:, :3])
+        self.tube_allocation = pillar_cfg.get("tube_allocation", ["i", "t", "k+", "m"])
 
     # This should be implemented in child classes
     def interaction_update_sound_light(self, old_state, new_state):
-        # This function takes the tube_id and the current tube states (sound and light)
-        # It changes the amplitude, synth and note and color for this pillar
-        # Internally changes self.sound_state and self.light_state
-        # print("In ROtation Mapper")
-        for tube_id, (active, tube_allocation) in enumerate(zip(new_state, self.tube_allocation)):
-            # ["a", "n", "t", "b", "p", "e"] == ["amp", "note-pitch", "synth", "bpm", "pan", "envelope"]
+        # This function processes button presses to change sound parameters
+        for button_id, (active, button_allocation) in enumerate(zip(new_state, self.tube_allocation)):
             # ["i", "t", "k", "m", "s", "b"]
-            # print(f"Updating tube {tube_id}, {tube_allocation}, {active}")
-            if active:
+            if active and button_id < len(self.tube_allocation):
                 delta = 1 
-                if 'i' in tube_allocation:
+                if 'i' in button_allocation:
                     value = self.sound_state.change_instrument()
-                elif 't' in tube_allocation:
+                elif 't' in button_allocation:
                     value = self.sound_state.change_tempo(delta=5)
-                elif 'k+' in tube_allocation:
+                elif 'k+' in button_allocation:
                     value = self.sound_state.change_key(delta=5)
-                elif 'k-' in tube_allocation:
+                elif 'k-' in button_allocation:
                     value = self.sound_state.change_key(delta=-4)
-                elif 'm' in tube_allocation:
+                elif 'm' in button_allocation:
                     value = self.sound_state.change_melody()
-                elif 's' in tube_allocation:
+                elif 's' in button_allocation:
                     value = self.sound_state.change_scale()
-                elif 'b' in tube_allocation:
+                elif 'b' in button_allocation:
                     value = self.sound_state.change_baseline()
-
-                self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(random.random())[:3]))
 
 class EventRotationMapper(Pillar_Mapper_Base):
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
 
-        self.tube_allocation = pillar_cfg["tube_allocation"]
-
-        # Create a colormap from red to blue scaled between 0 and 255
-        self.cmap = plt.get_cmap('coolwarm')
-        # self.hsv_values = rgb_to_hsv(self.colormap[:, :3])
+        self.tube_allocation = pillar_cfg.get("tube_allocation", ["i", "t", "k+", "m"])
 
     # This should be implemented in child classes
     def interaction_update_sound_light(self, old_state, new_state):
-        # This function takes the tube_id and the current tube states (sound and light)
-        # It changes the amplitude, synth and note and color for this pillar
-        # Internally changes self.sound_state and self.light_state
-        # print("In ROtation Mapper")
-        for tube_id, (old_active, active, tube_allocation) in enumerate(zip(old_state, new_state, self.tube_allocation)):
+        # This function processes button presses to change sound parameters
+        # Only change on a rising edge (button press)
+        for button_id, (old_active, active, button_allocation) in enumerate(zip(old_state, new_state, self.tube_allocation)):
             # ["i", "t", "k", "m", "s", "b"]
             # Only change on a switch
-            if not old_active and active:
+            if not old_active and active and button_id < len(self.tube_allocation):
                 delta = 1 
-                if 'i' in tube_allocation:
+                if 'i' in button_allocation:
                     value = self.sound_state.change_instrument()
-                elif 't+' in tube_allocation:
+                elif 't+' in button_allocation:
                     value = self.sound_state.change_tempo(delta=10)
-                elif 't-' in tube_allocation:
+                elif 't-' in button_allocation:
                     value = self.sound_state.change_tempo(delta=-10)
-                elif 'k+' in tube_allocation:
+                elif 'k+' in button_allocation:
                     value = self.sound_state.change_key(delta=5)
-                elif 'k-' in tube_allocation:
+                elif 'k-' in button_allocation:
                     value = self.sound_state.change_key(delta=-4)
-                elif 'm' in tube_allocation:
+                elif 'm' in button_allocation:
                     value = self.sound_state.change_melody()
-                elif 's' in tube_allocation:
+                elif 's' in button_allocation:
                     value = self.sound_state.change_scale()
-                elif 'b' in tube_allocation:
+                elif 'b' in button_allocation:
                     value = self.sound_state.change_baseline()
-
-                self.light_state[tube_id] = tuple(rgb_to_hsv(self.cmap(random.random())[:3]))
 
 class ColorSequencerMapper(Pillar_Mapper_Base):
     '''
     Implementation similar to EVOMUSART 2024 but using new sound library.
 
-    The aim here is to use the pillars like a step sequencer and the colour they are currently lit at
-    corresponds to the note that they play.
+    The aim here is to use the buttons like a step sequencer.
     '''
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
-        self.num_tubes = pillar_cfg["num_tubes"]
-        self.octave = pillar_cfg["octave"]
+        self.num_buttons = pillar_cfg.get("num_buttons", 4)
+        self.octave = pillar_cfg.get("octave", 5)
         self.step_index = 0
 
         self.bpm = cfg["default_state"]["bpm"]
@@ -285,33 +290,24 @@ class ColorSequencerMapper(Pillar_Mapper_Base):
         self.last_step_time = time.time()
         self.last_step_index = None
 
-    def get_note_from_hue(self, hue):
-        """Map hue (0–255) to pitch class (0–11)"""
-        note = int((hue % 256) / 256 * 12)  # gives 0–11
-        return note
-
     def interaction_update_sound_light(self, old_state, new_state):
         # Note - state array is ignored for this implementation so old_state, new_state not used
         self.sound_state.clear_reaction_notes()
 
         # Only trigger on step change
         if self.step_index != self.last_step_index:
-            hue, s, v = self.light_state[self.step_index]
-            note = self.get_note_from_hue(hue)
-            note_to_play = note + self.octave * 12
+            note_to_play = 60 + self.step_index * 2  # Simple note progression
             self.sound_state.append_reaction_notes(note_to_play)
 
             self.last_step_index = self.step_index
 
-            print(f"[STEP {self.step_index}] hue={hue}, s={s}, v={v} → note={note}, midi={note_to_play}")
+            print(f"[STEP {self.step_index}] → note={note_to_play}")
 
         # Advance step
         now = time.time()
         if now - self.last_step_time >= self.step_interval:
-            self.step_index = (self.step_index + 1) % self.num_tubes
+            self.step_index = (self.step_index + 1) % self.num_buttons
             self.last_step_time = now
-
-        return self.sound_state, self.light_state
 
 
 def generate_mapping_interface(cfg, cfg_pillar) -> Pillar_Mapper_Base:

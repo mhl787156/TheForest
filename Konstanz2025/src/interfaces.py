@@ -138,6 +138,12 @@ DEFAULT_STATE = {
         "harmony": "bass_synth",
         "background": "pad_synth"
     },
+    "active_synths": {
+        "background": True,  # Always on
+        "harmony": False,
+        "melody1": False,
+        "melody2": False
+    },
     "key": 60,
     "bpm": 100,
     "melody_scale": "pentatonic",

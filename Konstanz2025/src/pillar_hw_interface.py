@@ -24,24 +24,12 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 break
 
             response = serial_port.readline().decode().strip()
-            # print("RECEIVEDDDDD", response)
-            if "CAP" in response:
-                status = response.split(",")[1:]
-                # print("RECEIVED STATUS", status)
+            # Parse button state from Arduino: "BUTTONS:0,1,0,0"
+            if response.startswith("BUTTONS:"):
+                status_str = response.split(":")[1]
+                status = status_str.split(",")
+                # Convert to boolean list
                 cap_queue.put([bool(int(i)) for i in status])
-
-            elif response.startswith("LED,") and len(response) >= 10:
-                parts = response.split(",")
-
-                if len(parts) >= 7:  # "LED" + 6 values
-                    try:
-                        # Process all tubes at once
-                        for i in range(6):
-                            hue = int(parts[i + 1])
-                            light_queue.put((i, hue, 255))
-                        print(f"[LED] Valid LED data received: {response[:20]}")
-                    except (ValueError, IndexError) as e:
-                        print(f"[ERROR] Error processing LED data: {e}")
 
         except Exception as e:
             pass
@@ -59,8 +47,9 @@ def write_serial_data(serial_port, write_queue):
                 # Method of killing the packet
                 break
 
+            # Arduino doesn't accept LED commands, but keep thread for future use
             # print("Packet Sending", packet)
-            serial_port.write(packet.encode())
+            # serial_port.write(packet.encode())
         except Exception as e:
             print(f"Error writing data: {e}")
         time.sleep(0.1)
@@ -78,13 +67,11 @@ class Pillar():
 
         self.serial_read_rate = 10
 
-        self.num_tubes = 6
+        self.num_buttons = kwargs.get('num_buttons', 4)
 
-        self.num_touch_sensors = 6
+        self.num_touch_sensors = self.num_buttons
         self.touch_status = [False for _ in range(self.num_touch_sensors)]
         self.previous_received_status = []
-
-        self.light_status = [(0, 0, 0) for _ in range(self.num_tubes)]
 
         self.cap_queue = queue.Queue()
         self.light_queue = queue.Queue()
@@ -146,8 +133,8 @@ class Pillar():
 
     def to_dict(self):
         return dict(
-            id=self.id, num_tubes=self.num_tubes, num_sensors=self.num_touch_sensors,
-            touch_status=self.touch_status, light_status=self.light_status, serial_status=self.serial_status
+            id=self.id, num_buttons=self.num_buttons, num_sensors=self.num_touch_sensors,
+            touch_status=self.touch_status, serial_status=self.serial_status
         )
 
     def get_touch_status(self, tube_id):
@@ -156,53 +143,6 @@ class Pillar():
     def get_all_touch_status(self):
         return self.touch_status
 
-    def get_light_status(self, tube_id):
-        return self.light_status[tube_id]
-
-    def get_all_light_status(self):
-        return self.light_status
-
-    def send_light_change(self, tube_id, hue, brightness):
-        """Sends a LED message to change the hue and brightness of an individual tube
-
-        Args:
-            tube_id (int): The tube id of the tube to change
-            hue (int): [0, 255] the value of the hue
-            brightness (int): [0, 255] the value of the brightness
-
-        This sends a LED,{tube_id},{hue},{brightness}; message to the serial port
-        for a connected arduino to deal with.
-
-        *HOWEVER* note that this message cannot be sent in quick succession without
-        delays in between sends. The serial/message read seems to struggle to pick
-        out all of the individual messages. In a case where you need to send all please
-        use the `send_all_light_chanege` function.
-
-        """
-        assert tube_id < self.num_tubes
-        assert 0 <= hue <= 255
-        assert 0 <= brightness <= 255
-        message = f"LED,{tube_id},{hue},{brightness};\n\r"
-        #print("Pushing to queue", message)
-        self.write_queue.put(message)
-
-    def send_all_light_change(self, lights):
-        """Send all the lights in one go
-
-        This uses the ALLLED message
-        ALLLED,h1,b1,...,hn,bn;
-
-        Argument lights assumed to be a list of tuples (hue, brightness)
-        """
-        light_list = []
-        for i, l in enumerate(lights):
-            hue = clamp(l[0])
-            bright = clamp(l[1])
-            light_list.extend([str(hue), str(bright), str(0)])
-        message = f"ALLLED,{','.join(light_list)};"
-        # print(f'Message being sent: {message}')
-        self.write_queue.empty()
-        self.write_queue.put(message)
 
     def set_touch_status(self, touch_status):
         # Do the filter here
@@ -214,7 +154,7 @@ class Pillar():
         self.touch_status[tube_id] = bool(status)
 
     def read_from_serial(self):
-        # Handle touch sensor data
+        # Handle button state data
         try:
             while not self.cap_queue.empty():
                 received_status = self.cap_queue.get_nowait()
@@ -222,7 +162,7 @@ class Pillar():
                 # Ensure received_status has the correct length
                 if len(received_status) != self.num_touch_sensors:
                     print(
-                        f"[WARNING] Received touch status has {len(received_status)} sensors, expected {self.num_touch_sensors}")
+                        f"[WARNING] Received button status has {len(received_status)} buttons, expected {self.num_touch_sensors}")
                     # Pad with False if too short
                     if len(received_status) < self.num_touch_sensors:
                         received_status.extend([False] * (self.num_touch_sensors - len(received_status)))
@@ -236,7 +176,7 @@ class Pillar():
 
                 # Only update and print if status changed
                 if received_status != previous_status:
-                    print(f"[TOUCH] Processing touch status: {received_status}")
+                    print(f"[BUTTON] Processing button status: {received_status}")
                     self.set_touch_status(received_status)
                     # Thread-safe update of previous status
                     with self.status_lock:
@@ -246,29 +186,7 @@ class Pillar():
         except queue.Empty:
             pass
         except Exception as e:
-            print(f"[ERROR] Error processing touch data: {e}")
-
-        # Handle LED status data
-        try:
-            while not self.light_queue.empty():
-                led_data = self.light_queue.get_nowait()
-
-                # Format from the queue should be (tube_id, hue, brightness)
-                tube_id, hue, brightness = led_data
-
-                # Validate tube_id is in range
-                if 0 <= tube_id < self.num_tubes:
-                    # Thread-safe update of light status
-                    with self.status_lock:
-                        # Store as (hue, brightness, effect) - THIS IS THE IMPORTANT FORMAT
-                        self.light_status[tube_id] = (hue, brightness, 0)
-                    print(f"[LED] Updated light status for tube {tube_id}: hue={hue}, brightness={brightness}")
-                else:
-                    print(f"[WARNING] LED tube_id {tube_id} out of range (0-{self.num_tubes - 1})")
-        except queue.Empty:
-            pass
-        except Exception as e:
-            print(f"[ERROR] Error processing light queue: {e}")
+            print(f"[ERROR] Error processing button data: {e}")
 
     def reset_touch_status(self):
         self.touch_status = [0 for _ in range(self.num_touch_sensors)]
