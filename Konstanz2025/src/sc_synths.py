@@ -128,8 +128,8 @@ SC_PARTS = {
         var osc, sig, detune, mod, env, pan;
         // Random pan for wide stereo field
         pan = Rand(-0.8, 0.8);
-        // Long attack/release envelope for smooth morphing - 40 seconds total
-        env = EnvGen.kr(Env.linen(8, 20, 12, 1, 'sine'), doneAction: 2);
+        // ASR envelope: 8s attack, sustain while gate=1, 12s release
+        env = EnvGen.kr(Env.asr(8, 1, 12, 'sine'), gate, doneAction: 2);
         // Slow LFO modulation for movement
         mod = LFNoise1.kr(0.05).range(0.97, 1.03);
         detune = LFNoise1.kr(0.08).range(-0.2, 0.2);

@@ -24,16 +24,23 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 break
 
             response = serial_port.readline().decode().strip()
+            
+            # Print ALL raw serial data received
+            if response:
+                pass
+               # print(f"[SERIAL RX] Raw: '{response}'")
+            
             # Parse button state from Arduino: "BUTTONS:0,1,0,0"
             if response.startswith("BUTTONS:"):
                 status_str = response.split(":")[1]
                 status = status_str.split(",")
                 # Convert to boolean list
-                cap_queue.put([bool(int(i)) for i in status])
+                button_list = [bool(int(i)) for i in status]
+                print(f"[SERIAL RX] Parsed buttons: {button_list}")
+                cap_queue.put(button_list)
 
         except Exception as e:
-            pass
-            print(f"Error reading data: {e}")
+            print(f"[SERIAL RX] Error reading data: {e}")
 
     print("Serial Read Thread Killed")
 
@@ -58,7 +65,7 @@ def write_serial_data(serial_port, write_queue):
 
 class Pillar():
 
-    def __init__(self, id, port, baud_rate=9600, **kwargs):
+    def __init__(self, id, port, baud_rate=115200, **kwargs):
         self.id = id
 
         # self.mapping = MappingInterface(copy.deepcopy(kwargs))

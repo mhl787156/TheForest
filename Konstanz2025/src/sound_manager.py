@@ -254,20 +254,45 @@ class Composer:
     def fork_background(self, shared_state):
         # Mystic ambient pad cloud - continuous background (matches background.scd)
         print("[BACKGROUND] Fork started")
-        instrument = self.instrument_manager.background_instrument()
-        volume = self.state["volume"]["background"]
-        # D2, A2, D3, A3, D4 harmonics
-        pad_freqs = [73.42, 110, 146.83, 220, 293.66]
-        while True:
-            # Pick random frequency with slight detune
-            freq = random.choice(pad_freqs) * random.uniform(0.98, 1.02)
-            # Spawn single 40-second pad (pan/amplitude randomized in SynthDef)
-            print(f"[BACKGROUND] Playing pad: freq={freq:.2f}Hz, volume={volume}")
-            instrument.play_note(freq, volume, 1.0, blocking=False)
-            # Irregular spawning timing (1.5-3 bars at 80 BPM = 4.5-9 seconds)
-            wait_time = random.uniform(4.5, 9.0)
-            print(f"[BACKGROUND] Waiting {wait_time:.1f}s before next pad")
-            wait(wait_time, units="time")
+        try:
+            # D2, A2, D3, A3, D4 harmonics
+            pad_freqs = [73.42, 110, 146.83, 220, 293.66]
+            iteration = 0
+            while True:
+                iteration += 1
+                # Get fresh instrument reference each time to ensure it's valid
+                instrument = self.instrument_manager.background_instrument()
+                volume = self.state["volume"]["background"]
+                
+                # Pick random frequency with slight detune
+                freq = random.choice(pad_freqs) * random.uniform(0.98, 1.02)
+                
+                # Spawn single pad: 8s attack + 20s sustain + 12s release = 40s total
+                print(f"[BACKGROUND #{iteration}] Spawning pad: freq={freq:.2f}Hz, vol={volume:.2f}, instrument={instrument.name if hasattr(instrument, 'name') else 'unknown'}")
+                
+                # Fork a separate thread for this note so it doesn't block
+                self.session.fork(self._play_background_note, args=(instrument, freq, volume, iteration))
+                
+                # Irregular spawning timing (1.5-3 bars at 80 BPM = 4.5-9 seconds)
+                wait_time = random.uniform(4.5, 9.0)
+                print(f"[BACKGROUND #{iteration}] Waiting {wait_time:.1f}s before next spawn")
+                wait(wait_time, units="time")
+                print(f"[BACKGROUND #{iteration}] Wait complete, looping...")
+        except Exception as e:
+            print(f"[BACKGROUND] ERROR: Fork crashed with exception: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _play_background_note(self, instrument, freq, volume, iteration):
+        """Play a single background pad note in its own fork"""
+        try:
+            print(f"[BACKGROUND #{iteration}] Note fork started, calling play_note")
+            instrument.play_note(freq, volume, 20.0, blocking=False)
+            print(f"[BACKGROUND #{iteration}] Note triggered successfully")
+        except Exception as e:
+            print(f"[BACKGROUND #{iteration}] ERROR playing note: {e}")
+            import traceback
+            traceback.print_exc()
 
 class SoundManager:
     """Manages and schedules sound playback for pillars using the Sonic Pi server."""          
@@ -291,6 +316,13 @@ class SoundManager:
         self.composer.update(setting_name, value)
 
     def tick(self, time_delta=1/30.0):
+        # Check if background fork is still alive
+        if not self.composer.active_forks["background"].alive:
+            print("[WARNING] Background fork died! Restarting...")
+            self.composer.active_forks["background"] = self.composer.session.fork(
+                self.composer.fork_background, args=(self.composer.shared_state,)
+            )
+        
         # Start melody/harmony forks if needed (background always running)
         self.composer.play()
         wait(time_delta, units="time")
