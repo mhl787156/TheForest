@@ -127,14 +127,16 @@ FIXED_NOTE_HUE_MAP = {
 
 DEFAULT_STATE = {
     "volume": {
-        "melody": 1.0,
+        "melody1": 1.0,
+        "melody2": 0.8,
         "harmony": 0.5,
         "background": 0.3
     },
     "instruments": {
-        "melody": "strings",
-        "harmony": "flute",
-        "background": "strings"
+        "melody1": "lead_synth",
+        "melody2": "lead2_synth",
+        "harmony": "bass_synth",
+        "background": "pad_synth"
     },
     "key": 60,
     "bpm": 100,

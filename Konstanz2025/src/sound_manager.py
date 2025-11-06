@@ -22,13 +22,15 @@ class InstrumentManager:
         self.session = session
 
         self.instrument_names= {
-            "melody": None,
+            "melody1": None,
+            "melody2": None,
             "harmony": None,
             "background": None
         }
 
         self.instruments = {
-            "melody": None,
+            "melody1": None,
+            "melody2": None,
             "harmony": None,
             "background": None
         }
@@ -58,8 +60,11 @@ class InstrumentManager:
         self.instrument_names[function] = instrument_name
         # print(f"New Instrument Added {self.instrument_names[function]}")
 
-    def melody_instrument(self):
-        return self.instruments["melody"]
+    def melody1_instrument(self):
+        return self.instruments["melody1"]
+
+    def melody2_instrument(self):
+        return self.instruments["melody2"]
 
     def harmony_instrument(self):
         return self.instruments["harmony"]
@@ -93,10 +98,15 @@ class Composer:
         }
 
         self.active_forks = {
-            "melody": None,
+            "melody1": None,
+            "melody2": None,
             "harmony": None,
             "background": None
         }
+        
+        # Start background immediately - runs continuously
+        print("[COMPOSER] Starting background pad")
+        self.active_forks["background"] = self.session.fork(self.fork_background, args=(self.shared_state,))
 
     def update(self, setting_name, value):
 
@@ -150,19 +160,21 @@ class Composer:
         return seprocess.generators.non_repeating_shuffle(list(notes))
 
     def play(self):
-        self.start_fork("melody", self.fork_melody)
+        # Start melody/harmony forks on demand (background already running from __init__)
+        self.start_fork("melody1", self.fork_melody1)
+        self.start_fork("melody2", self.fork_melody2)
         self.start_fork("harmony", self.fork_harmony)
-        self.start_fork("background", self.fork_background)
         pass
         
     def start_fork(self, function_name, function):
         # If a fork is active or not alive, then start the new fork
         if self.active_forks[function_name] is None or not self.active_forks[function_name].alive:
+            print(f"[COMPOSER] Starting fork: {function_name}")
             self.active_forks[function_name] = self.session.fork(function, args=(self.shared_state,))
     
     def fork_melody_single_note(self, note, delay=0.0):
-        volume = self.state["volume"]["melody"]
-        instrument = self.instrument_manager.melody_instrument()
+        volume = self.state["volume"]["melody1"]
+        instrument = self.instrument_manager.melody1_instrument()
         # envelope = expe.envelope.Envelope.from_levels_and_durations(
         #     [0.1, volume, 1.0], [0.5, 3.0]
         # )
@@ -173,24 +185,35 @@ class Composer:
             wait(delay) # If received a delay before playing note
         instrument.play_note(note, volume, 0.25, blocking=True)
 
-    def fork_melody(self, shared_state):
-        pass
+    def fork_melody1(self, shared_state):
+        # Spectral swarm - play bursts periodically
+        instrument = self.instrument_manager.melody1_instrument()
+        volume = self.state["volume"]["melody1"]
+        while True:
+            # Trigger spectral swarm burst (5-10 grains internally)
+            instrument.play_note(60, volume, 1.0, blocking=False)
+            # Wait 2-5 seconds between bursts
+            wait(random.uniform(2.0, 5.0), units="time")
+    
+    def fork_melody2(self, shared_state):
+        # Formant voice - sparse utterances
+        instrument = self.instrument_manager.melody2_instrument()
+        volume = self.state["volume"]["melody2"]
+        while True:
+            # Trigger formant voice (7-second envelope)
+            instrument.play_note(60, volume, 7.0, blocking=False)
+            # Wait 5-12 seconds between voices
+            wait(random.uniform(5.0, 12.0), units="time")
 
     def fork_harmony(self, shared_state):        
-        # Generate initial note
-        scale = SCALE_TYPES[self.state["melody_scale"]](self.shared_state["key"].value)
-        melody_num = self.state["melody_number"]
-        melody = MELODIES[melody_num]
-        
-        volume = self.state["volume"]["harmony"]
+        # FM metallic throb - sparse punctuation
         instrument = self.instrument_manager.harmony_instrument()
-        duration_multiplier = self.shared_state["melody_speed_multipler"]
-        for n, d in melody:
-            if n is None:
-                note = None
-            else:
-                note = scale.degree_to_pitch(n)
-            instrument.play_note(note, volume, d * duration_multiplier, blocking=True)
+        volume = self.state["volume"]["harmony"]
+        while True:
+            # Trigger FM throb (7-second envelope)
+            instrument.play_note(60, volume, 7.0, blocking=False)
+            # Wait 8-16 seconds between throbs
+            wait(random.uniform(8.0, 16.0), units="time")
 
     # def fork_harmony(self, shared_state):
     #     # current_clock().tempo = self.state["bpm"]["harmony"]
@@ -236,21 +259,22 @@ class Composer:
     #     shared_state["key"].value = key
 
     def fork_background(self, shared_state):
-        # current_clock().tempo = self.state["bpm"]["background"]
+        # Mystic ambient pad cloud - continuous background (matches background.scd)
+        print("[BACKGROUND] Fork started")
         instrument = self.instrument_manager.background_instrument()
         volume = self.state["volume"]["background"]
-        # for note in seprocess.generators.random_walk(40, clamp_min=35, clamp_max=50):
+        # D2, A2, D3, A3, D4 harmonics
+        pad_freqs = [73.42, 110, 146.83, 220, 293.66]
         while True:
-            note = shared_state["key"].value - 24
-            # print("background", note)
-            if self.state["baseline_style"] == "long":
-                instrument.play_note(note, volume, 4.0*4, blocking=True)
-            elif self.state["baseline_style"] == "pulsing":
-                instrument.play_note(note, volume, 4.0*4, "tremolo", blocking=True)
-            else:
-                for _ in range(4):
-                    instrument.play_note(note, volume, 0.5, "staccato", blocking=True)
-                    wait(0.5)
+            # Pick random frequency with slight detune
+            freq = random.choice(pad_freqs) * random.uniform(0.98, 1.02)
+            # Spawn single 40-second pad (pan/amplitude randomized in SynthDef)
+            print(f"[BACKGROUND] Playing pad: freq={freq:.2f}Hz, volume={volume}")
+            instrument.play_note(freq, volume, 1.0, blocking=False)
+            # Irregular spawning timing (1.5-3 bars at 80 BPM = 4.5-9 seconds)
+            wait_time = random.uniform(4.5, 9.0)
+            print(f"[BACKGROUND] Waiting {wait_time:.1f}s before next pad")
+            wait(wait_time, units="time")
 
 class SoundManager:
     """Manages and schedules sound playback for pillars using the Sonic Pi server."""          
@@ -274,6 +298,7 @@ class SoundManager:
         self.composer.update(setting_name, value)
 
     def tick(self, time_delta=1/30.0):
+        # Start melody/harmony forks if needed (background always running)
         self.composer.play()
         wait(time_delta, units="time")
 
