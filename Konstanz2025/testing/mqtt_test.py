@@ -1,3 +1,8 @@
+import os 
+import sys
+dir_path = os.path.dirname(os.path.realpath(__file__))
+sys.append(os.path.join(dir_path, "src"))
+
 import socket
 from mqtt_manager import MqttPillarClient, MqttPillarClientMock
 
