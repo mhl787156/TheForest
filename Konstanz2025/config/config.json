@@ -27,6 +27,29 @@
                 "echo_delay_duration": 4.0
             }
         },
+        "cave004": {
+            "id": 1,
+            "port": "/dev/ttyACM0",
+            "pan": 0,
+            "num_buttons": 4,
+            "map": "ButtonTriggerMapper",
+            "bpm": 60,
+            "instruments": {
+                "melody1": "melody_softEP",
+                "melody2": "lead2_synth",
+                "harmony": "melody_vocal",
+                "background": "bassHum_beating"
+            },
+            "volume": {
+                "melody1": 0.1,
+                "melody2": 0.08,
+                "harmony": 0.6,
+                "background": 0.3
+            },
+            "broadcast":{
+                "echo_delay_duration": 4.0
+            }
+        },
         "fon004": {
             "id": 1,
             "port": "/dev/ttyACM0",
