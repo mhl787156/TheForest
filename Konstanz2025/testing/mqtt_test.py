@@ -68,6 +68,7 @@ class SoundStateStub(SoundState):
         self.key_center = 60
 
         self.reaction_notes = [1,2,3,4]
+        self.active_synths = []
 
 if __name__=="__main__":
     # Get Hostname
