@@ -125,34 +125,72 @@ SC_PARTS = {
 
     "pad_synth": r"""
     SynthDef(\pad_synth, { |out=0, freq=200, volume=0.2, gate=1|
-        var osc, sig, detune, mod, env, pan;
+        var osc, sig, env, pan, mod, detune;
         // Random pan for wide stereo field
         pan = Rand(-0.8, 0.8);
-        // ASR envelope: 8s attack, sustain while gate=1, 12s release
-        env = EnvGen.kr(Env.asr(8, 1, 12, 'sine'), gate, doneAction: 2);
-        // Slow LFO modulation for movement
-        mod = LFNoise1.kr(0.05).range(0.97, 1.03);
-        detune = LFNoise1.kr(0.08).range(-0.2, 0.2);
-        // Rich harmonic stack with detuning
+        // Fixed duration envelope: 8s attack, 20s sustain, 12s release = 40s total
+        // gate parameter kept for SCAMP compatibility but NOT used in envelope
+        env = EnvGen.kr(Env.linen(8, 20, 12, 1, 'sine'), doneAction: 2);
+        
+        // Slow LFO modulation for movement (efficient)
+        //mod = LFNoise1.kr(0.05).range(0.98, 1.02);
+        //detune = LFNoise1.kr(0.08).range(-0.15, 0.15);
+        
+        // Reduced oscillator stack - 4 oscillators, very low/dark
         osc = Mix.new([
-            SinOsc.ar(freq * 0.5 * mod, 0, 0.3),
-            SinOsc.ar(freq * 0.501 + detune, 0, 0.25),
-            Saw.ar(freq * 1.5 * mod, 0.15),
-            Pulse.ar(freq * 2.99, LFNoise1.kr(0.1).range(0.3, 0.7), 0.12),
-            SinOsc.ar(freq * 3.01 - detune, 0, 0.18),
-            SinOsc.ar(freq * 5, 0, 0.1)
+            SinOsc.ar(freq * 0.5, 0, 0.35),      // Very low sub
+            //SinOsc.ar(freq * 0.3, 0, 0.3),    // Low detuned
+            //SinOsc.ar(freq * 0.5 * mod, 0, 0.2),       // Sub octave
+            //SinOsc.ar(freq * 0.4, 0, 0.1)              // Base frequency (reduced volume)
         ]);
-        // Subtle chorus/shimmer effect
-        sig = osc + DelayC.ar(osc, 0.05, LFNoise1.kr(0.2).range(0.01, 0.03), 0.4);
-        sig = HPF.ar(sig, 40);
-        sig = LPF.ar(sig, LFNoise1.kr(0.15).range(800, 3200));
-        // Deep reverb
-        sig = FreeVerb.ar(sig, 0.95, 0.95, 0.7);
-        // Stereo spread with pitch shift
-        sig = sig + PitchShift.ar(sig, 0.2, LFNoise1.kr(0.3).range(0.998, 1.002), 0, 0.01);
-        sig = Pan2.ar(sig * volume * env * 0.6, pan);
+        
+        // Basic filtering - adjusted for low frequency range
+        sig = HPF.ar(osc, 20);  // Remove only sub-sonic rumble below 20Hz
+        sig = LPF.ar(sig, LFNoise1.kr(0.15).range(400, 1200));  // Gentle low-pass for warmth 
+        
+        // LIGHT reverb (reduced parameters to save CPU)
+        //sig = FreeVerb.ar(sig, 0.65, 0.8, 0.5);
+        
+        sig = Pan2.ar(sig * volume * env * 0.2, pan);
         Out.ar(out, sig);
     })
+    """,
+
+    "pad_synth2": r"""
+
+    SynthDef(\pad_synth2, { |out=0, freq=200, volume=0.2, gate=1|
+        var tone, noise, sig, env, pan, mod;
+        
+        // Random stereo position per pad
+        pan = Rand(-0.7, 0.7);
+        
+        // Long envelope: 8s attack, 25s sustain, 10s release = 43s
+        env = EnvGen.kr(Env.linen(8, 25, 10, 1, 'sine'), doneAction: 2);
+        
+        // Gentle LFO for subtle movement
+        mod = LFNoise1.kr(0.08).range(0.98, 1.02);
+        
+        // Smooth airy tone with subtle movement
+        tone = SinOsc.ar(freq * 0.5 * mod, 0, 0.35);
+        
+        // Some noise for texture
+        noise = LPF.ar(WhiteNoise.ar(0.02), 600);  
+        
+        // Combine
+        sig = tone + noise;
+        
+        // Filtering for warmth
+        sig = HPF.ar(sig, 25);
+        sig = LPF.ar(sig, 1200);  // Lower for darker sound
+        
+        // Light reverb
+        sig = FreeVerb.ar(sig, 0.4, 0.7, 0.3);
+        
+        // Stereo output with pan
+        Out.ar(out, Pan2.ar(sig * volume * env * 0.4, pan));
+    })
+    
+
     """,
 
     "bass_synth": r"""
