@@ -66,7 +66,7 @@ class Controller():
         if self.mqtt_enabled:
             mqttObject = MqttPillarClientMock if config["mqtt"]["mock"] else MqttPillarClient
             self.mqtt_client = mqttObject(
-                broker_host=config["mqtt"]["mqtt_broker_ip"],
+                broker_host=config["mqtt"]["broker_ip"],
                 pillar_id=hostname
             )
             self.mqtt_client.announce_online()

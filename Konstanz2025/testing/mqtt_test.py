@@ -1,7 +1,9 @@
-# import os 
-# import sys
-# dir_path = os.path.dirname(os.path.realpath(__file__))
-# sys.path.append(os.path.join(dir_path, "src"))
+import os 
+import sys
+from pathlib import Path
+
+dir_path = Path(os.path.dirname(os.path.realpath(__file__))).parent
+sys.path.append(os.path.join(dir_path, "src"))
 
 import socket
 import json
@@ -21,9 +23,9 @@ def _on_other_pillar_receive(their_sound_state):
     #     if len(notes) > 0:
     #         sound_manager.update_pillar_setting("broadcast_notes", notes) 
 
-def _broadcast_notes_to_other_pillars(hostname, sound_state):
+def _broadcast_notes_to_other_pillars(hostname, sound_state, mqtt_client):
     data = json.dumps(sound_state.to_json())
-    self.mqtt_client.publish(f"sound_state/{hostname}", data)
+    mqtt_client.publish(f"sound_state/{hostname}", data)
     print("Sending Notes via MQTT Client")
 
     # Send Reaction Notes (or other sound state) to other pillars
@@ -54,7 +56,7 @@ if __name__=="__main__":
     print("Run mqtt test")
     print("Initialize mqtt client")
     mqtt_client = MqttPillarClient(
-            broker_host=config["mqtt"]["mqtt_broker_ip"],
+            broker_host=config["mqtt"]["broker_ip"],
             pillar_id=hostname
         )
     
@@ -78,7 +80,7 @@ if __name__=="__main__":
         echo_state = "echo-o-o-o"
 
         # Send any sound state "reaction notes" to other pillars
-        _broadcast_notes_to_other_pillars(hostname, echo_state)
+        _broadcast_notes_to_other_pillars(hostname, echo_state, mqtt_client)
         
         # data = {
         #     "btn_press": current_btn_press,
