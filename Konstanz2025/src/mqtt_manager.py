@@ -154,6 +154,7 @@ class MqttPillarClient:
         """
         self.client.connect(self.broker_host, self.broker_port, self.keepalive)
         if start_network_thread:
+            print("connected")
             self.client.loop_start()
         # Wait briefly for connection (non-fatal if it takes longer)
         self._connected_evt.wait(timeout=5.0)
@@ -170,6 +171,7 @@ class MqttPillarClient:
 
     def publish(self, topic: str, payload: Any, qos: Optional[int] = None, retain: bool = False) -> mqtt.MQTTMessageInfo:
         data = self._encode(payload)
+        print(topic)
         return self.client.publish(topic, data, qos if qos is not None else self.default_qos, retain)
 
     def publish_retained(self, topic: str, payload: Any, qos: Optional[int] = None) -> mqtt.MQTTMessageInfo:
