@@ -62,14 +62,17 @@ class Controller():
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
 
         self.mqtt_enabled = config["mqtt"]["enable"]
+        print("!!!!!!!!!!!!!!!!!!!!!!!",self.mqtt_enabled)
         # MQTT to finish
         if self.mqtt_enabled:
+            print("[MQTT] Enabled")
             mqttObject = MqttPillarClientMock if config["mqtt"]["mock"] else MqttPillarClient
             self.mqtt_client = mqttObject(
                 broker_host=config["mqtt"]["broker_ip"],
                 pillar_id=hostname
             )
 
+            print("[MQTT] Connecting to broker host: %s"%config["mqtt"]["broker_ip"])
             self.mqtt_client.connect_and_loop()
             self.mqtt_client.announce_online()
             self.mqtt_client.subscribe("sound_state/+")
