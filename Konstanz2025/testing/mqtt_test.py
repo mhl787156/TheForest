@@ -11,13 +11,13 @@ import time
 from mqtt_manager import MqttPillarClient, MqttPillarClientMock
 from mapping_interface import SoundState
 
-def _on_other_pillar_receive(their_sound_state):
+def _on_other_pillar_receive(topic, their_sound_state, props):
     # On receive of a different pillar do something
     # E.g. play a sound, change a light or something. 
 
     sound_state = json.loads(their_sound_state)
     print("Received: ")
-    print(sound_state)
+    print(their_sound_state)
     # if "reaction_notes" in sound_state:
     #     # Currently telling composer to play all the reaction notes
     #     notes = sound_state["reaction_notes"]
@@ -26,7 +26,7 @@ def _on_other_pillar_receive(their_sound_state):
 
 def _broadcast_notes_to_other_pillars(hostname, sound_state, mqtt_client):
     data = json.dumps(sound_state.to_json())
-    mqtt_client.publish(f"sound_state/{hostname}", data)
+#    mqtt_client.publish(f"sound_state/{hostname}", data)
     print("Sending Notes via MQTT Client")
 
     # Send Reaction Notes (or other sound state) to other pillars
@@ -82,7 +82,8 @@ if __name__=="__main__":
     
     mqtt_client.connect_and_loop()
     mqtt_client.announce_online()
-    mqtt_client.on("sound_state/*", _on_other_pillar_receive)
+    mqtt_client.subscribe("sound_state/+")
+    mqtt_client.on("sound_state/+", _on_other_pillar_receive)
 
     while True:
         # Get button state from the Arduino through Serial read

@@ -230,12 +230,12 @@ class MqttPillarClient:
         payload = self._decode(msg.payload)
         # dispatch to exact and wildcard handlers
         # MQTTMatcher returns the most specific match first if multiple are registered
-        for (topic_filter, handler) in self._iter_matching_handlers(msg.topic):
+        for handler in self._iter_matching_handlers(msg.topic):
             try:
                 handler(msg.topic, payload, getattr(msg, 'properties', None))
             except Exception as e:
                 # don't crash the network thread
-                print(f"Handler error for {topic_filter}: {e}")
+                print(f"Handler error for {msg.topic}: {e}")
 
     def _on_subscribe(self, client: mqtt.Client, userdata: Any, mid: int, granted_qos: List[int], properties: Optional[mqtt.Properties] = None) -> None:
         pass  # hook for logging if needed
@@ -247,8 +247,8 @@ class MqttPillarClient:
 
     def _iter_matching_handlers(self, topic: str):
         # MQTTMatcher iterfind yields (filter, handler)
-        for tfilter, handler in self._handlers.iter_match(topic):
-            yield tfilter, handler
+        for handler in self._handlers.iter_match(topic):
+            yield handler
 
     @staticmethod
     def _encode(payload: Any) -> bytes:
