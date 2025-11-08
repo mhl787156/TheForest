@@ -16,6 +16,11 @@ def _on_other_pillar_receive(topic, their_sound_state, props):
     # E.g. play a sound, change a light or something. 
 
     print("Received topic: %s"%topic)
+    # If received from yourself, ignore... 
+    _hostname = topic.split("/")[1]
+    if _hostname == hostname:
+        print("Ignore...")
+        return
 
     try:
         sound_state = json.loads(their_sound_state)
