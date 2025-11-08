@@ -23,6 +23,14 @@ class SoundState(object):
         self.melody_number = initial_state["melody_number"]
         self.key = initial_state["key"]
         self.baseline_style = initial_state["baseline_style"]
+        
+        # Initialize active_synths from default state
+        self.active_synths = initial_state.get("active_synths", {
+            "background": True,
+            "harmony": False,
+            "melody1": False,
+            "melody2": False
+        })
 
         ### util state var
         self.change_instrument_next_layer = "melody"
@@ -46,6 +54,7 @@ class SoundState(object):
             "melody_number": self.melody_number,
             "baseline_style": self.baseline_style,
             "reaction_notes" : self.reaction_notes,
+            "active_synths": self.active_synths,
         }
     
     def items(self):
