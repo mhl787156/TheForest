@@ -139,7 +139,7 @@ class MqttPillarClient:
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
         self.client.on_subscribe = self._on_subscribe
-        self.client.on_publish = self._on_publish
+        # self.client.on_publish = self._on_publish
 
         # Reconnect backoff
         self.client.reconnect_delay_set(min_delay=reconnect_delay[0], max_delay=reconnect_delay[1])
@@ -152,6 +152,8 @@ class MqttPillarClient:
         If start_network_thread is True (default), starts a background network loop.
         Otherwise, call self.client.loop_start/loop or integrate with your own poller.
         """
+        print("-- broker_host is   ", self.broker_host)
+        print("-- broker_port is   ", self.broker_port)
         self.client.connect(self.broker_host, self.broker_port, self.keepalive)
         # <MQTTErrorCode.MQTT_ERR_SUCCESS: 0> -> means no error
         if start_network_thread:
