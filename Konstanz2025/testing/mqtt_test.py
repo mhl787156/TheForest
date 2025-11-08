@@ -8,7 +8,7 @@ sys.path.append(os.path.join(dir_path, "src"))
 import socket
 import json
 from mqtt_manager import MqttPillarClient, MqttPillarClientMock
-
+from mapping_interface import SoundState
 
 def _on_other_pillar_receive(their_sound_state):
     # On receive of a different pillar do something
@@ -36,6 +36,25 @@ def _broadcast_notes_to_other_pillars(hostname, sound_state, mqtt_client):
     #     self.mqtt_client.publish(f"sound_state/{hostname}", data)
     #     print("Sending Notes via MQTT Client")
 
+class SoundStateStub(SoundState):
+
+    def __init__(self):
+        self.volume = 99#pillar_cfg["volume"]
+        self.instruments = 99#pillar_cfg["instruments"]
+        self.bpm = 99#pillar_cfg["bpm"]
+        self.melody_scale = 99#initial_state["melody_scale"]
+        self.melody_number = 99#initial_state["melody_number"]
+        self.key = 99#initial_state["key"]
+        self.baseline_style = 99#initial_state["baseline_style"]
+
+        ### util state var
+        self.change_instrument_next_layer = "melody"
+        self.change_tempo_direction = 1
+        self.tempo_max = 200
+        self.tempo_min = 30
+        self.key_center = 60
+
+        self.reaction_notes = [1,2,3,4]
 
 if __name__=="__main__":
     # Get Hostname
@@ -77,10 +96,10 @@ if __name__=="__main__":
         # for param_name, value in sound_state.items():
         #     self.sound_manager.update_pillar_setting(param_name, value) 
 
-        echo_state = "echo-o-o-o"
+        sound_state = SoundStateStub()
 
         # Send any sound state "reaction notes" to other pillars
-        _broadcast_notes_to_other_pillars(hostname, echo_state, mqtt_client)
+        _broadcast_notes_to_other_pillars(hostname, sound_state, mqtt_client)
         
         # data = {
         #     "btn_press": current_btn_press,
