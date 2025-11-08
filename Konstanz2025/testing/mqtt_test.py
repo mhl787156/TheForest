@@ -18,17 +18,18 @@ def _on_other_pillar_receive(topic, their_sound_state, props):
     print("Received topic: %s"%topic)
 
     try:
-        print(their_sound_state)
         sound_state = json.loads(their_sound_state)
-        print("Received data: ")
-        print(sound_state)
     except Exception as e:
         print("[Message received error] %s"%e)
+        sound_state = their_sound_state
         # if "reaction_notes" in sound_state:
         #     # Currently telling composer to play all the reaction notes
         #     notes = sound_state["reaction_notes"]
         #     if len(notes) > 0:
         #         sound_manager.update_pillar_setting("broadcast_notes", notes) 
+
+    print("Received data: ")
+    print(sound_state)
 
 def _broadcast_notes_to_other_pillars(hostname, sound_state, mqtt_client):
     data = json.dumps(sound_state.to_json())
