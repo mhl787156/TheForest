@@ -23,6 +23,14 @@ class SoundState(object):
         self.melody_number = initial_state["melody_number"]
         self.key = initial_state["key"]
         self.baseline_style = initial_state["baseline_style"]
+        
+        # Initialize active_synths from default state
+        self.active_synths = initial_state.get("active_synths", {
+            "background": True,
+            "harmony": False,
+            "melody1": False,
+            "melody2": False
+        })
 
         ### util state var
         self.change_instrument_next_layer = "melody"
@@ -46,6 +54,7 @@ class SoundState(object):
             "melody_number": self.melody_number,
             "baseline_style": self.baseline_style,
             "reaction_notes" : self.reaction_notes,
+            "active_synths": self.active_synths,
         }
     
     def items(self):
@@ -157,10 +166,10 @@ class Pillar_Mapper_Base(object):
 class ButtonTriggerMapper(Pillar_Mapper_Base):
     """Maps button presses to synth triggers
     
-    Button 0 → harmony
-    Button 1 → melody1
-    Button 2 → melody2
-    Button 3 → melody1 (duplicate)
+    Button 0  harmony (bass)
+    Button 1  melody1 (spectral swarm)
+    Button 2  melody2 (vocal phrase)
+    Button 3  melody3 (bells phrase)
     """
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
@@ -171,7 +180,8 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
             "background": True,  # Always on
             "harmony": False,
             "melody1": False,
-            "melody2": False
+            "melody2": False,
+            "melody3": False
         }
 
         # Detect button presses (rising edge: old=False, new=True)
@@ -187,8 +197,8 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
                     self.sound_state.active_synths["melody2"] = True
                     print(f"[BUTTON {button_id}] Triggering melody2")
                 elif button_id == 3:
-                    self.sound_state.active_synths["melody1"] = True
-                    print(f"[BUTTON {button_id}] Triggering melody1 (duplicate)")
+                    self.sound_state.active_synths["melody3"] = True
+                    print(f"[BUTTON {button_id}] Triggering melody3")
 
 class FixedMapper(Pillar_Mapper_Base):
     def __init__(self, cfg, pillar_cfg):

@@ -146,7 +146,8 @@ SC_PARTS = {
         
         // Basic filtering - adjusted for low frequency range
         sig = HPF.ar(osc, 20);  // Remove only sub-sonic rumble below 20Hz
-        sig = LPF.ar(sig, LFNoise1.kr(0.15).range(400, 1200));  // Gentle low-pass for warmth 
+        sig = LPF.ar(sig, 800);
+        //sig = LPF.ar(sig, LFNoise1.kr(0.15).range(400, 1200));  // Gentle low-pass for warmth 
         
         // LIGHT reverb (reduced parameters to save CPU)
         //sig = FreeVerb.ar(sig, 0.65, 0.8, 0.5);
@@ -158,119 +159,164 @@ SC_PARTS = {
 
     "pad_synth2": r"""
 
-    SynthDef(\pad_synth2, { |out=0, freq=200, volume=0.2, gate=1|
-        var tone, noise, sig, env, pan, mod;
-        
-        // Random stereo position per pad
-        pan = Rand(-0.7, 0.7);
-        
-        // Long envelope: 8s attack, 25s sustain, 10s release = 43s
-        env = EnvGen.kr(Env.linen(8, 25, 10, 1, 'sine'), doneAction: 2);
-        
-        // Gentle LFO for subtle movement
-        mod = LFNoise1.kr(0.08).range(0.98, 1.02);
-        
-        // Smooth airy tone with subtle movement
-        tone = SinOsc.ar(freq * 0.5 * mod, 0, 0.35);
-        
-        // Some noise for texture
-        noise = LPF.ar(WhiteNoise.ar(0.02), 600);  
-        
-        // Combine
-        sig = tone + noise;
-        
-        // Filtering for warmth
-        sig = HPF.ar(sig, 25);
-        sig = LPF.ar(sig, 1200);  // Lower for darker sound
-        
-        // Light reverb
-        sig = FreeVerb.ar(sig, 0.4, 0.7, 0.3);
-        
-        // Stereo output with pan
-        Out.ar(out, Pan2.ar(sig * volume * env * 0.4, pan));
-    })
-    
+    SynthDef(\pad_synth2, { |outBus=0, freq=200, amp=0.2, pan=0, volume=0.2, gate=1|
+        var osc, sig, detune, mod, env;
+        // Long attack/release envelope for smooth morphing
+        env = EnvGen.kr(Env.linen(8, 20, 12, 1, 'sine'), doneAction: 2);
+        // Slow LFO modulation for movement
+        mod = LFNoise1.kr(0.05).range(0.97, 1.03);
+        detune = LFNoise1.kr(0.08).range(-0.2, 0.2);
+        // Rich harmonic stack with detuning
+        osc = Mix.new([
+            SinOsc.ar(freq * 0.5 * mod, 0, 0.3),
+            SinOsc.ar(freq * 0.501 + detune, 0, 0.25),
+            Saw.ar(freq * 1.5 * mod, 0.15),
+            Pulse.ar(freq * 2.99, LFNoise1.kr(0.1).range(0.3, 0.7), 0.12),
+            SinOsc.ar(freq * 3.01 - detune, 0, 0.18),
+            SinOsc.ar(freq * 5, 0, 0.1)
+        ]);
+        // Subtle chorus/shimmer effect
+        sig = osc + DelayC.ar(osc, 0.05, LFNoise1.kr(0.2).range(0.01, 0.03), 0.4);
+        sig = HPF.ar(sig, 40);
+        sig = LPF.ar(sig, LFNoise1.kr(0.15).range(800, 3200));
+        // Deep reverb
+        sig = FreeVerb.ar(sig, 0.95, 0.95, 0.7);
+        // Stereo spread
+        sig = sig + PitchShift.ar(sig, 0.2, LFNoise1.kr(0.3).range(0.998, 1.002), 0, 0.01);
+        sig = Pan2.ar(sig * amp * env * 0.6, pan);
+        Out.ar(outBus, sig);
+		})
 
     """,
 
     "bass_synth": r"""
     SynthDef(\bass_synth, { |out=0, freq=440, volume=0.5, gate=1|
-        var freqs = [36.71, 55, 73.42, 110];
-        var chosenFreq = freqs.choose * rrand(0.99, 1.01);
-        var pan = rrand(-0.4, 0.4);
-        var carrier, modulator, mod_env, amp_env, sig, sub, metal, mid, harmonic;
-        amp_env = Env.linen(0.8, 3, 2.5, 1, 'sine').kr(doneAction: 2);
-        mod_env = Env.perc(0.01, 1.5, 1, -4).kr;
-        modulator = SinOsc.ar(chosenFreq * 2.1, 0, chosenFreq * mod_env * 12);
-        carrier = SinOsc.ar(chosenFreq + modulator, 0, 0.8);
-        metal = SinOsc.ar(chosenFreq * 1.5 + (modulator * 0.4), 0, 0.35);
-        mid = SinOsc.ar(chosenFreq * 3 + (modulator * 0.2), 0, 0.25);
-        harmonic = SinOsc.ar(chosenFreq * 4, 0, 0.15);
-        sub = SinOsc.ar(chosenFreq * 0.5, 0, 0.6);
-        sig = (carrier + metal + mid + harmonic + sub) * amp_env;
-        sig = LPF.ar(sig, LFNoise1.kr(0.2).range(800, 2500));
+        var pan, carrier, modulator, mod_env, amp_env, sig, sub, metal, mid, harmonic;
+        
+        // Random pan (narrower for bass)
+        pan = rrand(-0.2, 0.2);
+        
+        // SHORT staccato envelope: 0.05s attack, 0.3s sustain, 0.15s release = 0.5s total
+        amp_env = Env.linen(0.05, 0.3, 0.15, 1, 'sine').kr(doneAction: 2);
+        mod_env = Env.perc(0.01, 0.4, 1, -4).kr;
+        
+        // FM synthesis
+        modulator = SinOsc.ar(freq * 2.1, 0, freq * mod_env * 12);
+        carrier = SinOsc.ar(freq + modulator, 0, 0.8);
+        
+        // Brighter harmonics (increased levels)
+        metal = SinOsc.ar(freq * 1.5 + (modulator * 0.4), 0, 0.5);   // Increased from 0.35
+        mid = SinOsc.ar(freq * 3 + (modulator * 0.2), 0, 0.35);      // Increased from 0.25
+        harmonic = SinOsc.ar(freq * 4, 0, 0.2);                       // Increased from 0.15
+        
+        // Deep sub component
+        //sub = SinOsc.ar(freq * 0.5, 0, 0.6);
+        
+        sig = (carrier + metal + mid + harmonic) * amp_env;
+        
+        // Brighter filter (raised cutoff)
+        sig = LPF.ar(sig, 3500);  // Raised from 2500
         sig = HPF.ar(sig, 35);
-        sig = (sig * 1.3).tanh;
-        Out.ar(out, Pan2.ar(sig * volume * gate, pan));
+        
+        // Subtle saturation
+        //sig = (sig * 1.3).tanh;
+        
+        Out.ar(out, Pan2.ar(sig * volume, pan));  // gate removed (doneAction handles it)
+    })
+    """,
+
+    "smooth_bass_synth": r"""
+    SynthDef(\smooth_bass, { |out=0, freq=440, volume=0.1, gate=1|
+    var pan, carrier, modulator, mod_env, amp_env, sig, sub, warmth, air, detune;
+    
+    // Gentle pan
+    pan = rrand(-0.3, 0.3);
+    
+   amp_env = Env.linen(0.05, 0.2, 0.1, 1, 'sine').kr(doneAction: 2);  // 0.35s total
+    
+    mod_env = Env.adsr(0.05, 0.2, 0.3, 0.25).kr;
+    
+    // Detuned oscillators for warmth
+    detune = 1.005; // Slight detune
+    carrier = Mix([
+        SinOsc.ar(freq, 0, 0.6),
+        SinOsc.ar(freq * detune, 0.5, 0.4)
+    ]);
+    
+    // Gentle FM modulation
+    modulator = SinOsc.ar(freq * 1.8, 0, freq * mod_env * 4); // Reduced modulation index
+    
+    // Warm harmonic content
+    warmth = Mix([
+        SinOsc.ar(freq * 2, 0, 0.3),    // Octave
+        SinOsc.ar(freq * 3, 0.2, 0.15), // 12th
+        SinOsc.ar(freq * 0.5, 0, 0.4)   // Sub octave
+    ]);
+    
+    // Air/breath component
+    air = LPF.ar(
+        PinkNoise.ar(0.1),
+        freq * 8
+    ) * mod_env * 0.3;
+    
+    sig = (carrier + modulator + warmth + air) * amp_env;
+    
+    // Gentle filtering for smoothness
+    sig = LPF.ar(sig, 2800); // Lower cutoff for warmth
+    sig = HPF.ar(sig, 40);   // Gentle rumble filter
+    
+    // Subtle compression and saturation
+    //sig = (sig * 1.1).tanh * 0.9;
+    
+    // Gentle stereo enhancement
+    sig = Pan2.ar(sig, pan);
+    
+    Out.ar(out, sig * volume);
     })
     """,
 
     "lead_synth": r"""
     SynthDef(\lead_synth, { |out=0, freq=440, volume=0.25, gate=1|
-        var numGrains = rrand(5, 10);
-        var sig = Mix.fill(numGrains, {
-            var grainFreq = exprand(400, 6000) * rrand(0.95, 1.05);
-            var pan = rrand(-0.9, 0.9);
-            var amp = exprand(0.15, 0.35);
-            var bw = exprand(0.1, 0.6);
-            var env = Env.perc(0.005, exprand(0.05, 0.2), 1, -6).kr(doneAction: 0);
-            var source = Mix.ar([
-                LFSaw.ar(grainFreq * LFNoise1.kr(exprand(5, 20)).range(0.98, 1.02), 0, 0.7),
-                PinkNoise.ar(0.8)
-            ]);
-            var filtered = Mix.ar([
-                BPF.ar(source, grainFreq, bw),
-                BPF.ar(source, grainFreq * LFNoise1.kr(exprand(2, 10)).range(1.5, 2.5), bw * 0.8),
-                BPF.ar(source, grainFreq * LFNoise1.kr(exprand(1, 8)).range(0.5, 0.7), bw * 1.2)
-            ]);
-            filtered = filtered + PitchShift.ar(filtered, 0.05, LFNoise1.kr(10).range(0.995, 1.005), 0, 0.01, 0.3);
-            Pan2.ar(filtered * env * amp, pan)
-        });
-        DetectSilence.ar(sig, doneAction: 2);
-        Out.ar(out, sig * volume * gate);
+        var sig, env, source, filtered, pan, amp, bw;
+        
+        // Random parameters per grain (at synth creation, matches synth.scd)
+        pan = rrand(-0.9, 0.9);
+        amp = exprand(0.15, 0.35);
+        bw = exprand(0.1, 0.6);
+        
+        // Short grain envelope
+        env = EnvGen.kr(Env.perc(0.005, exprand(0.05, 0.2), 1, -6), doneAction: 2);
+        
+        // Source: mixture of saw and noise for spectral richness
+        // Uses PASSED freq parameter (randomized in Python)
+        source = Mix.ar([
+            LFSaw.ar(freq * LFNoise1.kr(exprand(5, 20)).range(0.98, 1.02), 0, 0.7),
+            PinkNoise.ar(0.8)
+        ]);
+        
+        // Multiple bandpass filters for spectral sculpting
+        filtered = Mix.ar([
+            BPF.ar(source, freq, bw),
+            BPF.ar(source, freq * LFNoise1.kr(exprand(2, 10)).range(1.5, 2.5), bw * 0.8),
+            BPF.ar(source, freq * LFNoise1.kr(exprand(1, 8)).range(0.5, 0.7), bw * 1.2)
+        ]);
+        
+        // Add shimmer with pitch shift (0.4-0.6 = down almost an octave!)
+        sig = filtered + PitchShift.ar(filtered, 0.05, LFNoise1.kr(10).range(0.4, 0.6), 0, 0.01, 0.3);
+        sig = sig * env * amp * volume;  // gate not used - synth frees itself via doneAction
+        
+        // Pan before FX (matches synth.scd routing)
+        sig = Pan2.ar(sig, pan);
+        
+        // FX chain: reverb + delay for watery texture
+        sig = FreeVerb.ar(sig, 0.5, 0.9, 0.5);
+        sig = sig + CombN.ar(sig, 0.6, 0.45, 3, 0.4);
+        
+        Out.ar(out, sig);
     })
     """,
 
-    "lead2_synth": r"""
-    SynthDef(\lead2_synth, { |out=0, freq=440, volume=0.18, gate=1|
-        var voiceFreq = exprand(300, 700);
-        var pan = rrand(-0.4, 0.4);
-        var vowel = [0, 1, 2, 3, 4].choose;
-        var sig, env, source, formants, f, a, q, vibrato, finalFreq;
-        env = Env.linen(1.5, 3, 2.5, 1, 'sine').kr(doneAction: 2);
-        vibrato = SinOsc.kr(exprand(2.5, 4), mul: exprand(2, 5));
-        finalFreq = voiceFreq + vibrato;
-        source = Saw.ar(finalFreq.lag(0.4));
-        f = Select.kr(vowel, [
-            [730, 1090, 2440, 3400, 4950],
-            [530, 1840, 2480, 3470, 4950],
-            [270, 2290, 3010, 3490, 4950],
-            [570, 840, 2410, 3400, 4950],
-            [300, 870, 2240, 3400, 4950]
-        ]);
-        a = Select.kr(vowel, [
-            [1, 0.5, 0.35, 0.1, 0.02],
-            [1, 0.4, 0.3, 0.08, 0.015],
-            [1, 0.25, 0.2, 0.06, 0.01],
-            [1, 0.45, 0.28, 0.09, 0.015],
-            [1, 0.3, 0.15, 0.05, 0.008]
-        ]);
-        q = [0.1, 0.08, 0.05, 0.04, 0.03];
-        formants = Mix.fill(5, { |i| BBandPass.ar(source, f[i], q[i]) * a[i] });
-        sig = Pan2.ar(formants * env * volume * gate * 0.5, pan);
-        Out.ar(out, sig);
-    })
-    """
+    
 }
 
 def create_supercollider_synth(s: Session, name: str):

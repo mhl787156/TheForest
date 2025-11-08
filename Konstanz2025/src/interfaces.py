@@ -129,12 +129,14 @@ DEFAULT_STATE = {
     "volume": {
         "melody1": 1.0,
         "melody2": 0.8,
+        "melody3": 1.0,
         "harmony": 0.5,
         "background": 0.3
     },
     "instruments": {
         "melody1": "lead_synth",
         "melody2": "lead2_synth",
+        "melody3": "melody_bells",
         "harmony": "bass_synth",
         "background": "pad_synth"
     },
@@ -142,7 +144,8 @@ DEFAULT_STATE = {
         "background": True,  # Always on
         "harmony": False,
         "melody1": False,
-        "melody2": False
+        "melody2": False,
+        "melody3": False
     },
     "key": 60,
     "bpm": 100,
