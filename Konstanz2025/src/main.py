@@ -62,7 +62,6 @@ class Controller():
         self.data_queue = queue.Queue()  # Thread-safe queue for data exchange
 
         self.mqtt_enabled = config["mqtt"]["enable"]
-        print("!!!!!!!!!!!!!!!!!!!!!!!",self.mqtt_enabled)
         # MQTT to finish
         if self.mqtt_enabled:
             print("[MQTT] Enabled")
