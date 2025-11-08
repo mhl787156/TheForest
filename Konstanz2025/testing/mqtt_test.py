@@ -15,9 +15,10 @@ def _on_other_pillar_receive(topic, their_sound_state, props):
     # On receive of a different pillar do something
     # E.g. play a sound, change a light or something. 
 
-    print("Received topic %s"%topic)
+    print("Received topic: %s"%topic)
 
     try:
+        print(their_sound_state)
         sound_state = json.loads(their_sound_state)
         print("Received data: ")
         print(sound_state)
