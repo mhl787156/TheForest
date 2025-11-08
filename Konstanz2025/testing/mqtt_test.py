@@ -31,7 +31,7 @@ def _on_other_pillar_receive(topic, their_sound_state, props):
 
 def _broadcast_notes_to_other_pillars(hostname, sound_state, mqtt_client):
     data = json.dumps(sound_state.to_json())
-#    mqtt_client.publish(f"sound_state/{hostname}", data)
+    mqtt_client.publish(f"sound_state/{hostname}", data)
     print("Sending Notes via MQTT Client")
 
     # Send Reaction Notes (or other sound state) to other pillars
