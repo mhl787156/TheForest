@@ -7,6 +7,7 @@ sys.path.append(os.path.join(dir_path, "src"))
 
 import socket
 import json
+import time
 from mqtt_manager import MqttPillarClient, MqttPillarClientMock
 from mapping_interface import SoundState
 
@@ -100,7 +101,7 @@ if __name__=="__main__":
 
         # Send any sound state "reaction notes" to other pillars
         _broadcast_notes_to_other_pillars(hostname, sound_state, mqtt_client)
-        
+        time.sleep(1)
         # data = {
         #     "btn_press": current_btn_press,
         #     "sound_state": sound_state.to_json()
