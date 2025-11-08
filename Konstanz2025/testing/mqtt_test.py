@@ -80,7 +80,7 @@ if __name__=="__main__":
         )
     
     mqtt_client.announce_online()
-    # mqtt_client.on("sound_state/*", _on_other_pillar_receive)
+    mqtt_client.on("sound_state/*", _on_other_pillar_receive)
 
     while True:
         # Get button state from the Arduino through Serial read
