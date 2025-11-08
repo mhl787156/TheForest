@@ -137,6 +137,10 @@ class Controller():
         # Generate sound state based on button inputs
         sound_state = self.mapping_interface.update_pillar(current_btn_press)
 
+        # Debug: print active_synths if any are triggered^M
+        if hasattr(sound_state, 'active_synths') and any(v for k, v in sound_state.active_synths.items() if k != 'background'):^M
+            print(f"[MAIN LOOP] active_synths: {sound_state.active_synths}")
+
         # Pass the sound state to the sound manager to activate anything
         for param_name, value in sound_state.items():
             self.sound_manager.update_pillar_setting(param_name, value) 
@@ -145,7 +149,8 @@ class Controller():
         if self.mqtt_enabled:
             self.broadcast_notes_to_other_pillars(sound_state)
 
-        self.sound_manager.tick(time_delta=1/30.0)
+        # Tick at 15Hz instead of 30Hz to reduce overhead
+        self.sound_manager.tick(time_delta=1/15.0)
         
         data = {
             "btn_press": current_btn_press,

@@ -10,11 +10,42 @@ import random
 import numpy as np
 import copy
 from functools import reduce
+import subprocess
+import os
+import time
 
 from interfaces import *
 from sc_synths import * 
 
 add_sc_extensions()
+
+# ========== DIAGNOSTIC FUNCTIONS ==========
+
+def print_server_info(prefix=""):
+    """Print scsynth process info and top CPU consumers"""
+    try:
+        out = subprocess.check_output(["ps", "aux"]).decode()
+        scs = [l for l in out.splitlines() if "scsynth" in l]
+        print(f"{prefix} scsynth processes: {len(scs)}")
+        for s in scs:
+            print("   ", s)
+    except Exception as e:
+        print(f"{prefix} Couldn't query ps:", e)
+
+    try:
+        top = subprocess.check_output(["bash","-c","ps -eo pid,cmd,%cpu,%mem --sort=-%cpu | head -n 8"]).decode()
+        print(f"{prefix} Top procs:\n{top}")
+    except Exception as e:
+        print(f"{prefix} Couldn't query top:", e)
+
+def query_sc_status():
+    """Query SuperCollider server status via OSC (placeholder for now)"""
+    # To implement: would need pythonosc to send /status to port 57110
+    # and listen for /status.reply on port 57120
+    # For now, process info from print_server_info() is sufficient
+    pass
+
+# ==========================================
 
 class InstrumentManager:
 
@@ -101,6 +132,10 @@ class Composer:
             "background": None
         }
         
+        # Safety limit for concurrent pads
+        self.active_pad_count = 0
+        self.max_concurrent_pads = 6  # Limit to prevent overload
+        
         # Start background immediately - runs continuously
         print("[COMPOSER] Starting background pad")
         self.active_forks["background"] = self.session.fork(self.fork_background, args=(self.shared_state,))
@@ -134,6 +169,7 @@ class Composer:
                     self.session.fork(self.fork_melody_single_note, args=(note,delay,))
             if setting_name == "active_synths":
                 # Trigger synth bursts based on button presses
+                print(f"[COMPOSER] Received active_synths: {value}")
                 self.handle_synth_triggers(value)
             
     def update_instruments(self, instruments):
@@ -188,25 +224,79 @@ class Composer:
         instrument.play_note(note, volume, 0.25, blocking=True)
 
     def trigger_melody1_burst(self):
-        """Trigger a single spectral swarm burst"""
+        """Trigger 2-second spectral swarm burst """
         instrument = self.instrument_manager.melody1_instrument()
         volume = self.state["volume"]["melody1"]
-        # Spectral swarm burst (5-10 grains internally, ~1s duration)
-        instrument.play_note(60, volume, 1.0, blocking=False)
+        
+        # Random density: 3-12 grains per second (matches synth.scd)
+        density = random.uniform(3, 12)
+        grain_interval = 1.0 / density
+        burst_duration = 2.0  # seconds
+        
+        print(f"[MELODY1] Starting swarm: density={density:.1f} grains/s, interval={grain_interval:.3f}s")
+        
+        elapsed = 0.0
+        grain_count = 0
+        
+        while elapsed < burst_duration:
+            # Randomize frequency for each grain (matches synth.scd line 221)
+            grain_freq = random.uniform(400, 6000) * random.uniform(0.95, 1.05)
+            # Convert Hz to MIDI pitch for SCAMP
+            import math
+            midi_pitch = 69 + 12 * math.log2(grain_freq / 1760.0)
+            
+            # Spawn grain
+            instrument.play_note(
+                midi_pitch,  # Random pitch (400-6000Hz range)
+                volume, 
+                0.2,  # Duration (EnvGen uses its own random envelope 0.05-0.2s)
+                blocking=False
+            )
+            grain_count += 1
+            
+            # Wait before next grain
+            wait(grain_interval, units="time")
+            elapsed += grain_interval
+        
+        print(f"[MELODY1] Swarm complete: spawned {grain_count} grains in {elapsed:.2f}s")
     
     def trigger_melody2_burst(self):
-        """Trigger a single formant voice"""
+        """Trigger 2-measure phrase: 2 formant voices"""
         instrument = self.instrument_manager.melody2_instrument()
         volume = self.state["volume"]["melody2"]
-        # Formant voice (7-second envelope)
-        instrument.play_note(60, volume, 7.0, blocking=False)
+        
+        # Fixed pattern: 2 voices across 8 seconds (4s each)
+        timings = [0, 4.0]
+        
+        for t in timings:
+            wait(t, units="time")
+            instrument.play_note(60, volume, 7.0, blocking=False)
+            print(f"[MELODY2] Voice at t={t}s")
 
     def trigger_harmony_burst(self):
-        """Trigger a single FM metallic throb"""
+        """Trigger 4-note syncopated bass line (2s duration)"""
+        import math
         instrument = self.instrument_manager.harmony_instrument()
         volume = self.state["volume"]["harmony"]
-        # FM throb (6-second envelope)
-        instrument.play_note(60, volume, 7.0, blocking=False)
+        
+        # Frequency pool: D1, A1, D2, A2, D3 (36.71, 55, 73.42, 110, 146.83 Hz)
+        bass_freqs = [36.71, 55, 73.42, 110, 146.83]
+        
+        # Syncopated 4-note pattern: t=0s, 0.4s, 1.0s, 1.6s (total 2s)
+        timings = [0, 0.2, 0.5, 0.65]
+        
+        print(f"[HARMONY] Starting bass line: 4 notes over 2s")
+        
+        for i, t in enumerate(timings):
+            # Pick random frequency from pool
+            freq_hz = random.choice(bass_freqs) * random.uniform(0.99, 1.01)
+            midi_pitch = 69 + 12 * math.log2(freq_hz / 440.0)
+            
+            wait(t, units="time")
+            instrument.play_note(midi_pitch, volume, 0.5, blocking=False)
+            print(f"[HARMONY] Note {i+1} at t={t}s: {freq_hz:.1f}Hz")
+        
+        print(f"[HARMONY] Bass line complete")
 
     # def fork_harmony(self, shared_state):
     #     # current_clock().tempo = self.state["bpm"]["harmony"]
@@ -255,8 +345,8 @@ class Composer:
         # Mystic ambient pad cloud - continuous background (matches background.scd)
         print("[BACKGROUND] Fork started")
         try:
-            # D2, A2, D3, A3, D4 harmonics
-            pad_freqs = [73.42, 110, 146.83, 220, 293.66]
+            # D1, A1, D2, A2, D3 harmonics (one octave lower)
+            pad_freqs = [36.71, 55, 73.42, 110, 146.83]
             iteration = 0
             while True:
                 iteration += 1
@@ -264,14 +354,22 @@ class Composer:
                 instrument = self.instrument_manager.background_instrument()
                 volume = self.state["volume"]["background"]
                 
-                # Pick random frequency with slight detune
-                freq = random.choice(pad_freqs) * random.uniform(0.98, 1.02)
-                
-                # Spawn single pad: 8s attack + 20s sustain + 12s release = 40s total
-                print(f"[BACKGROUND #{iteration}] Spawning pad: freq={freq:.2f}Hz, vol={volume:.2f}, instrument={instrument.name if hasattr(instrument, 'name') else 'unknown'}")
-                
-                # Fork a separate thread for this note so it doesn't block
-                self.session.fork(self._play_background_note, args=(instrument, freq, volume, iteration))
+                # Check if we've hit the concurrent pad limit
+                if self.active_pad_count >= self.max_concurrent_pads:
+                    print(f"[BACKGROUND #{iteration}]  PAD LIMIT REACHED ({self.active_pad_count}/{self.max_concurrent_pads}) - skipping spawn")
+                    print_server_info(f"[BACKGROUND #{iteration}]")
+                else:
+                    # Pick random frequency with slight detune
+                    freq = pad_freqs[iteration % len(pad_freqs)] * random.uniform(0.98, 1.02)
+                    
+                    # Spawn single pad: 8s attack + 20s sustain + 12s release = 40s total
+                    print(f"[BACKGROUND #{iteration}] Spawning pad: freq={freq:.2f}Hz, vol={volume:.2f}, active_pads={self.active_pad_count}/{self.max_concurrent_pads}")
+                    
+                    # Increment counter before spawning
+                    self.active_pad_count += 1
+                    
+                    # Fork a separate thread for this note so it doesn't block
+                    self.session.fork(self._play_background_note, args=(instrument, freq, volume, iteration))
                 
                 # Irregular spawning timing (1.5-3 bars at 80 BPM = 4.5-9 seconds)
                 wait_time = random.uniform(4.5, 9.0)
@@ -285,11 +383,23 @@ class Composer:
     
     def _play_background_note(self, instrument, freq, volume, iteration):
         """Play a single background pad note in its own fork"""
+        start_time = time.time()
         try:
             print(f"[BACKGROUND #{iteration}] Note fork started, calling play_note")
-            instrument.play_note(freq, volume, 20.0, blocking=False)
-            print(f"[BACKGROUND #{iteration}] Note triggered successfully")
+            # Use blocking=False + manual wait for fixed-duration Env.linen
+            # Duration param is ignored with linen (envelope is always 8+20+12=40s)
+            instrument.play_note(freq, volume, 1.0, blocking=False)
+            print(f"[BACKGROUND #{iteration}] Note triggered successfully, waiting 40s...")
+            
+            # Wait for full envelope: 8s attack + 20s sustain + 12s release = 40s total
+            wait(40.0, units="time")
+            
+            # Decrement counter when pad finishes
+            self.active_pad_count = max(0, self.active_pad_count - 1)
+            elapsed = time.time() - start_time
+            print(f"[BACKGROUND #{iteration}] Pad complete after {elapsed:.1f}s, active_pads now {self.active_pad_count}")
         except Exception as e:
+            self.active_pad_count = max(0, self.active_pad_count - 1)
             print(f"[BACKGROUND #{iteration}] ERROR playing note: {e}")
             import traceback
             traceback.print_exc()
@@ -306,6 +416,10 @@ class SoundManager:
             if k not in self.state:
                 self.state[k] = d
         self.composer = Composer(self.session, self.state)
+        
+        # Diagnostics
+        self.tick_counter = 0
+        self.diagnostic_interval = 150  # Print every 150 ticks (~10 seconds at 15Hz)
 
     def __repr__(self):
         """String representation of the pillar for debugging."""
@@ -315,10 +429,23 @@ class SoundManager:
         """Updates the settings dictionary for a specific pillar."""
         self.composer.update(setting_name, value)
 
-    def tick(self, time_delta=1/30.0):
+    def tick(self, time_delta=1/15.0):  # Reduced from 30Hz to 15Hz to lower overhead
+        self.tick_counter += 1
+        
+        # Periodic diagnostics
+        #if self.tick_counter % self.diagnostic_interval == 0:
+        #    print(f"\n{'='*60}")
+        #    print(f"[TICK #{self.tick_counter}] Periodic diagnostic")
+        #    print(f"  Active pads: {self.composer.active_pad_count}/{self.composer.max_concurrent_pads}")
+        #    print(f"  Background fork alive: {self.composer.active_forks['background'].alive}")
+            
+        
         # Check if background fork is still alive
         if not self.composer.active_forks["background"].alive:
-            print("[WARNING] Background fork died! Restarting...")
+            print(f"\n{'!'*60}")
+            print(f"[TICK #{self.tick_counter}]  CRITICAL: Background fork died! Restarting...")
+            print_server_info("[FORK DEATH]")
+            print(f"{'!'*60}\n")
             self.composer.active_forks["background"] = self.composer.session.fork(
                 self.composer.fork_background, args=(self.composer.shared_state,)
             )
