@@ -177,7 +177,7 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
     def interaction_update_sound_light(self, old_state, new_state):
         # Reset active synths (triggers are one-shot)
         self.sound_state.active_synths = {
-            "background": True,  # Always on
+            "background": False,  # Always on
             "harmony": False,
             "melody1": False,
             "melody2": False
@@ -198,6 +198,17 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
                 elif button_id == 3:
                     self.sound_state.active_synths["melody1"] = True
                     print(f"[BUTTON {button_id}] Triggering melody1 (duplicate)")
+
+        # Clears the reaction note for the Composer 
+        self.sound_state.clear_reaction_notes()
+
+        # If we now detect as active, we add a reaction note
+        for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
+            if not old_active and active and button_id < len(self.notes):
+                note = self.notes[button_id]
+                note_to_play = note + self.octave * 12
+                self.sound_state.append_reaction_notes(note_to_play)
+
 
 class FixedMapper(Pillar_Mapper_Base):
     def __init__(self, cfg, pillar_cfg):

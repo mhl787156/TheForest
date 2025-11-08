@@ -145,6 +145,8 @@ class Controller():
         for param_name, value in sound_state.items():
             self.sound_manager.update_pillar_setting(param_name, value) 
 
+        
+
         # Send any sound state "reaction notes" to other pillars
         if self.mqtt_enabled:
             self.broadcast_notes_to_other_pillars(sound_state)
