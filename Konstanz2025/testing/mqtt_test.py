@@ -20,9 +20,9 @@ def _on_other_pillar_receive(topic, their_sound_state, props):
     try:
         sound_state = json.loads(their_sound_state)
         print("Received data: ")
-        print(their_sound_state)
+        print(sound_state)
     except Exception as e:
-        print(e)
+        print("[Message received error] %s"%e)
         # if "reaction_notes" in sound_state:
         #     # Currently telling composer to play all the reaction notes
         #     notes = sound_state["reaction_notes"]
