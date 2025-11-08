@@ -137,8 +137,8 @@ class Controller():
         # Generate sound state based on button inputs
         sound_state = self.mapping_interface.update_pillar(current_btn_press)
 
-        # Debug: print active_synths if any are triggered^M
-        if hasattr(sound_state, 'active_synths') and any(v for k, v in sound_state.active_synths.items() if k != 'background'):^M
+        # Debug: print active_synths if any are triggered
+        if hasattr(sound_state, 'active_synths') and any(v for k, v in sound_state.active_synths.items() if k != 'background'):
             print(f"[MAIN LOOP] active_synths: {sound_state.active_synths}")
 
         # Pass the sound state to the sound manager to activate anything
