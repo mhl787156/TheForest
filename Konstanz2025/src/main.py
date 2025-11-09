@@ -116,11 +116,12 @@ class Controller():
             notes = []
             time = []
             for it in sound_state["reaction_notes"]:
+                print(it)
                 notes.append(it[0])
                 time.append(it[1])
 
             print("Received notes: ")
-            print(notes)
+            print(sound_state["reaction_notes"])
             
             if len(notes) > 0:
                 idx = random.choice(3)
