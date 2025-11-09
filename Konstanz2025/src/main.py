@@ -120,7 +120,9 @@ class Controller():
 
             print("Received notes: ")
             print(notes)
+            
             if len(notes) > 0:
+                value = random.choice(['melody1','melody2','harmony'])
                 self.sound_manager.update_pillar_setting("active_synths", extra_arg=(notes,time)) 
 
     def broadcast_notes_to_other_pillars(self, sound_state):
