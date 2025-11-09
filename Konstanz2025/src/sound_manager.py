@@ -165,13 +165,13 @@ class Composer:
                     self.session.fork(self.fork_melody_single_note, args=(note,))
             if setting_name == "broadcast_notes":
                 delay = self.state.get("broadcast", {}).get("echo_delay_duration", 0)
-                self.sound_state.active_synths["f{value}"] = True
+                self.handle_broadcast(value,extra_arg)
                 # for i, note in enumerate(value):
                 #     self.session.fork(self.fork_melody_single_note, args=(note,delay,))
             if setting_name == "active_synths":
                 # Trigger synth bursts based on button presses
                 print(f"[COMPOSER] Received active_synths: {value}")
-                self.handle_synth_triggers(synths,extra_arg)
+                self.handle_synth_triggers(value,extra_arg)
             
     def update_instruments(self, instruments):
         for k,v in instruments.items():
@@ -212,6 +212,23 @@ class Composer:
         
         if active_synths.get("melody2", False):
             print("[TRIGGER] Melody2 burst")
+            self.session.fork(self.trigger_melody2_burst, args=(notes,time))
+
+    def handle_broadcast(self, synth, generated_notes):
+        """Handle broadcast for reaction notes"""
+        notes = generated_notes['notes']
+        time = generated_notes['time']
+        
+        if synth == "harmony":
+            print("[ECHO] Harmony burst")
+            self.session.fork(self.trigger_harmony_burst, args=(notes,time))
+        
+        if synth == "melody1":
+            print("[ECHO] Melody1 burst")
+            self.session.fork(self.trigger_melody1_burst, args=(notes,time))
+        
+        if synth == "melody2":
+            print("[ECHO] Melody2 burst")
             self.session.fork(self.trigger_melody2_burst, args=(notes,time))
     
     def fork_melody_single_note(self, note, delay=0.0):
