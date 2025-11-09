@@ -138,7 +138,7 @@ class Composer:
         
         # Start background immediately - runs continuously
         print("[COMPOSER] Starting background pad")
-        self.active_forks["background"] = self.session.fork(self.fork_background, args=(self.shared_state,))
+        # self.active_forks["background"] = self.session.fork(self.fork_background, args=(self.shared_state,))
 
     def update(self, setting_name, value, extra_arg=None): #TODO make nice
 
