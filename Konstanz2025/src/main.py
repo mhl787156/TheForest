@@ -123,7 +123,7 @@ class Controller():
             print(sound_state["reaction_notes"])
             
             if len(notes) > 0:
-                idx = random.randint(0,3)
+                idx = int(random.randint(0,3))
                 synths = ['melody1','melody2','harmony']
                 print("here!!!!!!!!!!!!!!")
                 value = synths[idx]
