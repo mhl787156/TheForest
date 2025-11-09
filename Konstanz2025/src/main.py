@@ -112,8 +112,12 @@ class Controller():
 
         if "reaction_notes" in sound_state:
             # Currently telling composer to play all the reaction notes
-            notes = sound_state["reaction_notes"]
-            notes = sound_state["time"]
+            notes = []
+            time = []
+            for it in sound_state["reaction_notes"]:
+                notes.append(it[0])
+                time.append(it[1])
+
             print("Received notes: ")
             print(notes)
             if len(notes) > 0:
