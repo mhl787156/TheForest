@@ -235,7 +235,7 @@ class Composer:
         
         grain_count = 0
         
-        for i, note in enumerate(note):
+        for i, note in enumerate(notes):
             # Spawn grain
             instrument.play_note(
                 note,  # Random pitch (400-6000Hz range)
