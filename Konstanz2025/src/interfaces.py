@@ -151,7 +151,7 @@ DEFAULT_STATE = {
     "baseline_style": "long",
     "chord_levels": 0,
     "reaction_notes": [],
-    "generated_notes": []
+    "generated_notes": [],
     "broadcast_notes": []
 }
 
