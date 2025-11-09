@@ -195,7 +195,7 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
             "melody1": False,
             "melody2": False
         }
-        
+
         self.notes = []
 
         # Detect button presses (rising edge: old=False, new=True)
@@ -224,7 +224,7 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
 
         # If we now detect as active, we add a reaction note
         for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
-            if not old_active and active and button_id < len(self.notes):
+            if not old_active and active:
                 for note in self.notes:
                     note_to_play = note + self.octave * 12
                     self.sound_state.append_reaction_notes(note_to_play)
