@@ -105,11 +105,11 @@ class Controller():
         try:
             sound_state = json.loads(their_sound_state)
         except Exception as e:
-            print("[Message received error] %s"%e)
+            # print("[Message received error] %s"%e)
             sound_state = their_sound_state
         
-        print("Received data: ")
-        print(sound_state)
+        print("Received notes: ")
+        print(sound_state.generated_notes)
 
         if "reaction_notes" in sound_state:
             # Currently telling composer to play all the reaction notes
