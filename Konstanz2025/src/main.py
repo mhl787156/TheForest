@@ -4,6 +4,7 @@ import socket
 import threading
 import queue
 import time
+import random
 
 from pillar_hw_interface import Pillar
 from mapping_interface import RotationMapper, EventRotationMapper, generate_mapping_interface
