@@ -141,7 +141,7 @@ DEFAULT_STATE = {
         "background": "pad_synth"
     },
     "active_synths": {
-        "background": True,  # Always on
+        "background": False,  # Always on
         "harmony": False,
         "melody1": False,
         "melody2": False,

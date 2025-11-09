@@ -26,10 +26,11 @@ class SoundState(object):
         
         # Initialize active_synths from default state
         self.active_synths = initial_state.get("active_synths", {
-            "background": True,
+            "background": False,
             "harmony": False,
             "melody1": False,
-            "melody2": False
+            "melody2": False,
+            "melody3": False
         })
 
         ### util state var
@@ -131,10 +132,11 @@ class SoundState(object):
         """Reset all triggers except background"""
         if hasattr(self, 'active_synths'):
             self.active_synths = {
-                "background": True,
+                "background": False,
                 "harmony": False,
                 "melody1": False,
-                "melody2": False
+                "melody2": False,
+                "melody3": False
             }
 
 
