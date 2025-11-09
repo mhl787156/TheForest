@@ -227,6 +227,9 @@ class Composer:
         instrument.play_note(note, volume, 0.25, blocking=True)
 
     def trigger_melody1_burst(self, notes, wait_time):
+        if len(notes) != len(wait_time):
+            return
+            
         """Trigger 2-second spectral swarm burst """
         instrument = self.instrument_manager.melody1_instrument()
         volume = self.state["volume"]["melody1"]
@@ -252,6 +255,9 @@ class Composer:
         print(f"[MELODY1] Swarm complete: spawned {grain_count} grains")
     
     def trigger_melody2_burst(self, notes, wait_time):
+        if len(notes) != len(wait_time):
+            return
+
         """Trigger 2-measure phrase: 2 formant voices"""
         instrument = self.instrument_manager.melody2_instrument()
         volume = self.state["volume"]["melody2"]
@@ -263,6 +269,9 @@ class Composer:
             print(f"[MELODY2] Voice at t={t}s")
 
     def trigger_harmony_burst(self, notes, wait_time):
+        if len(notes) != len(wait_time):
+            return
+
         """Trigger 4-note syncopated bass line (2s duration)"""    
         instrument = self.instrument_manager.harmony_instrument()
         volume = self.state["volume"]["harmony"]
