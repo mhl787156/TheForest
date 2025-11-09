@@ -13,11 +13,38 @@ from functools import reduce
 import subprocess
 import os
 import time
+import math
 
 from interfaces import *
 from sc_synths import * 
 
 add_sc_extensions()
+
+# ========== DIAGNOSTIC FUNCTIONS ==========
+
+def print_server_info(prefix=""):
+    """Print scsynth process info and top CPU consumers"""
+    try:
+        out = subprocess.check_output(["ps", "aux"]).decode()
+        scs = [l for l in out.splitlines() if "scsynth" in l]
+        print(f"{prefix} scsynth processes: {len(scs)}")
+        for s in scs:
+            print("   ", s)
+    except Exception as e:
+        print(f"{prefix} Couldn't query ps:", e)
+
+    try:
+        top = subprocess.check_output(["bash","-c","ps -eo pid,cmd,%cpu,%mem --sort=-%cpu | head -n 8"]).decode()
+        print(f"{prefix} Top procs:\n{top}")
+    except Exception as e:
+        print(f"{prefix} Couldn't query top:", e)
+
+def query_sc_status():
+    """Query SuperCollider server status via OSC (placeholder for now)"""
+    # To implement: would need pythonosc to send /status to port 57110
+    # and listen for /status.reply on port 57120
+    # For now, process info from print_server_info() is sufficient
+    pass
 
 # ========== DIAGNOSTIC FUNCTIONS ==========
 
@@ -236,86 +263,18 @@ class Composer:
         """Trigger 2-second spectral swarm burst """
         instrument = self.instrument_manager.melody1_instrument()
         volume = self.state["volume"]["melody1"]
-        
-        # Random density: 3-12 grains per second (matches synth.scd)
-        density = random.uniform(3, 12)
-        grain_interval = 1.0 / density
-        burst_duration = 2.0  # seconds
-        
-        print(f"[MELODY1] Starting swarm: density={density:.1f} grains/s, interval={grain_interval:.3f}s")
-        
-        elapsed = 0.0
-        grain_count = 0
-        
-        while elapsed < burst_duration:
-            # Randomize frequency for each grain (matches synth.scd line 221)
-            grain_freq = random.uniform(400, 6000) * random.uniform(0.95, 1.05)
-            # Convert Hz to MIDI pitch for SCAMP
-            import math
-            midi_pitch = 69 + 12 * math.log2(grain_freq / 1760.0)
-            
-            # Spawn grain
-            instrument.play_note(
-                midi_pitch,  # Random pitch (400-6000Hz range)
-                volume, 
-                0.2,  # Duration (EnvGen uses its own random envelope 0.05-0.2s)
-                blocking=False
-            )
-            grain_count += 1
-            
-            # Wait before next grain
-            wait(grain_interval, units="time")
-            elapsed += grain_interval
-        
-        print(f"[MELODY1] Swarm complete: spawned {grain_count} grains in {elapsed:.2f}s")
+        # Spectral swarm burst (5-10 grains internally, ~1s duration)
+        instrument.play_note(60, volume, 1.0, blocking=False)
     
     def trigger_melody2_burst(self):
-        """Trigger 4-note lyrical ascending phrase (melody_vocal, 2.5s)"""
+        """Trigger a single formant voice"""
         instrument = self.instrument_manager.melody2_instrument()
         volume = self.state["volume"]["melody2"]
-        
-        # Pentatonic scale notes: D3, E3, G3, A3 (ascending, smooth)
-        # MIDI pitches: 62, 64, 67, 69
-        melodic_phrase = [62, 64, 67, 69]
-        
-        # Smooth, flowing timing: t=0s, 0.6s, 1.3s, 2.0s (2.5s total)
-        timings = [0, 0.6, 1.3, 2.0]
-        
-        print(f"[MELODY2] Starting vocal phrase: 4 notes (ascending)")
-        
-        for i, (pitch, t) in enumerate(zip(melodic_phrase, timings)):
-            wait(t, units="time")
-            # Longer notes for lyrical character (0.8s envelope)
-            instrument.play_note(pitch, volume, 0.8, blocking=False)
-            print(f"[MELODY2] Note {i+1} at t={t}s: MIDI {pitch}")
-        
-        print(f"[MELODY2] Vocal phrase complete")
-
-    def trigger_melody3_burst(self):
-        """Trigger 5-note rhythmic bells phrase (melody_bells, 2s)"""
-        instrument = self.instrument_manager.melody3_instrument()
-        volume = self.state["volume"]["melody3"]
-        
-        # Pentatonic pattern with rhythmic variation: G3, A3, D4, E4, G4
-        # MIDI pitches: 67, 69, 74, 76, 79 (syncopated, bright)
-        melodic_phrase = [67, 69, 74, 76, 79]
-        
-        # Syncopated, rhythmic timing: t=0s, 0.3s, 0.6s, 1.0s, 1.6s (2s total)
-        timings = [0, 0.3, 0.6, 1.0, 1.6]
-        
-        print(f"[MELODY3] Starting bells phrase: 5 notes (syncopated)")
-        
-        for i, (pitch, t) in enumerate(zip(melodic_phrase, timings)):
-            wait(t, units="time")
-            # Short, bright notes for bells character (0.5s envelope)
-            instrument.play_note(pitch, volume, 0.5, blocking=False)
-            print(f"[MELODY3] Note {i+1} at t={t}s: MIDI {pitch}")
-        
-        print(f"[MELODY3] Bells phrase complete")
+        # Formant voice (7-second envelope)
+        instrument.play_note(60, volume, 7.0, blocking=False)
 
     def trigger_harmony_burst(self):
-        """Trigger 4-note syncopated bass line (2s duration)"""
-        import math
+        """Trigger a single FM metallic throb"""
         instrument = self.instrument_manager.harmony_instrument()
         volume = self.state["volume"]["harmony"]
         

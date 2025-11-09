@@ -64,13 +64,18 @@ class Controller():
         self.mqtt_enabled = config["mqtt"]["enable"]
         # MQTT to finish
         if self.mqtt_enabled:
+            print("[MQTT] Enabled")
             mqttObject = MqttPillarClientMock if config["mqtt"]["mock"] else MqttPillarClient
             self.mqtt_client = mqttObject(
-                broker_host=config["mqtt"]["mqtt_broker_ip"],
+                broker_host=config["mqtt"]["broker_ip"],
                 pillar_id=hostname
             )
+
+            print("[MQTT] Connecting to broker host: %s"%config["mqtt"]["broker_ip"])
+            self.mqtt_client.connect_and_loop()
             self.mqtt_client.announce_online()
-            self.mqtt_client.on("sound_state/*", self.on_other_pillar_receive)
+            self.mqtt_client.subscribe("sound_state/+")
+            self.mqtt_client.on("sound_state/+", self.on_other_pillar_receive)
 
     def start(self, frequency):
         """Starts the main control loop
@@ -86,13 +91,26 @@ class Controller():
     def stop(self):
         self.running = False
 
-    def on_other_pillar_receive(self, their_sound_state):
+    def on_other_pillar_receive(self, topic, their_sound_state, props):
         # On receive of a different pillar do something
         # E.g. play a sound, change a light or something. 
 
-        # TODO: If received from yourself, ignore... 
+        print("Received topic: %s"%topic)
+        # If received from yourself, ignore... 
+        _hostname = topic.split("/")[1]
+        if _hostname == hostname:
+            print("Ignore...")
+            return
 
-        sound_state = json.loads(their_sound_state)
+        try:
+            sound_state = json.loads(their_sound_state)
+        except Exception as e:
+            print("[Message received error] %s"%e)
+            sound_state = their_sound_state
+        
+        print("Received data: ")
+        print(sound_state)
+
         if "reaction_notes" in sound_state:
             # Currently telling composer to play all the reaction notes
             notes = sound_state["reaction_notes"]
@@ -126,6 +144,7 @@ class Controller():
         # Pass the sound state to the sound manager to activate anything
         for param_name, value in sound_state.items():
             self.sound_manager.update_pillar_setting(param_name, value) 
+
 
         # Send any sound state "reaction notes" to other pillars
         if self.mqtt_enabled:

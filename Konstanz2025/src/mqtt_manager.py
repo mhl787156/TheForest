@@ -139,7 +139,7 @@ class MqttPillarClient:
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
         self.client.on_subscribe = self._on_subscribe
-        self.client.on_publish = self._on_publish
+        # self.client.on_publish = self._on_publish
 
         # Reconnect backoff
         self.client.reconnect_delay_set(min_delay=reconnect_delay[0], max_delay=reconnect_delay[1])
@@ -152,7 +152,10 @@ class MqttPillarClient:
         If start_network_thread is True (default), starts a background network loop.
         Otherwise, call self.client.loop_start/loop or integrate with your own poller.
         """
+        print("-- broker_host is   ", self.broker_host)
+        print("-- broker_port is   ", self.broker_port)
         self.client.connect(self.broker_host, self.broker_port, self.keepalive)
+        # <MQTTErrorCode.MQTT_ERR_SUCCESS: 0> -> means no error
         if start_network_thread:
             self.client.loop_start()
         # Wait briefly for connection (non-fatal if it takes longer)
@@ -227,12 +230,12 @@ class MqttPillarClient:
         payload = self._decode(msg.payload)
         # dispatch to exact and wildcard handlers
         # MQTTMatcher returns the most specific match first if multiple are registered
-        for (topic_filter, handler) in self._iter_matching_handlers(msg.topic):
+        for handler in self._iter_matching_handlers(msg.topic):
             try:
                 handler(msg.topic, payload, getattr(msg, 'properties', None))
             except Exception as e:
                 # don't crash the network thread
-                print(f"Handler error for {topic_filter}: {e}")
+                print(f"Handler error for {msg.topic}: {e}")
 
     def _on_subscribe(self, client: mqtt.Client, userdata: Any, mid: int, granted_qos: List[int], properties: Optional[mqtt.Properties] = None) -> None:
         pass  # hook for logging if needed
@@ -244,8 +247,8 @@ class MqttPillarClient:
 
     def _iter_matching_handlers(self, topic: str):
         # MQTTMatcher iterfind yields (filter, handler)
-        for tfilter, handler in self._handlers.iter_match(topic):
-            yield tfilter, handler
+        for handler in self._handlers.iter_match(topic):
+            yield handler
 
     @staticmethod
     def _encode(payload: Any) -> bytes:

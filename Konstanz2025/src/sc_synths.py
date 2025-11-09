@@ -226,13 +226,17 @@ SC_PARTS = {
     """,
 
     "smooth_bass_synth": r"""
+<<<<<<< HEAD
     SynthDef(\smooth_bass, { |out=0, freq=440, volume=0.1, gate=1|
+=======
+    SynthDef(\smooth_bass, { |out=0, freq=440, volume=0.5, gate=1|
+>>>>>>> suet-konstanz2025
     var pan, carrier, modulator, mod_env, amp_env, sig, sub, warmth, air, detune;
     
     // Gentle pan
     pan = rrand(-0.3, 0.3);
     
-   amp_env = Env.linen(0.05, 0.2, 0.1, 1, 'sine').kr(doneAction: 2);  // 0.35s total
+    amp_env = Env.linen(0.05, 0.2, 0.1, 1, 'sine').kr(doneAction: 2);  // 0.35s total
     
     mod_env = Env.adsr(0.05, 0.2, 0.3, 0.25).kr;
     
@@ -266,7 +270,11 @@ SC_PARTS = {
     sig = HPF.ar(sig, 40);   // Gentle rumble filter
     
     // Subtle compression and saturation
+<<<<<<< HEAD
     //sig = (sig * 1.1).tanh * 0.9;
+=======
+    sig = (sig * 1.1).tanh * 0.9;
+>>>>>>> suet-konstanz2025
     
     // Gentle stereo enhancement
     sig = Pan2.ar(sig, pan);

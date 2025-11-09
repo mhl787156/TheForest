@@ -36,7 +36,8 @@ def read_serial_data(serial_port, cap_queue, light_queue, kill_event):
                 status = status_str.split(",")
                 # Convert to boolean list
                 button_list = [bool(int(i)) for i in status]
-                #print(f"[SERIAL RX] Parsed buttons: {button_list}")
+                if sum(button_list) > 0:
+                    print(f"[SERIAL RX] Parsed buttons: {button_list}")
                 cap_queue.put(button_list)
 
         except Exception as e:

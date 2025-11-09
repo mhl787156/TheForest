@@ -39,6 +39,7 @@ class SoundState(object):
         self.tempo_min = 30
         self.key_center = 60
 
+        self.generated_notes = []
         self.reaction_notes = []
 
     def __repr__(self):
@@ -54,6 +55,7 @@ class SoundState(object):
             "melody_number": self.melody_number,
             "baseline_style": self.baseline_style,
             "reaction_notes" : self.reaction_notes,
+            "generated_notes": self.generated_notes,
             "active_synths": self.active_synths,
         }
     
@@ -116,6 +118,8 @@ class SoundState(object):
         return self.reaction_notes
 
     def has_reaction_notes(self):
+        if len(self.reaction_notes) > 0: # TODO remove debug
+            print("!!!!!!! reaction notes here")
         return len(self.reaction_notes) > 0
     
     def trigger_synth(self, synth_name):
@@ -177,7 +181,7 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
     def interaction_update_sound_light(self, old_state, new_state):
         # Reset active synths (triggers are one-shot)
         self.sound_state.active_synths = {
-            "background": True,  # Always on
+            "background": False,  # Always on
             "harmony": False,
             "melody1": False,
             "melody2": False,
@@ -199,6 +203,17 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
                 elif button_id == 3:
                     self.sound_state.active_synths["melody3"] = True
                     print(f"[BUTTON {button_id}] Triggering melody3")
+
+        # Clears the reaction note for the Composer 
+        self.sound_state.clear_reaction_notes()
+
+        # If we now detect as active, we add a reaction note
+        for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
+            if not old_active and active and button_id < len(self.notes):
+                note = self.notes[button_id]
+                note_to_play = note + self.octave * 12
+                self.sound_state.append_reaction_notes(note_to_play)
+
 
 class FixedMapper(Pillar_Mapper_Base):
     def __init__(self, cfg, pillar_cfg):

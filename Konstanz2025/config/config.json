@@ -1,35 +1,37 @@
 {
     "mqtt": {
-        "enable" : false,
-        "broker_ip": "127.0.0.1"
+        "enable" : true,
+        "broker_ip": "cave003.local"
     },
     "pillars": {
-        "cave002": {
+        "cave003": {
             "id": 1,
             "port": "/dev/ttyUSB0",
             "pan": 0,
             "num_buttons": 4,
             "map": "ButtonTriggerMapper",
-            "bpm": 45,
+            "bpm": 60,
             "instruments": {
                 "melody1": "lead_synth",
-                "melody2": "lead2_synth",
+                "melody2": "melody_vocal",
+                "melody3": "melody_bells",
                 "harmony": "bass_synth",
-                "background": "bass_fmGrowl"
+                "background": "pad_synth"
             },
             "volume": {
-                "melody1": 0.6,
-                "melody2": 0.5,
-                "harmony": 0.1,
-                "background": 0.8
+                "melody1": 0.1,
+                "melody2": 0.08,
+                "melody3": 0.12,
+                "harmony": 0.08,
+                "background": 0.6
             },
             "broadcast":{
                 "echo_delay_duration": 4.0
             }
         },
-        "cave003": {
+        "cave004": {
             "id": 1,
-            "port": "/dev/ttyUSB0",
+            "port": "/dev/ttyACM0",
             "pan": 0,
             "num_buttons": 4,
             "map": "ButtonTriggerMapper",
