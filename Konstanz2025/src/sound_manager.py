@@ -271,7 +271,7 @@ class Composer:
         for i, note in enumerate(notes):
             wait(wait_time[i], units="time")
             instrument.play_note(note, volume, 0.5, blocking=False)
-            print(f"[HARMONY] Note {i+1} at t={t}s: {note:.1f}Hz")
+            print(f"[HARMONY] ...")
         
         print(f"[HARMONY] Bass line complete")
 
