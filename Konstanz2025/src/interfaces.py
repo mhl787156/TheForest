@@ -130,7 +130,7 @@ DEFAULT_STATE = {
         "melody1": 1.0,
         "melody2": 0.8,
         "harmony": 0.5,
-        "background": 0.3
+        "background": 0.1
     },
     "instruments": {
         "melody1": "lead_synth",
@@ -139,7 +139,7 @@ DEFAULT_STATE = {
         "background": "pad_synth"
     },
     "active_synths": {
-        "background": True,  # Always on
+        "background": False,  # Always on
         "harmony": False,
         "melody1": False,
         "melody2": False
@@ -150,6 +150,7 @@ DEFAULT_STATE = {
     "melody_number": 0,
     "baseline_style": "long",
     "chord_levels": 0,
-    "reaction_notes": []
+    "reaction_notes": [],
+    "generated_notes": []
 }
 

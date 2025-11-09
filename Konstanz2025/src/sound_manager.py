@@ -199,17 +199,19 @@ class Composer:
     
     def handle_synth_triggers(self, active_synths):
         """Handle direct triggers from button presses"""
+        notes = self.generated_notes
+        
         if active_synths.get("harmony", False):
             print("[TRIGGER] Harmony burst")
-            self.session.fork(self.trigger_harmony_burst)
+            self.session.fork(self.trigger_harmony_burst, args=(notes,))
         
         if active_synths.get("melody1", False):
             print("[TRIGGER] Melody1 burst")
-            self.session.fork(self.trigger_melody1_burst)
+            self.session.fork(self.trigger_melody1_burst, args=(notes,))
         
         if active_synths.get("melody2", False):
             print("[TRIGGER] Melody2 burst")
-            self.session.fork(self.trigger_melody2_burst)
+            self.session.fork(self.trigger_melody2_burst, args=(notes,))
     
     def fork_melody_single_note(self, note, delay=0.0):
         volume = self.state["volume"]["melody1"]
@@ -224,7 +226,7 @@ class Composer:
             wait(delay) # If received a delay before playing note
         instrument.play_note(note, volume, 0.25, blocking=True)
 
-    def trigger_melody1_burst(self):
+    def trigger_melody1_burst(self, grain_freq):
         """Trigger 2-second spectral swarm burst """
         instrument = self.instrument_manager.melody1_instrument()
         volume = self.state["volume"]["melody1"]
@@ -240,8 +242,6 @@ class Composer:
         grain_count = 0
         
         while elapsed < burst_duration:
-            # Randomize frequency for each grain (matches synth.scd line 221)
-            grain_freq = random.uniform(400, 6000) * random.uniform(0.95, 1.05)
             # Convert Hz to MIDI pitch for SCAMP
             midi_pitch = 69 + 12 * math.log2(grain_freq / 1760.0)
             
@@ -273,14 +273,13 @@ class Composer:
             instrument.play_note(60, volume, 7.0, blocking=False)
             print(f"[MELODY2] Voice at t={t}s")
 
-    def trigger_harmony_burst(self):
-        """Trigger 4-note syncopated bass line (2s duration)"""
-        
+    def trigger_harmony_burst(self, freq_hz):
+        """Trigger 4-note syncopated bass line (2s duration)"""    
         instrument = self.instrument_manager.harmony_instrument()
         volume = self.state["volume"]["harmony"]
         
         # Frequency pool: D1, A1, D2, A2, D3 (36.71, 55, 73.42, 110, 146.83 Hz)
-        bass_freqs = [36.71, 55, 73.42, 110, 146.83]
+        # bass_freqs = [36.71, 55, 73.42, 110, 146.83]
         
         # Syncopated 4-note pattern: t=0s, 0.4s, 1.0s, 1.6s (total 2s)
         timings = [0, 0.2, 0.5, 0.65]
@@ -288,8 +287,6 @@ class Composer:
         print(f"[HARMONY] Starting bass line: 4 notes over 2s")
         
         for i, t in enumerate(timings):
-            # Pick random frequency from pool
-            freq_hz = random.choice(bass_freqs) * random.uniform(0.99, 1.01)
             midi_pitch = 69 + 12 * math.log2(freq_hz / 440.0)
             
             wait(t, units="time")
