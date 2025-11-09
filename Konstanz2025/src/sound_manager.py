@@ -138,7 +138,7 @@ class Composer:
         
         # Start background immediately - runs continuously
         print("[COMPOSER] Starting background pad")
-        # self.active_forks["background"] = self.session.fork(self.fork_background, args=(self.shared_state,))
+        # self.active_forks["background"] =  self.session.fork(self.fork_background, args=(self.shared_state,))
 
     def update(self, setting_name, value, extra_arg=None): #TODO make nice
 
@@ -419,14 +419,14 @@ class SoundManager:
             
         
         # Check if background fork is still alive
-        if not self.composer.active_forks["background"].alive:
-            print(f"\n{'!'*60}")
-            print(f"[TICK #{self.tick_counter}]  CRITICAL: Background fork died! Restarting...")
-            print_server_info("[FORK DEATH]")
-            print(f"{'!'*60}\n")
-            self.composer.active_forks["background"] = self.composer.session.fork(
-                self.composer.fork_background, args=(self.composer.shared_state,)
-            )
+        # if not self.composer.active_forks["background"].alive:
+        #     print(f"\n{'!'*60}")
+        #     print(f"[TICK #{self.tick_counter}]  CRITICAL: Background fork died! Restarting...")
+        #     print_server_info("[FORK DEATH]")
+        #     print(f"{'!'*60}\n")
+        #     self.composer.active_forks["background"] = self.composer.session.fork(
+        #         self.composer.fork_background, args=(self.composer.shared_state,)
+        #     )
         
         # Start melody/harmony forks if needed (background always running)
         self.composer.play()
