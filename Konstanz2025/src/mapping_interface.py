@@ -178,6 +178,8 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
     """
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
+        
+        self.octave = pillar_cfg.get("octave", 5)
 
     def _gen_burst_notes1(self): #TODO make more efficient
         # Random density: 3-12 grains per second (matches synth.scd)
@@ -225,7 +227,6 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
 
         self.notes = []
         self.time = []
-        self.octave = pillar_cfg.get("octave", 5)
 
         # Detect button presses (rising edge: old=False, new=True)
         for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
