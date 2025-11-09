@@ -116,6 +116,7 @@ class SoundState(object):
         return self.reaction_notes
 
     def has_reaction_notes(self):
+        print("!!!!!!! reaction notes here")
         return len(self.reaction_notes) > 0
     
     def trigger_synth(self, synth_name):
@@ -201,6 +202,9 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
 
         # Clears the reaction note for the Composer 
         self.sound_state.clear_reaction_notes()
+
+        self.notes = [1,2,3,4]
+        self.reaction_notes = [5,6,7,8]
 
         # If we now detect as active, we add a reaction note
         for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
