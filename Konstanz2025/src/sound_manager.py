@@ -170,7 +170,7 @@ class Composer:
             if setting_name == "active_synths":
                 # Trigger synth bursts based on button presses
                 print(f"[COMPOSER] Received active_synths: {value}")
-                self.handle_synth_triggers(value)
+                self.handle_synth_triggers(value,extra_arf)
             
     def update_instruments(self, instruments):
         for k,v in instruments.items():
@@ -196,10 +196,10 @@ class Composer:
         # Other synths triggered by buttons
         pass
     
-    def handle_synth_triggers(self, active_synths):
+    def handle_synth_triggers(self, active_synths, generated_notes):
         """Handle direct triggers from button presses"""
-        notes = self.generated_notes['notes']
-        time = self.generated_notes['time']
+        notes = generated_notes['notes']
+        time = generated_notes['time']
 
         if active_synths.get("harmony", False):
             print("[TRIGGER] Harmony burst")
