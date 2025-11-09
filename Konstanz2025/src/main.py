@@ -126,8 +126,7 @@ class Controller():
                 idx = random.randint(0,2)
                 synths = ['melody1','melody2','harmony']
                 value = synths[idx]
-                extra = [notes,time]
-                print("!!!!!!!",extra)
+                extra = {"notes":notes, "time":time}
                 self.sound_manager.update_pillar_setting("active_synths", value=value, extra_arg=extra) 
 
     def broadcast_notes_to_other_pillars(self, sound_state):
