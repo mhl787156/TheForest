@@ -225,6 +225,7 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
 
         self.notes = []
         self.time = []
+        self.octave = pillar_cfg.get("octave", 5)
 
         # Detect button presses (rising edge: old=False, new=True)
         for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
