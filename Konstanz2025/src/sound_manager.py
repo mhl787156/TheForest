@@ -199,19 +199,20 @@ class Composer:
     
     def handle_synth_triggers(self, active_synths):
         """Handle direct triggers from button presses"""
-        notes = self.generated_notes
-        
+        notes = self.generated_notes['notes']
+        time = self.generated_notes['time']
+
         if active_synths.get("harmony", False):
             print("[TRIGGER] Harmony burst")
-            self.session.fork(self.trigger_harmony_burst, args=(notes,))
+            self.session.fork(self.trigger_harmony_burst, args=(notes,time))
         
         if active_synths.get("melody1", False):
             print("[TRIGGER] Melody1 burst")
-            self.session.fork(self.trigger_melody1_burst, args=(notes,))
+            self.session.fork(self.trigger_melody1_burst, args=(notes,time))
         
         if active_synths.get("melody2", False):
             print("[TRIGGER] Melody2 burst")
-            self.session.fork(self.trigger_melody2_burst, args=(notes,))
+            self.session.fork(self.trigger_melody2_burst, args=(notes,time))
     
     def fork_melody_single_note(self, note, delay=0.0):
         volume = self.state["volume"]["melody1"]
@@ -226,72 +227,52 @@ class Composer:
             wait(delay) # If received a delay before playing note
         instrument.play_note(note, volume, 0.25, blocking=True)
 
-    def trigger_melody1_burst(self, grain_freq):
+    def trigger_melody1_burst(self, notes, wait_time):
         """Trigger 2-second spectral swarm burst """
         instrument = self.instrument_manager.melody1_instrument()
         volume = self.state["volume"]["melody1"]
-        
-        # Random density: 3-12 grains per second (matches synth.scd)
-        density = random.uniform(3, 12)
-        grain_interval = 1.0 / density
-        burst_duration = 2.0  # seconds
-        
+
         print(f"[MELODY1] Starting swarm: density={density:.1f} grains/s, interval={grain_interval:.3f}s")
         
-        elapsed = 0.0
         grain_count = 0
         
-        while elapsed < burst_duration:
-            # Convert Hz to MIDI pitch for SCAMP
-            midi_pitch = 69 + 12 * math.log2(grain_freq / 1760.0)
-            
+        for i, note in enumerate(note):
             # Spawn grain
             instrument.play_note(
-                midi_pitch,  # Random pitch (400-6000Hz range)
+                note,  # Random pitch (400-6000Hz range)
                 volume, 
                 0.2,  # Duration (EnvGen uses its own random envelope 0.05-0.2s)
                 blocking=False
             )
             grain_count += 1
             
+            grain_interval = wait_time[i] + random.uniform(0,0.1)
             # Wait before next grain
             wait(grain_interval, units="time")
-            elapsed += grain_interval
         
         print(f"[MELODY1] Swarm complete: spawned {grain_count} grains in {elapsed:.2f}s")
     
-    def trigger_melody2_burst(self):
+    def trigger_melody2_burst(self, notes, wait_time):
         """Trigger 2-measure phrase: 2 formant voices"""
         instrument = self.instrument_manager.melody2_instrument()
         volume = self.state["volume"]["melody2"]
         
-        # Fixed pattern: 2 voices across 8 seconds (4s each)
-        timings = [0, 4.0]
-        
-        for t in timings:
-            wait(t, units="time")
+        for i, note in enumerate(notes):
+            wait(wait_time[i], units="time")
             instrument.play_note(60, volume, 7.0, blocking=False)
             print(f"[MELODY2] Voice at t={t}s")
 
-    def trigger_harmony_burst(self, freq_hz):
+    def trigger_harmony_burst(self, notes, wait_time):
         """Trigger 4-note syncopated bass line (2s duration)"""    
         instrument = self.instrument_manager.harmony_instrument()
         volume = self.state["volume"]["harmony"]
         
-        # Frequency pool: D1, A1, D2, A2, D3 (36.71, 55, 73.42, 110, 146.83 Hz)
-        # bass_freqs = [36.71, 55, 73.42, 110, 146.83]
-        
-        # Syncopated 4-note pattern: t=0s, 0.4s, 1.0s, 1.6s (total 2s)
-        timings = [0, 0.2, 0.5, 0.65]
-        
         print(f"[HARMONY] Starting bass line: 4 notes over 2s")
         
-        for i, t in enumerate(timings):
-            midi_pitch = 69 + 12 * math.log2(freq_hz / 440.0)
-            
-            wait(t, units="time")
-            instrument.play_note(midi_pitch, volume, 0.5, blocking=False)
-            print(f"[HARMONY] Note {i+1} at t={t}s: {freq_hz:.1f}Hz")
+        for i, note in enumerate(notes):
+            wait(wait_time[i], units="time")
+            instrument.play_note(note, volume, 0.5, blocking=False)
+            print(f"[HARMONY] Note {i+1} at t={t}s: {note:.1f}Hz")
         
         print(f"[HARMONY] Bass line complete")
 

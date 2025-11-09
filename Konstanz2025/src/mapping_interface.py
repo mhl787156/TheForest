@@ -178,15 +178,41 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
 
-    def _gen_burst_notes1(self):
-        # Randomize frequency for each grain (matches synth.scd line 221)
-        return random.uniform(400, 6000) * random.uniform(0.95, 1.05)
-            
+    def _gen_burst_notes1(self): #TODO make more efficient
+        # Random density: 3-12 grains per second (matches synth.scd)
+        density = random.uniform(3, 12)
+        grain_interval = 1.0 / density
+        burst_duration = 2.0  # seconds
+        
+        elapsed = 0.0
+        notes = []
+        
+        while elapsed < burst_duration:
+            # Randomize frequency for each grain (matches synth.scd line 221)
+            grain_freq =  random.uniform(400, 6000) * random.uniform(0.95, 1.05)
+            # Convert Hz to MIDI pitch for SCAMP
+            midi_pitch = 69 + 12 * math.log2(grain_freq / 1760.0)
+            notes.append(midi_pitch)
+            elapsed += grain_interval
+
+        wait_time = [grain_interval]*len(notes)
+
+        return notes, wait_time
+                
     def _gen_burst_notes2(self):
         # Pick random frequency from pool
+        # Frequency pool: D1, A1, D2, A2, D3 (36.71, 55, 73.42, 110, 146.83 Hz)
         bass_freqs = [36.71, 55, 73.42, 110, 146.83]
-        return random.choice(bass_freqs) * random.uniform(0.99, 1.01)
+        # Syncopated 4-note pattern: t=0s, 0.4s, 1.0s, 1.6s (total 2s)
+        wait_time = [0, 0.2, 0.5, 0.65]
 
+        for i in range(len(wait_time)):
+            freq_hz = random.choice(bass_freqs) * random.uniform(0.99, 1.01)
+            midi_pitch = 69 + 12 * math.log2(freq_hz/ 440.0)
+            notes.append(midi_pitch)
+
+        return notes, wait_time
+                
     def interaction_update_sound_light(self, old_state, new_state):
         # Reset active synths (triggers are one-shot)
         self.sound_state.active_synths = {
@@ -197,31 +223,34 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
         }
 
         self.notes = []
+        self.time = []
 
         # Detect button presses (rising edge: old=False, new=True)
         for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
             if not old_active and active:
                 if button_id == 0:
                     self.sound_state.active_synths["harmony"] = True
-                    self.notes = [60]
+                    # Fixed pattern: 2 voices across 8 seconds (4s each)
+                    self.notes = [60, 60]
+                    self.time = [0, 4.0]
                     print(f"[BUTTON {button_id}] Triggering harmony")
                 elif button_id == 1:
                     self.sound_state.active_synths["melody1"] = True
-                    self.notes = self._gen_burst_notes1()
+                    self.notes, self.time = self._gen_burst_notes1()
                     print(f"[BUTTON {button_id}] Triggering melody1")
                 elif button_id == 2:
                     self.sound_state.active_synths["melody2"] = True
-                    self.notes = self._gen_burst_notes2()
+                    self.notes, self.time = self._gen_burst_notes2()
                     print(f"[BUTTON {button_id}] Triggering melody2")
                 elif button_id == 3:
                     self.sound_state.active_synths["melody1"] = True
-                    self.notes = self._gen_burst_notes1()
+                    self.notes, self.time = self._gen_burst_notes1()
                     print(f"[BUTTON {button_id}] Triggering melody1 (duplicate)")
 
-        self.sound_state.generated_notes = self.notes
+        self.sound_state.generated_notes = {"notes":self.notes, "time":self.time} 
         # Clears the reaction note for the Composer 
         self.sound_state.clear_reaction_notes()
-
+        print(self.sound_state.generated_notes)
         # If we now detect as active, we add a reaction note
         for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
             if not old_active and active:
