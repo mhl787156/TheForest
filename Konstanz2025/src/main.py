@@ -123,7 +123,7 @@ class Controller():
         # Currently only send if there is a reaction note
         if sound_state.has_reaction_notes():
             data = json.dumps(sound_state.to_json())
-            self.mqtt_client.publish(f"sound_state/{hostname}", data)
+            self.mqtt_client.publish(f"sound_state/{onfig["mqtt"]["other_ip"]}", data)
             print("Sending Notes via MQTT Client")
     
     def loop(self):
@@ -144,7 +144,7 @@ class Controller():
         # Pass the sound state to the sound manager to activate anything
         for param_name, value in sound_state.items():
             self.sound_manager.update_pillar_setting(param_name, value) 
-            
+
 
         # Send any sound state "reaction notes" to other pillars
         if self.mqtt_enabled:
