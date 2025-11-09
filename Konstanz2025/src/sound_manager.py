@@ -170,7 +170,7 @@ class Composer:
             if setting_name == "active_synths":
                 # Trigger synth bursts based on button presses
                 print(f"[COMPOSER] Received active_synths: {value}")
-                self.handle_synth_triggers(value,extra_arf)
+                self.handle_synth_triggers(value,extra_arg)
             
     def update_instruments(self, instruments):
         for k,v in instruments.items():
