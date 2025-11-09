@@ -13,7 +13,6 @@ from functools import reduce
 import subprocess
 import os
 import time
-import math
 
 from interfaces import *
 from sc_synths import * 

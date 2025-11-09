@@ -3,6 +3,7 @@ import sys
 from typing import Tuple
 import numpy as np
 import time
+import math
 
 from interfaces import DEFAULT_STATE, SCALE_TYPES, INSTRUMENTS, MELODIES, SCALES_TYPES_LIST, BASELINE_STYLE
 import interfaces as ifc
