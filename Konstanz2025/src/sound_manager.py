@@ -231,7 +231,7 @@ class Composer:
         instrument = self.instrument_manager.melody1_instrument()
         volume = self.state["volume"]["melody1"]
 
-        print(f"[MELODY1] Starting swarm: density={density:.1f} grains/s, interval={grain_interval:.3f}s")
+        print(f"[MELODY1] Starting swarm")
         
         grain_count = 0
         
@@ -249,7 +249,7 @@ class Composer:
             # Wait before next grain
             wait(grain_interval, units="time")
         
-        print(f"[MELODY1] Swarm complete: spawned {grain_count} grains in {elapsed:.2f}s")
+        print(f"[MELODY1] Swarm complete: spawned {grain_count} grains")
     
     def trigger_melody2_burst(self, notes, wait_time):
         """Trigger 2-measure phrase: 2 formant voices"""
