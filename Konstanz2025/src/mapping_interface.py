@@ -116,7 +116,8 @@ class SoundState(object):
         return self.reaction_notes
 
     def has_reaction_notes(self):
-        print("!!!!!!! reaction notes here")
+        if len(self.reaction_notes) > 0:
+            print("!!!!!!! reaction notes here")
         return len(self.reaction_notes) > 0
     
     def trigger_synth(self, synth_name):
