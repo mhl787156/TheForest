@@ -143,7 +143,12 @@ class Controller():
 
         # Pass the sound state to the sound manager to activate anything
         for param_name, value in sound_state.items():
-            self.sound_manager.update_pillar_setting(param_name, value) 
+            if param_name = "active_synths":
+                extra_arg = sound_state['generated_notes']
+            else:
+                extra_arg = None
+            
+            self.sound_manager.update_pillar_setting(param_name, value, extra_arg) 
 
 
         # Send any sound state "reaction notes" to other pillars

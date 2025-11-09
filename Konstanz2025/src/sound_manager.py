@@ -140,7 +140,7 @@ class Composer:
         print("[COMPOSER] Starting background pad")
         self.active_forks["background"] = self.session.fork(self.fork_background, args=(self.shared_state,))
 
-    def update(self, setting_name, value):
+    def update(self, setting_name, value, extra_arg=None): #TODO make nice
 
         # print("Sound State Updating", setting_name, self.state[setting_name],  value)
         if self.state[setting_name] != value:
@@ -402,9 +402,9 @@ class SoundManager:
         """String representation of the pillar for debugging."""
         return f"Pillar({self.pillar_id}) {self.state}"
     
-    def update_pillar_setting(self, setting_name, value):
+    def update_pillar_setting(self, setting_name, value, extra_arg=None):
         """Updates the settings dictionary for a specific pillar."""
-        self.composer.update(setting_name, value)
+        self.composer.update(setting_name, value, extra_arg)
 
     def tick(self, time_delta=1/15.0):  # Reduced from 30Hz to 15Hz to lower overhead
         self.tick_counter += 1
