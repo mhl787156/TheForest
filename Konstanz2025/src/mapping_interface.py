@@ -254,7 +254,7 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
         self.sound_state.generated_notes = {"notes":self.notes, "time":self.time} 
         # Clears the reaction note for the Composer 
         self.sound_state.clear_reaction_notes()
-        print(self.sound_state.generated_notes)
+        
         # If we now detect as active, we add a reaction note
         for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
             if not old_active and active:
