@@ -178,7 +178,7 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
     """
     def __init__(self, cfg, pillar_cfg):
         super().__init__(cfg, pillar_cfg)
-        
+
         self.octave = pillar_cfg.get("octave", 5)
 
     def _gen_burst_notes1(self): #TODO make more efficient
@@ -208,6 +208,7 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
         bass_freqs = [36.71, 55, 73.42, 110, 146.83]
         # Syncopated 4-note pattern: t=0s, 0.4s, 1.0s, 1.6s (total 2s)
         wait_time = [0, 0.2, 0.5, 0.65]
+        notes = []
 
         for i in range(len(wait_time)):
             freq_hz = random.choice(bass_freqs) * random.uniform(0.99, 1.01)
