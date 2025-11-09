@@ -152,5 +152,6 @@ DEFAULT_STATE = {
     "chord_levels": 0,
     "reaction_notes": [],
     "generated_notes": []
+    "broadcast_notes": []
 }
 

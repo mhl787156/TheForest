@@ -127,7 +127,7 @@ class Controller():
                 synths = ['melody1','melody2','harmony']
                 value = synths[idx]
                 extra = {"notes":notes, "time":time}
-                self.sound_manager.update_pillar_setting("active_synths", value=value, extra_arg=extra) 
+                self.sound_manager.update_pillar_setting("broadcast_notes", value=value, extra_arg=extra) 
 
     def broadcast_notes_to_other_pillars(self, sound_state):
         # Send Reaction Notes (or other sound state) to other pillars

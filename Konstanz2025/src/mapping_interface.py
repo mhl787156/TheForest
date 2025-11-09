@@ -57,6 +57,7 @@ class SoundState(object):
             "baseline_style": self.baseline_style,
             "reaction_notes" : self.reaction_notes,
             "generated_notes": self.generated_notes,
+            "broadcast_notes": self.generated_notes,
             "active_synths": self.active_synths,
         }
     

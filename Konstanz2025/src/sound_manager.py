@@ -165,12 +165,12 @@ class Composer:
                     self.session.fork(self.fork_melody_single_note, args=(note,))
             if setting_name == "broadcast_notes":
                 delay = self.state.get("broadcast", {}).get("echo_delay_duration", 0)
-                for i, note in enumerate(value):
-                    self.session.fork(self.fork_melody_single_note, args=(note,delay,))
+                self.sound_state.active_synths["f{value}"] = True
+                # for i, note in enumerate(value):
+                #     self.session.fork(self.fork_melody_single_note, args=(note,delay,))
             if setting_name == "active_synths":
                 # Trigger synth bursts based on button presses
                 print(f"[COMPOSER] Received active_synths: {value}")
-                synths = {"f{value}":True} #TODO
                 self.handle_synth_triggers(synths,extra_arg)
             
     def update_instruments(self, instruments):
@@ -201,7 +201,7 @@ class Composer:
         """Handle direct triggers from button presses"""
         notes = generated_notes['notes']
         time = generated_notes['time']
-
+        
         if active_synths.get("harmony", False):
             print("[TRIGGER] Harmony burst")
             self.session.fork(self.trigger_harmony_burst, args=(notes,time))
