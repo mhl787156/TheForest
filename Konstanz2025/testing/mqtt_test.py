@@ -67,6 +67,7 @@ class SoundStateStub(SoundState):
         self.tempo_min = 30
         self.key_center = 60
 
+        self.generated_notes = []
         self.reaction_notes = [1,2,3,4]
         self.active_synths = []
 

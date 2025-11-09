@@ -13,6 +13,7 @@ from functools import reduce
 import subprocess
 import os
 import time
+import math
 
 from interfaces import *
 from sc_synths import * 
@@ -242,7 +243,6 @@ class Composer:
             # Randomize frequency for each grain (matches synth.scd line 221)
             grain_freq = random.uniform(400, 6000) * random.uniform(0.95, 1.05)
             # Convert Hz to MIDI pitch for SCAMP
-            import math
             midi_pitch = 69 + 12 * math.log2(grain_freq / 1760.0)
             
             # Spawn grain
@@ -275,7 +275,7 @@ class Composer:
 
     def trigger_harmony_burst(self):
         """Trigger 4-note syncopated bass line (2s duration)"""
-        import math
+        
         instrument = self.instrument_manager.harmony_instrument()
         volume = self.state["volume"]["harmony"]
         

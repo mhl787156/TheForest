@@ -39,6 +39,7 @@ class SoundState(object):
         self.tempo_min = 30
         self.key_center = 60
 
+        self.generated_notes = []
         self.reaction_notes = []
 
     def __repr__(self):
@@ -54,6 +55,7 @@ class SoundState(object):
             "melody_number": self.melody_number,
             "baseline_style": self.baseline_style,
             "reaction_notes" : self.reaction_notes,
+            "generated_notes": self.generated_notes,
             "active_synths": self.active_synths,
         }
     
@@ -116,7 +118,7 @@ class SoundState(object):
         return self.reaction_notes
 
     def has_reaction_notes(self):
-        if len(self.reaction_notes) > 0:
+        if len(self.reaction_notes) > 0: # TODO remove debug
             print("!!!!!!! reaction notes here")
         return len(self.reaction_notes) > 0
     
@@ -203,9 +205,6 @@ class ButtonTriggerMapper(Pillar_Mapper_Base):
 
         # Clears the reaction note for the Composer 
         self.sound_state.clear_reaction_notes()
-
-        self.notes = [1,2,3,4]
-        self.sound_state.append_reaction_notes(4)
 
         # If we now detect as active, we add a reaction note
         for button_id, (old_active, active) in enumerate(zip(old_state, new_state)):
