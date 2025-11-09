@@ -123,11 +123,12 @@ class Controller():
             print(sound_state["reaction_notes"])
             
             if len(notes) > 0:
-                idx = int(random.randint(0,3))
+                idx = random.randint(0,3)
                 synths = ['melody1','melody2','harmony']
-                print("here!!!!!!!!!!!!!!")
                 value = synths[idx]
-                self.sound_manager.update_pillar_setting("active_synths", value=value, extra_arg=[notes,time]) 
+                print("here!!!!!!!!!!!!!!")
+                extra = [notes,time]
+                self.sound_manager.update_pillar_setting("active_synths", value=value, extra_arg=extra) 
 
     def broadcast_notes_to_other_pillars(self, sound_state):
         # Send Reaction Notes (or other sound state) to other pillars
