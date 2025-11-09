@@ -257,7 +257,8 @@ class Composer:
         volume = self.state["volume"]["melody2"]
         
         for i, note in enumerate(notes):
-            wait(wait_time[i], units="time")
+            t = wait_time[i]
+            wait(t, units="time")
             instrument.play_note(60, volume, 7.0, blocking=False)
             print(f"[MELODY2] Voice at t={t}s")
 
