@@ -1,6 +1,6 @@
 {
     "mqtt": {
-        "enable" : false,
+        "enable" : true,
         "broker_ip": "cave003.local"
     },
     "pillars": {
