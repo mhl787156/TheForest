@@ -170,7 +170,8 @@ class Composer:
             if setting_name == "active_synths":
                 # Trigger synth bursts based on button presses
                 print(f"[COMPOSER] Received active_synths: {value}")
-                self.handle_synth_triggers(value,extra_arg)
+                synths = {"f{value}":True} #TODO
+                self.handle_synth_triggers(synths,extra_arg)
             
     def update_instruments(self, instruments):
         for k,v in instruments.items():
@@ -229,7 +230,7 @@ class Composer:
     def trigger_melody1_burst(self, notes, wait_time):
         if len(notes) != len(wait_time):
             return
-            
+
         """Trigger 2-second spectral swarm burst """
         instrument = self.instrument_manager.melody1_instrument()
         volume = self.state["volume"]["melody1"]
