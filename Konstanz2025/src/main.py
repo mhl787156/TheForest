@@ -123,7 +123,7 @@ class Controller():
         # Currently only send if there is a reaction note
         if sound_state.has_reaction_notes():
             data = json.dumps(sound_state.to_json())
-            self.mqtt_client.publish(f"sound_state/{onfig["mqtt"]["other_ip"]}", data)
+            self.mqtt_client.publish(f"sound_state/{config["mqtt"]["other_ip"]}", data)
             print("Sending Notes via MQTT Client")
     
     def loop(self):
